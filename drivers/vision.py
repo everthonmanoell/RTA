@@ -1,4 +1,21 @@
+"""
+Sistema de Medição de Dispositivos com AprilTags
+================================================
+Este programa usa 4 AprilTags posicionadas nos cantos de uma área para:
+1. Corrigir a perspectiva da câmera (transformação top-down)
+2. Calibrar a escala real (pixels → cm)
+3. Detectar e medir dimensões de smartphones automaticamente
+
+Layout das Tags:
+   Tag 1 (sup. esq.) ------- Tag 0 (sup. dir.)
+        |                          |
+        |      DISPOSITIVO         |
+        |                          |
+   Tag 3 (inf. esq.) ------- Tag 2 (inf. dir.)
+"""
+
 import os
+import time
 from datetime import datetime
 
 import cv2
@@ -6,262 +23,279 @@ import numpy as np
 from pupil_apriltags import Detector
 
 # ================= CONFIGURAÇÕES =================
-# LAYOUT DAS TAGS:
-#   Tag 1 (superior esquerda) ------- Tag 0 (superior direita)
-#       |                                    |
-#       |         SMARTPHONE                 |
-#       |                                    |
-#   Tag 3 (inferior esquerda) ------ Tag 2 (inferior direita)
 
-# MEÇA ISSO NA VIDA REAL COM UMA RÉGUA!
-# Distância horizontal (em cm) entre os cantos internos das tags
-DISTANCIA_REAL_LARGURA_CM = 9.62 
-# Distância vertical (em cm) entre os cantos internos das tags
-DISTANCIA_REAL_ALTURA_CM = 12.53
+# Distâncias reais entre os corners internos das tags (medidas com régua)
+# IMPORTANTE: Essas medidas definem a escala de conversão
+DISTANCIA_REAL_LARGURA_CM = 8.09   # Horizontal: Tag 1 corner[0] até Tag 0 corner[1]
+DISTANCIA_REAL_ALTURA_CM = 15.13   # Vertical: Tag 1 corner[0] até Tag 3 corner[3]
 
-# Tamanho mínimo da área do celular para evitar detectar ruído (em cm quadrados)
-AREA_MINIMA_CELULAR_CM2 = 10.0
-# =================================================
+# Configuração de diretórios
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))  # Pasta onde está este script
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "detections_output")  # Pasta para salvar imagens
+os.makedirs(OUTPUT_DIR, exist_ok=True)  # Cria a pasta se não existir
 
-# Criar pasta para salvar imagens
-OUTPUT_DIR = "detections_output"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+# Controle de salvamento anti-flood
+SAVE_INTERVAL_SECONDS = 2.0  # Intervalo mínimo entre salvamentos automáticos
+SAVE_ON_KEY = True           # True = salva ao pressionar 's' | False = salva automaticamente
+last_save_time = 0           # Timestamp do último salvamento
+
+def order_points(pts):
+    """
+    Ordena 4 pontos no sentido horário começando do superior esquerdo.
+    
+    Args:
+        pts: Array numpy com 4 pontos (x, y)
+    
+    Returns:
+        Array ordenado: [top-left, top-right, bottom-right, bottom-left]
+    """
+    rect = np.zeros((4, 2), dtype="float32")
+    
+    # Superior esquerdo tem a menor soma de coordenadas (x+y)
+    s = pts.sum(axis=1)
+    rect[0] = pts[np.argmin(s)]
+    
+    # Inferior direito tem a maior soma (x+y)
+    rect[2] = pts[np.argmax(s)]
+    
+    # Superior direito tem a menor diferença (y-x)
+    diff = np.diff(pts, axis=1)
+    rect[1] = pts[np.argmin(diff)]
+    
+    # Inferior esquerdo tem a maior diferença (y-x)
+    rect[3] = pts[np.argmax(diff)]
+    
+    return rect
 
 def main():
-    cap = cv2.VideoCapture(1)  # Abre a câmera padrão
+    """Função principal do sistema de medição"""
     
+    # ========== INICIALIZAÇÃO DA CÂMERA ==========
+    # Tenta abrir câmera 1 (câmera externa), se falhar usa câmera 0 (webcam)
+    cap = cv2.VideoCapture(1, cv2.CAP_DSHOW) 
     if not cap.isOpened():
-        print("❌ Erro: Não consegui abrir a câmera. Verifique se está conectada.")
-        return
-    
-    # Inicializa o detector (família tag36h11 padrão)
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+    # Configura resolução para melhor qualidade
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+    # ========== INICIALIZAÇÃO DO DETECTOR DE APRILTAGS ==========
+    # Família tag36h11 é a mais comum (robusta e confiável)
     detector = Detector(families='tag36h11')
 
+    # ========== MENSAGENS INICIAIS ==========
     print("\n" + "="*60)
-    print("🔍 MEDIDOR DE DIMENSÕES DE SMARTPHONE COM APRILTAGS")
+    print("📱 SISTEMA DE MEDIÇÃO COM APRILTAGS")
     print("="*60)
-    print("\n📋 INSTRUÇÕES:")
-    print("  1. Coloque um papel com 4 tags apriltag nos cantos")
-    print("  2. Tag 1: Superior ESQUERDA")
-    print("  3. Tag 0: Superior DIREITA")
-    print("  4. Tag 3: Inferior ESQUERDA")
-    print("  5. Tag 2: Inferior DIREITA")
-    print("  6. Coloque o smartphone NO CENTRO da área delimitada pelas tags")
-    print("  7. Aponte a câmera para a cena")
-    print("\n⌨️  Pressione 'q' para sair\n")
+    print(f"\n📁 Pasta de salvamento: {OUTPUT_DIR}")
+    if SAVE_ON_KEY:
+        print("⌨️  Pressione 's' para SALVAR imagens | 'q' para SAIR")
+    else:
+        print(f"💾 Salvamento automático a cada {SAVE_INTERVAL_SECONDS}s")
+    print("\n" + "="*60 + "\n")
 
-    print("--- INICIANDO DETECÇÃO ---\n")
-    
-    frame_count = 0
-    detections_log = {"tags_encontradas": 0, "smartphone_detectado": 0}
-    
+    # ========== VARIÁVEIS DE CONTROLE ==========
+    global last_save_time
+    save_requested = False  # Flag para sinalizar quando usuário pressiona 's'
+
+    # ========== LOOP PRINCIPAL ==========
     while True:
+        # Captura frame da câmera
         ret, frame = cap.read()
         if not ret: 
-            break
+            break  # Se falhou, encerra o programa
 
-        frame_count += 1
+        # ========== ETAPA 1: DETECÇÃO DAS APRILTAGS ==========
+        # Converte para escala de cinza (apriltags são detectadas em preto e branco)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Detecta todas as tags no frame
         detections = detector.detect(gray)
         
-        # ========== ETAPA 1: DETECTAR AS 4 TAGS ==========
-        tag_centers = {}
-        tag_corners = {}  # Armazena os 4 cantos de cada tag
-        tag_ids_encontradas = []
-        
+        # Mapeia ID da tag → seus 4 corners
+        # Cada tag tem 4 corners indexados: [0]=sup-esq, [1]=sup-dir, [2]=inf-dir, [3]=inf-esq
+        tag_corners_map = {}
         for detection in detections:
-            tag_id = detection.tag_id
+            tag_corners_map[detection.tag_id] = detection.corners
+            
+            # Desenha círculo vermelho no centro da tag (para visualização)
             center = tuple(map(int, detection.center))
-            tag_centers[tag_id] = center
-            # Armazena os 4 cantos da tag
-            tag_corners[tag_id] = detection.corners
-            tag_ids_encontradas.append(tag_id)
-            
-            # Desenha círculo na tag com cor e ID
-            cor = {0: (0, 0, 255), 1: (255, 0, 0), 2: (0, 255, 0), 3: (255, 255, 0)}.get(tag_id, (128, 128, 128))
-            cv2.circle(frame, center, 8, cor, -1)
-            cv2.putText(frame, f"Tag{tag_id}", (center[0] + 10, center[1] - 10), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+            cv2.circle(frame, center, 4, (0, 0, 255), -1)
 
-        # Status das tags encontradas
-        status_tags = f"Tags detectadas: {len(tag_ids_encontradas)}/4"
-        cv2.putText(frame, status_tags, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-        
-        # Se achar as 4 tags (0, 1, 2, 3)
-        if all(tag_id in tag_centers for tag_id in [0, 1, 2, 3]):
-            detections_log["tags_encontradas"] += 1
+        # ========== ETAPA 2: VERIFICA SE AS 4 TAGS ESTÃO PRESENTES ==========
+        if all(tid in tag_corners_map for tid in [0, 1, 2, 3]):
+            try:
+                # ========== ETAPA 3: EXTRAI OS CORNERS INTERNOS DAS TAGS ==========
+                # Cada tag contribui com 1 corner que aponta para dentro da área
+                # Biblioteca pupil_apriltags retorna corners sempre nesta ordem:
+                # [0]=top-left, [1]=top-right, [2]=bottom-right, [3]=bottom-left
+                
+                # Tag 1 (superior esquerda) → pega corner inferior direito [3]
+                pt_tl = tag_corners_map[1][3] 
+                
+                # Tag 0 (superior direita) → pega corner inferior esquerdo [2]
+                pt_tr = tag_corners_map[0][2]
+                
+                # Tag 2 (inferior direita) → pega corner superior esquerdo [1]
+                pt_br = tag_corners_map[2][1]
+                
+                # Tag 3 (inferior esquerda) → pega corner superior direito [0]
+                pt_bl = tag_corners_map[3][0]
+                
+                # Desenha bolinhas ROSA nos 4 pontos de ancoragem (visualização)
+                for pt in [pt_tl, pt_tr, pt_br, pt_bl]:
+                    cv2.circle(frame, tuple(map(int, pt)), 6, (255, 0, 255), -1)
+
+            except KeyError:
+                # Se alguma tag não foi detectada corretamente, pula este frame
+                cv2.imshow("Original", frame)
+                if cv2.waitKey(1) & 0xFF == ord('q'): 
+                    break
+                continue
+
+            # ========== ETAPA 4: TRANSFORMAÇÃO DE PERSPECTIVA ==========
+            # Ordena os pontos corretamente (top-left, top-right, bottom-left, bottom-right)
+            src_pts = order_points(np.float32([pt_tl, pt_tr, pt_bl, pt_br]))
             
-            # ========== ETAPA 2: USAR CORNERS DAS TAGS PARA DEFINIR A ÁREA ==========
-            # LAYOUT CORRETO:
-            # Tag 1 (superior esquerda) ------- Tag 0 (superior direita)
-            #   |                                    |
-            #   |         SMARTPHONE                 |
-            #   |                                    |
-            # Tag 3 (inferior esquerda) ------ Tag 2 (inferior direita)
+            # Define a escala: quantos pixels representam 1 cm real
+            # Escala maior = imagem warped maior = mais precisão
+            escala = 20  # 20 pixels = 1 cm
             
-            # Extrai o corner correto de cada tag (o mais próximo ao smartphone)
-            # Ordem dos corners em apriltag: 0=canto1, 1=canto2, 2=canto3, 3=canto4
-            
-            # Tag 0 (superior direita) - usa corner mais à esquerda e inferior (que aponta para dentro)
-            corner_tag0 = tuple(map(int, tag_corners[0][2]))
-            
-            # Tag 1 (superior esquerda) - usa corner mais à direita e inferior (que aponta para dentro)
-            corner_tag1 = tuple(map(int, tag_corners[1][3]))
-            
-            # Tag 2 (inferior direita) - usa corner mais à esquerda e superior (que aponta para dentro)
-            corner_tag2 = tuple(map(int, tag_corners[2][0]))
-            
-            # Tag 3 (inferior esquerda) - usa corner mais à direita e superior (que aponta para dentro)
-            corner_tag3 = tuple(map(int, tag_corners[3][1]))
-            
-            # Define os pontos de origem baseado nos corners das tags
-            src_pts = np.float32([
-                corner_tag1,  # superior esquerda
-                corner_tag0,  # superior direita
-                corner_tag3,  # inferior esquerda
-                corner_tag2   # inferior direita
-            ])
-            
-            # Define o tamanho da imagem corrigida (em pixels)
-            # Escala: 10 pixels = 1 cm real
-            escala = 10 
+            # Calcula dimensões da imagem corrigida em pixels
             w_pixels = int(DISTANCIA_REAL_LARGURA_CM * escala)
             h_pixels = int(DISTANCIA_REAL_ALTURA_CM * escala)
             
-            # Pontos de destino (transformação de perspectiva)
+            # Define os 4 pontos de destino (retângulo perfeito)
             dst_pts = np.float32([
-                [0, 0],                    # superior esquerda
-                [w_pixels, 0],             # superior direita
-                [0, h_pixels],             # inferior esquerda
-                [w_pixels, h_pixels]       # inferior direita
+                [0, 0],                    # top-left
+                [w_pixels, 0],             # top-right
+                [w_pixels, h_pixels],      # bottom-right
+                [0, h_pixels]              # bottom-left
             ])
             
-            # Calcula e aplica a transformação de perspectiva
+            # Calcula matriz de transformação de perspectiva
             matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
-            warped = cv2.warpPerspective(frame, matrix, (w_pixels, h_pixels))
             
-            # ========== ETAPA 3: DETECTAR O SMARTPHONE ==========
+            # Aplica a transformação → imagem "top-down" (vista de cima)
+            warped = cv2.warpPerspective(frame, matrix, (w_pixels, h_pixels))
+
+            # ========== ETAPA 5: DETECÇÃO E SEGMENTAÇÃO DO DISPOSITIVO ==========
+            # Converte para escala de cinza
             warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+            
+            # Aplica blur para reduzir ruído
             blurred = cv2.GaussianBlur(warped_gray, (5, 5), 0)
             
-            # Detecção de bordas - técnica sensível
-            edges = cv2.Canny(blurred, 25, 80)
+            # Binarização automática (Otsu): converte para preto e branco
+            # THRESH_BINARY_INV = objetos escuros ficam brancos
+            _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
             
-            # Dilatar as bordas para fechar "buracos"
-            kernel = np.ones((5, 5), np.uint8)
-            edges_dilated = cv2.dilate(edges, kernel, iterations=2)
+            # Operação morfológica OPEN: remove pequenos ruídos brancos
+            kernel = np.ones((3, 3), np.uint8)
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=2)
 
-            contours, _ = cv2.findContours(edges_dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            # Cria uma cópia colorida para desenhos
-            warped_resultado = warped.copy()
+            # Encontra contornos (bordas) dos objetos brancos
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
-            celular_encontrado = False
-            maior_contorno = None
-            maior_area_cm2 = 0
+            # Cria cópia da imagem warped para desenhar resultados
+            warped_display = warped.copy()
 
-            # ========== ETAPA 4: FILTRAR E MEDIR O SMARTPHONE ==========
+            # ========== ETAPA 6: FILTRAGEM E MEDIÇÃO DOS CONTORNOS ==========
+            # Percorre todos os contornos encontrados
             for cnt in contours:
-                area_pixels = cv2.contourArea(cnt)
-                area_cm2 = area_pixels / (escala ** 2)
+                # Calcula área do contorno em cm² (converte de pixels para cm)
+                area_cm2 = cv2.contourArea(cnt) / (escala ** 2)
+                
+                # Filtro de tamanho: ignora objetos muito pequenos ou muito grandes
+                # Muito pequeno < 20 cm² = ruído/sujeira
+                # Muito grande > 95% da área total = fundo/folha
+                area_maxima = DISTANCIA_REAL_LARGURA_CM * DISTANCIA_REAL_ALTURA_CM * 0.95
+                
+                if area_cm2 > 20.0 and area_cm2 < area_maxima:
+                    # Calcula retângulo mínimo envolvente (pode estar rotacionado)
+                    rect = cv2.minAreaRect(cnt)
+                    
+                    # Converte para 4 pontos (corners do retângulo)
+                    box = np.intp(cv2.boxPoints(rect))
+                    
+                    # Desenha contorno VERDE ao redor do dispositivo
+                    cv2.drawContours(warped_display, [box], 0, (0, 255, 0), 3)
+                    
+                    # Extrai largura e altura do retângulo (em pixels)
+                    (w, h) = rect[1]
+                    
+                    # Converte para cm e formata texto
+                    largura_cm = min(w, h) / escala
+                    altura_cm = max(w, h) / escala
+                    texto = f"{largura_cm:.2f}cm x {altura_cm:.2f}cm"
+                    
+                    # Imprime dimensões no console (em tempo real)
+                    print(f"📱 Dispositivo: {texto}")
+                    
+                    # Desenha texto na imagem (acima do retângulo)
+                    cv2.putText(warped_display, texto, (box[0][0], box[0][1] - 10), 
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
-                # Filtro de tamanho: Ignora sujeira e backgrounds
-                area_maxima = (DISTANCIA_REAL_LARGURA_CM * DISTANCIA_REAL_ALTURA_CM) * 0.90
-                
-                if area_cm2 > AREA_MINIMA_CELULAR_CM2 and area_cm2 < area_maxima:
-                    if area_cm2 > maior_area_cm2:
-                        maior_area_cm2 = area_cm2
-                        maior_contorno = (cnt, area_cm2)
-
-            # Desenha o maior contorno encontrado (que é presumivelmente o smartphone)
-            if maior_contorno is not None:
-                cnt, area_cm2 = maior_contorno
-                detections_log["smartphone_detectado"] += 1
-                
-                # Desenha o contorno em verde
-                rect = cv2.minAreaRect(cnt)
-                box = np.intp(cv2.boxPoints(rect))
-                cv2.drawContours(warped_resultado, [box], 0, (0, 255, 0), 3)
-                
-                # Calcula dimensões
-                (w_px, h_px) = rect[1]
-                dim1 = w_px / escala
-                dim2 = h_px / escala
-                
-                # Ordena: Menor x Maior
-                medidas = sorted([dim1, dim2])
-                largura, altura = medidas[0], medidas[1]
-                
-                # Texto com resultado
-                texto = f"{largura:.2f} cm x {altura:.2f} cm"
-                
-                # Desenha a medição com fundo
-                text_size = cv2.getTextSize(texto, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
-                text_x, text_y = 10, 30
-                cv2.rectangle(warped_resultado, (text_x - 5, text_y - text_size[1] - 5),
-                            (text_x + text_size[0] + 5, text_y + 5), (0, 255, 0), -1)
-                cv2.putText(warped_resultado, texto, (text_x, text_y), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2)
-                
-                # Imprime no console
-                print(f"✅ Smartphone detectado: {texto} (Área: {area_cm2:.1f} cm²)")
-                celular_encontrado = True
-                
-                # ========== SALVAR IMAGENS PARA COMPARAÇÃO ==========
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                
-                # Salvar imagem binarizada (bordas)
-                img_binarizada_path = os.path.join(OUTPUT_DIR, f"binarizada_{timestamp}.png")
-                cv2.imwrite(img_binarizada_path, edges_dilated)
-                
-                # Salvar imagem com o resultado (warped com detecção)
-                img_resultado_path = os.path.join(OUTPUT_DIR, f"resultado_{timestamp}.png")
-                cv2.imwrite(img_resultado_path, warped_resultado)
-                
-                # Salvar imagem original transformada
-                img_original_path = os.path.join(OUTPUT_DIR, f"original_{timestamp}.png")
-                cv2.imwrite(img_original_path, warped)
-                
-                print(f"💾 Imagens salvas em: {OUTPUT_DIR}/")
-                print(f"   - binarizada_{timestamp}.png")
-                print(f"   - resultado_{timestamp}.png")
-                print(f"   - original_{timestamp}.png")
-            else:
-                cv2.putText(warped_resultado, "Procurando smartphone...", (10, 30), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-            # ========== EXIBIÇÃO DOS RESULTADOS ==========
-            # Janela principal com o resultado
-            cv2.imshow("Resultado Final - Dimensoes do Smartphone", warped_resultado)
+            # ========== ETAPA 7: LÓGICA DE SALVAMENTO DE IMAGENS ==========
+            # (Executada fora do loop de contornos para salvar apenas 1 vez por frame)
             
-            # Janela DEBUG (opcional - mostra as bordas detectadas)
-            if frame_count % 10 == 0:  # Mostra a cada 10 frames para não pesar
-                edges_display = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-                cv2.imshow("Debug - Bordas Detectadas", edges_display)
+            should_save = False
+            current_time = time.time()
+
+            # Modo Manual: salva apenas quando 's' for pressionado
+            if SAVE_ON_KEY and save_requested:
+                should_save = True
+                save_requested = False  # Reseta flag
+            
+            # Modo Automático: respeita intervalo de tempo (anti-flood)
+            elif not SAVE_ON_KEY and (current_time - last_save_time > SAVE_INTERVAL_SECONDS):
+                should_save = True
+
+            # Executa salvamento se flag estiver ativa
+            if should_save:
+                last_save_time = current_time
+                ts = datetime.now().strftime("%H%M%S")
+                print(f"\n💾 SALVANDO IMAGENS [{ts}]...")
+                
+                # Salva 3 imagens:
+                # 1. mask = Imagem binarizada (CRÍTICO para debug: dispositivo deve ser branco)
+                cv2.imwrite(os.path.join(OUTPUT_DIR, f"mask_{ts}.jpg"), thresh)
+                
+                # 2. warp = Vista top-down com medições desenhadas
+                cv2.imwrite(os.path.join(OUTPUT_DIR, f"warp_{ts}.jpg"), warped_display)
+                
+                # 3. orig = Frame original da câmera (com tags marcadas)
+                cv2.imwrite(os.path.join(OUTPUT_DIR, f"orig_{ts}.jpg"), frame)
+                
+                print(f"   ✅ Salvo em: {OUTPUT_DIR}")
+                print(f"   📄 mask_{ts}.jpg | warp_{ts}.jpg | orig_{ts}.jpg\n")
+
+            # ========== ETAPA 8: EXIBIÇÃO DAS JANELAS ==========
+            cv2.imshow("Warped", warped_display)
+            cv2.imshow("Mask", thresh)
 
         else:
-            # Se não achou as 4 tags
-            tags_str = ", ".join([f"Tag{i}" for i in range(4) if i not in tag_centers])
-            cv2.putText(frame, f"Procurando tags... Faltam: {tags_str}", (10, 80), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+            # Se as 4 tags NÃO foram detectadas
+            cv2.putText(frame, "Procurando tags... (precisa das 4)", (10, 50), 
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+        # Sempre mostra o frame original da câmera
+        cv2.imshow("Original", frame)
+
+        # ========== ETAPA 9: CONTROLE DE TECLAS ==========
+        key = cv2.waitKey(1) & 0xFF
         
-        # Exibe o feed principal da câmera
-        cv2.imshow("Camera - Feed Principal", frame)
-        
-        # Sair ao pressionar 'q'
-        if cv2.waitKey(1) & 0xFF == ord('q'): 
+        if key == ord('q'):
+            # Sai do programa
             break
+        elif key == ord('s'):
+            # Sinaliza para salvar no próximo frame válido
+            print("\n>> Tecla 'S' pressionada. Aguardando detecção válida...\n")
+            save_requested = True
 
-    # Resumo final
-    cap.release()
-    cv2.destroyAllWindows()
-    
-    print("\n" + "="*60)
-    print("📊 RESUMO DA EXECUÇÃO:")
-    print(f"  • Frames processados: {frame_count}")
-    print(f"  • Detecções com 4 tags: {detections_log['tags_encontradas']}")
-    print(f"  • Detecções de smartphone: {detections_log['smartphone_detectado']}")
-    print("="*60 + "\n")
-
+    # ========== ENCERRAMENTO ==========
+    cap.release()  # Libera a câmera
+    cv2.destroyAllWindows()  # Fecha todas as janelas
 if __name__ == "__main__":
     main()
