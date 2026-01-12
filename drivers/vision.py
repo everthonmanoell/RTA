@@ -184,7 +184,7 @@ def main():
             # Converte para escala de cinza
             warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
             
-            # Aplica blur para reduzir ruído
+            # Aplica blur para reduzir ruído (filtro passa-baixa)
             blurred = cv2.GaussianBlur(warped_gray, (5, 5), 0)
             
             # Binarização automática (Otsu): converte para preto e branco
