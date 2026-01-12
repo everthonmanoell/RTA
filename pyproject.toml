@@ -1,0 +1,19 @@
+[project]
+name = "rta"
+version = "0.1.0"
+description = "A module to calibrate a plan with touch robot feedback to use a smartphone freely in any plan."
+authors = [
+    {name = "Everthon Manoel",email = "everthonmanoell@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "opencv-python (>=4.12.0.88,<5.0.0.0)",
+    "pupil-apriltags (>=1.0.4.post11,<2.0.0)"
+    
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
