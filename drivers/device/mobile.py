@@ -1,61 +1,150 @@
+from __future__ import annotations
+
 import subprocess
+from dataclasses import dataclass
+from typing import Callable, Iterator, Optional
 
-# Inicia o processo em segundo plano
-# bufsize=1 significa que o Python vai ler linha por linha (sem esperar encher um buffer gigante)
-processo = subprocess.Popen(
-    ["adb", "shell", "getevent"],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    text=True,
-    bufsize=1 
-)
 
-print("--- Iniciando escuta do ADB (Pressione Ctrl+C para parar) ---")
+@dataclass(frozen=True)
+class GetEvent:
+    """Evento básico emitido por `adb shell getevent`.
 
-try:
-    # Loop infinito para ler enquanto o processo estiver vivo
+    O formato típico de linha é: 
+    "/dev/input/eventX: TIPO CODIGO VALOR"
+    """
+
+    device: str
+    tipo: str
+    codigo: str
+    valor: str
+
+    @property
+    def valor_decimal(self) -> Optional[int]:
+        """Converte o valor de hexadecimal para inteiro quando possível."""
+        try:
+            return int(self.valor, 16)
+        except ValueError:
+            return None
+
+    @property
+    def is_axis_x(self) -> bool:
+        """Retorna True quando o código representa eixo X (0035 é comum)."""
+        return self.codigo.lower() == "0035"
+
+    @property
+    def is_touch_up(self) -> bool:
+        """Heurística simples para "dedo levantado" (EV_KEY=0001 e valor zero)."""
+        return self.tipo.lower() == "0001" and self.valor == "00000000"
+
+
+def start_getevent_process() -> subprocess.Popen:
+    """Inicia o processo `adb shell getevent` em modo texto e leitura linha-a-linha."""
+    return subprocess.Popen(
+        ["adb", "shell", "getevent"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+
+def parse_getevent_line(line: str) -> Optional[GetEvent]:
+    """Converte uma linha crua do getevent em um objeto `GetEvent`.
+
+    Espera algo como: 
+      "/dev/input/event3: 0003 0035 00000abc"
+    Retorna None se o formato não bater.
+    """
+    raw = line.strip()
+    if not raw:
+        return None
+
+    parts = raw.split()
+    if len(parts) < 4:
+        return None
+
+    device = parts[0].rstrip(":")
+    tipo = parts[1]
+    codigo = parts[2]
+    valor = parts[3]
+
+    return GetEvent(device=device, tipo=tipo, codigo=codigo, valor=valor)
+
+
+def iter_getevent_lines(proc: subprocess.Popen) -> Iterator[str]:
+    """Itera linhas do stdout até o processo encerrar."""
+    assert proc.stdout is not None
     while True:
-        # Lê a próxima linha disponível
-        linha = processo.stdout.readline()
-        
-        # Se a linha vier vazia e o processo tiver morrido, paramos o loop
-        if not linha and processo.poll() is not None:
+        line = proc.stdout.readline()
+        if not line and proc.poll() is not None:
             break
+        if line:
+            yield line
 
-        if linha:
-            linha = linha.strip() # Remove espaços extras e quebras de linha
-            
-            # --- SUA LÓGICA AQUI ---
-            # O output do getevent geralmente é: "/dev/input/eventX: TIPO CODIGO VALOR"
-            
-            # Exemplo 1: Apenas imprimir tudo que chega
-            # print(f"Recebido: {linha}")
 
-            # Exemplo 2: Filtrar apenas o evento de toque (geralmente event3 ou event4 dependendo do celular)
-            if "/dev/input/event3" in linha:
-                
-                # Vamos quebrar a linha nos espaços para pegar os códigos Hexadecimais
-                partes = linha.split()
-                # partes[0] -> dispositivo (/dev/input/event3:)
-                # partes[1] -> tipo (ex: 0003)
-                # partes[2] -> código (ex: 0035 para X ou 0036 para Y)
-                # partes[3] -> valor (coordenada em hex)
-                
-                tipo = partes[1]
-                codigo = partes[2]
-                valor = partes[3]
+class MobileInputListener:
+    """Listener modular para eventos do `adb shell getevent`.
 
-                # Exemplo: Detectar coordenada X (0035 é comum para ABS_MT_POSITION_X)
-                if codigo == "0035":
-                    valor_decimal = int(valor, 16) # Converte Hex para Inteiro
-                    print(f"Movimento no Eixo X detectado! Valor: {valor_decimal}")
-                
-                # Exemplo: Detectar "Touch Up" (dedo levantou)
-                # O código específico varia, mas BTN_TOUCH UP costuma ter valor 00000000 num tipo EV_KEY (0001)
-                elif tipo == "0001" and valor == "00000000":
-                    print("--> O dedo foi levantado da tela!")
+    - `device_filter`: filtra pelo caminho do dispositivo (ex: "event3").
+    - Métodos principais: `start()`, `stop()`, `iter_events()`, `run_loop()`.
+    """
 
-except KeyboardInterrupt:
-    # Garante que o processo ADB seja morto se você parar o script com Ctrl+C
-    print("\nParando o listener...")
-    processo.terminate()
+    def __init__(self, device_filter: Optional[str] = "event3") -> None:
+        self._device_filter = device_filter
+        self._proc: Optional[subprocess.Popen] = None
+
+    def start(self) -> None:
+        if self._proc is None:
+            self._proc = start_getevent_process()
+
+    def stop(self) -> None:
+        if self._proc is not None:
+            try:
+                self._proc.terminate()
+            finally:
+                self._proc = None
+
+    def iter_events(self) -> Iterator[GetEvent]:
+        if self._proc is None:
+            self.start()
+        assert self._proc is not None
+
+        for line in iter_getevent_lines(self._proc):
+            evt = parse_getevent_line(line)
+            if not evt:
+                continue
+            if self._device_filter and self._device_filter not in evt.device:
+                continue
+            yield evt
+
+    def run_loop(self, on_event: Callable[[GetEvent], None]) -> None:
+        """Executa um loop chamando `on_event` para cada evento filtrado."""
+        try:
+            for evt in self.iter_events():
+                on_event(evt)
+        finally:
+            self.stop()
+
+
+# Execução standalone preservando o comportamento original
+def _default_on_event(evt: GetEvent) -> None:
+    # Exemplo: Detectar coordenada X (0035 é comum para ABS_MT_POSITION_X)
+    if evt.is_axis_x and evt.valor_decimal is not None:
+        print(f"Movimento no Eixo X detectado! Valor: {evt.valor_decimal}")
+    # Exemplo: Detectar "Touch Up" (dedo levantou)
+    elif evt.is_touch_up:
+        print("--> O dedo foi levantado da tela!")
+
+
+def main() -> None:
+    print("--- Iniciando escuta do ADB (Pressione Ctrl+C para parar) ---")
+    listener = MobileInputListener(device_filter="/dev/input/event3")
+    try:
+        listener.run_loop(_default_on_event)
+    except KeyboardInterrupt:
+        print("\nParando o listener...")
+        listener.stop()
+
+
+if __name__ == "__main__":
+    main()
