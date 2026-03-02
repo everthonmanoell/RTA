@@ -3,7 +3,7 @@ name = "rta"
 version = "0.1.0"
 description = "A module to calibrate a plan with touch robot feedback to use a smartphone freely in any plan."
 authors = [
-    {name = "Everthon Manoel",email = "everthonmanoell@gmail.com"}
+    {name = "Everthon Inácio",email = "everthonmanoell@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.11"
