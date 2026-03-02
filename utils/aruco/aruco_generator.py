@@ -72,7 +72,7 @@ if __name__ == "__main__":
     TAMANHO = 400          # pixels
     OUTPUT = "tags"
 
-    for i in range(1, 5):  # Gerar os primeiros 5 IDs para teste
+    for i in range(5, 9):  # Gerar os primeiros 5 IDs para teste
         gerar_aruco(tag_id=i, family=FAMILIA, size=TAMANHO, output_dir=OUTPUT)
 
    
