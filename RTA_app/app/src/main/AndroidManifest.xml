@@ -6,9 +6,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@drawable/rta_logo"
+        android:icon="@mipmap/rta_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/rta_logo"
+        android:roundIcon="@mipmap/rta_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar"> <activity
             android:name=".MainActivity"
