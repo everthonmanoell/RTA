@@ -7,6 +7,7 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowInsets
@@ -20,8 +21,75 @@ import com.google.zxing.qrcode.QRCodeWriter
 
 class MainActivity : Activity() {
 
+    // Device type: "flat" (4 markers) or "foldable" (8 markers)
+    // Set via ADB: adb shell am start -n com.example.rta/.MainActivity --es device_type foldable
+    private var deviceType = "flat"
+
+    // Marker profiles per device type
+    private val markerProfiles = mapOf(
+        "flat" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3,
+            R.drawable.tag4
+        ),
+        "foldable" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3,
+            R.drawable.tag4,
+            R.drawable.tag5,
+            R.drawable.tag6,
+            R.drawable.tag7,
+            R.drawable.tag8
+        ),
+        "one" to listOf(
+            R.drawable.tag1
+        ),
+        "two" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+        ),
+        "three" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3
+        ),
+        "six" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3,
+            R.drawable.tag4,
+            R.drawable.tag5,
+            R.drawable.tag6
+        ),
+        "seven" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3,
+            R.drawable.tag4,
+            R.drawable.tag5,
+            R.drawable.tag6,
+            R.drawable.tag7,
+        ),
+        "eight" to listOf(
+            R.drawable.tag1,
+            R.drawable.tag2,
+            R.drawable.tag3,
+            R.drawable.tag4,
+            R.drawable.tag5,
+            R.drawable.tag6,
+            R.drawable.tag7,
+            R.drawable.tag8,
+        ),
+
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Read device type from ADB intent extra (defaults to "flat")
+        deviceType = intent.getStringExtra("device_type") ?: "flat"
         
         // Keep the screen on so the robot doesn't lose calibration
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -95,15 +163,9 @@ class MainActivity : Activity() {
             setBackgroundColor(Color.WHITE)
         }
 
-        // Place ArUco markers at edge positions
-        val markerViews = addArucoMarkers(layout, mapOf(
-            MarkerPosition.TOP_LEFT      to R.drawable.tag1,
-            MarkerPosition.TOP_RIGHT     to R.drawable.tag2,
-            MarkerPosition.CENTER_LEFT   to R.drawable.tag3,
-            MarkerPosition.CENTER_RIGHT  to R.drawable.tag4,
-            MarkerPosition.BOTTOM_LEFT   to R.drawable.tag5,
-            MarkerPosition.BOTTOM_RIGHT  to R.drawable.tag6
-        ))
+        // Get markers for current device type (defaults to flat if unknown)
+        val tags = markerProfiles[deviceType] ?: markerProfiles["flat"]!!
+        val markerViews = addLateralArucoMarkers(layout, tags)
 
         // Track how many markers remain visible
         var remainingMarkers = markerViews.size
@@ -126,108 +188,149 @@ class MainActivity : Activity() {
     // MODULAR: Add ArUco markers to any layout
     // ==========================================
 
-    /** Position presets for placing markers on screen. */
-    enum class MarkerPosition {
-        TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, CENTER,
-        TOP_CENTER, BOTTOM_CENTER, CENTER_LEFT, CENTER_RIGHT
-    }
-
     /**
-     * Adds any number of ArUco markers to a RelativeLayout at predefined positions.
+     * Places ArUco markers on the screen edges.
      *
-     * Usage examples:
-     *   // 4 corners:
-     *   addArucoMarkers(layout, mapOf(
-     *       MarkerPosition.TOP_LEFT     to R.drawable.tag1,
-     *       MarkerPosition.TOP_RIGHT    to R.drawable.tag2,
-     *       MarkerPosition.BOTTOM_LEFT  to R.drawable.tag3,
-     *       MarkerPosition.BOTTOM_RIGHT to R.drawable.tag4
-     *   ))
+     * For ≤6 markers: diagonal placement order:
+     *   1st → Top-Left, 2nd → Bottom-Right, 3rd → Bottom-Left,
+     *   4th → Top-Right, 5th → Center-Left, 6th → Center-Right
      *
-     *   // Only 2 markers:
-     *   addArucoMarkers(layout, mapOf(
-     *       MarkerPosition.TOP_LEFT     to R.drawable.tag1,
-     *       MarkerPosition.BOTTOM_RIGHT to R.drawable.tag2
-     *   ))
-     *
-     *   // Single centered:
-     *   addArucoMarkers(layout, mapOf(
-     *       MarkerPosition.CENTER to R.drawable.tag5
-     *   ))
+     * For >6 markers (foldable): the screen is split in two equal halves.
+     *   - Top half: first 4 markers at the 4 corners (rectangle)
+     *   - Bottom half: remaining markers fill corners starting from
+     *     Bottom-Left, Bottom-Right, Top-Left, Top-Right
+     *     (7 tags = 4 top + 3 bottom [BL, BR, TL], 8 tags = both rectangles closed)
      *
      * @param layout    The RelativeLayout to add markers to.
-     * @param markers   Map of position to drawable resource ID.
-     * @param tagSizeDp Size in dp for each marker (converted to px automatically).
-     * @param marginDp  Margin in dp from the screen edges (converted to px automatically).
+     * @param tags      List of drawable resource IDs.
+     * @param tagSizeDp Size in dp for each marker.
+     * @param marginDp  Margin in dp from the screen edges.
      */
-    private fun addArucoMarkers(
+    private fun addLateralArucoMarkers(
         layout: RelativeLayout,
-        markers: Map<MarkerPosition, Int>,
+        tags: List<Int>,
         tagSizeDp: Int = 120,
         marginDp: Int = 16
     ): List<ImageView> {
         val density = resources.displayMetrics.density
         val tagSize = (tagSizeDp * density).toInt()
         val margin = (marginDp * density).toInt()
+        val screenHeight = resources.displayMetrics.heightPixels
+        val screenWidth = resources.displayMetrics.widthPixels
+
+        val left = margin
+        val right = screenWidth - margin - tagSize
+        val centerX = (screenWidth - tagSize) / 2
+
+        val positions: List<Pair<Int, Int>>
+
+        if (tags.size <= 6) {
+            // Diagonal placement for flat devices
+            val top = margin
+            val bottom = screenHeight - margin - tagSize
+            val centerY = (screenHeight - tagSize) / 2
+            val midTopY = (top + centerY) / 2
+            val midBottomY = (centerY + bottom) / 2
+
+            positions = listOf(
+                left to top,            // 1: Top-Left
+                right to bottom,        // 2: Bottom-Right
+                left to bottom,         // 3: Bottom-Left
+                right to top,           // 4: Top-Right
+                left to centerY,        // 5: Center-Left
+                right to centerY        // 6: Center-Right
+            )
+        } else {
+            // Foldable: split screen in 2 equal halves
+            val halfHeight = screenHeight / 2
+
+            // Top half corners
+            val topHalfTop = margin
+            val topHalfBottom = halfHeight - margin - tagSize
+
+            // Bottom half corners
+            val bottomHalfTop = halfHeight + margin
+            val bottomHalfBottom = screenHeight - margin - tagSize
+
+            // First 4: corners of the top half
+            val topHalfPositions = listOf(
+                left to topHalfTop,         // 1: Top-half Top-Left
+                right to topHalfTop,        // 2: Top-half Top-Right
+                left to topHalfBottom,      // 3: Top-half Bottom-Left
+                right to topHalfBottom      // 4: Top-half Bottom-Right
+            )
+
+            // Remaining: bottom half (fill from bottom-left, bottom-right, top-left, top-right)
+            val bottomCount = tags.size - 4
+            val bottomHalfPositions = when (bottomCount) {
+                1 -> listOf(
+                    left to bottomHalfBottom         // Bottom-Left
+                )
+                2 -> listOf(
+                    left to bottomHalfBottom,         // Bottom-Left
+                    right to bottomHalfBottom         // Bottom-Right
+                )
+                3 -> listOf(
+                    left to bottomHalfBottom,         // Bottom-Left
+                    right to bottomHalfBottom,        // Bottom-Right
+                    left to bottomHalfTop             // Top-Left
+                )
+                else -> listOf(
+                    left to bottomHalfBottom,         // Bottom-Left
+                    right to bottomHalfBottom,        // Bottom-Right
+                    left to bottomHalfTop,            // Top-Left
+                    right to bottomHalfTop            // Top-Right
+                )
+            }
+
+            positions = topHalfPositions + bottomHalfPositions
+        }
 
         val createdViews = mutableListOf<ImageView>()
-        for ((position, resId) in markers) {
+
+        for ((i, resId) in tags.withIndex()) {
+            if (i >= positions.size) break
+            val (x, y) = positions[i]
+
             val tag = ImageView(this).apply {
                 setImageResource(resId)
                 setBackgroundColor(Color.WHITE)
             }
-            val params = RelativeLayout.LayoutParams(tagSize, tagSize)
-
-            when (position) {
-                MarkerPosition.TOP_LEFT -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_TOP)
-                    addRule(RelativeLayout.ALIGN_PARENT_LEFT)
-                    setMargins(margin, margin, 0, 0)
-                }
-                MarkerPosition.TOP_RIGHT -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_TOP)
-                    addRule(RelativeLayout.ALIGN_PARENT_RIGHT)
-                    setMargins(0, margin, margin, 0)
-                }
-                MarkerPosition.BOTTOM_LEFT -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
-                    addRule(RelativeLayout.ALIGN_PARENT_LEFT)
-                    setMargins(margin, 0, 0, margin)
-                }
-                MarkerPosition.BOTTOM_RIGHT -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
-                    addRule(RelativeLayout.ALIGN_PARENT_RIGHT)
-                    setMargins(0, 0, margin, margin)
-                }
-                MarkerPosition.CENTER -> params.apply {
-                    addRule(RelativeLayout.CENTER_IN_PARENT)
-                }
-                MarkerPosition.TOP_CENTER -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_TOP)
-                    addRule(RelativeLayout.CENTER_HORIZONTAL)
-                    setMargins(0, margin, 0, 0)
-                }
-                MarkerPosition.BOTTOM_CENTER -> params.apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
-                    addRule(RelativeLayout.CENTER_HORIZONTAL)
-                    setMargins(0, 0, 0, margin)
-                }
-                MarkerPosition.CENTER_LEFT -> params.apply {
-                    addRule(RelativeLayout.CENTER_VERTICAL)
-                    addRule(RelativeLayout.ALIGN_PARENT_LEFT)
-                    setMargins(margin, 0, 0, 0)
-                }
-                MarkerPosition.CENTER_RIGHT -> params.apply {
-                    addRule(RelativeLayout.CENTER_VERTICAL)
-                    addRule(RelativeLayout.ALIGN_PARENT_RIGHT)
-                    setMargins(0, 0, margin, 0)
-                }
+            val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
+                leftMargin = x
+                topMargin = y
             }
 
             layout.addView(tag, params)
             createdViews.add(tag)
         }
+
         return createdViews
+    }
+
+    /**
+     * Adds a single centered ArUco marker (for success/failure screens).
+     *
+     * @param layout    The RelativeLayout to add the marker to.
+     * @param resId     Drawable resource ID of the marker.
+     * @param tagSizeDp Size in dp for the marker.
+     */
+    private fun addCenteredArucoMarker(
+        layout: RelativeLayout,
+        resId: Int,
+        tagSizeDp: Int = 140
+    ) {
+        val density = resources.displayMetrics.density
+        val tagSize = (tagSizeDp * density).toInt()
+
+        val tag = ImageView(this).apply {
+            setImageResource(resId)
+            setBackgroundColor(Color.WHITE)
+        }
+        val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
+            addRule(RelativeLayout.CENTER_IN_PARENT)
+        }
+        layout.addView(tag, params)
     }
 
     // ==========================================
@@ -243,6 +346,8 @@ class MainActivity : Activity() {
 
         // Set to track which border cells have been painted
         val paintedBorderCells = mutableSetOf<Pair<Int, Int>>()
+        // Set to track which internal cells were touched
+        val paintedInternalCells = mutableSetOf<Pair<Int, Int>>()
         // Flag to track if any internal cell was touched
         var internalCellTouched = false
 
@@ -292,6 +397,23 @@ class MainActivity : Activity() {
             mainLayout.addView(rowLayout)
         }
 
+        // Camera tolerance zone: top row, columns 4 and 5 (between cells 5 and 6, 1-indexed)
+        // If the finger lifts in this zone, don't validate — wait for finger to return
+        fun isCameraZone(x: Int, y: Int): Boolean {
+            for (cellInfo in cells) {
+                if (cellInfo.row == 0 && cellInfo.col in 4..5) {
+                    val loc = IntArray(2)
+                    cellInfo.view.getLocationOnScreen(loc)
+                    val left = loc[0]
+                    val top = loc[1]
+                    val right = left + cellInfo.view.width
+                    val bottom = top + cellInfo.view.height
+                    if (x in left..right && y in top..bottom) return true
+                }
+            }
+            return false
+        }
+
         // Intercept touch to detect swipe + tap
         mainLayout.setOnTouchListener { _, event ->
             when (event.action) {
@@ -311,6 +433,7 @@ class MainActivity : Activity() {
                             if (isBorderCell(cellInfo.row, cellInfo.col)) {
                                 paintedBorderCells.add(Pair(cellInfo.row, cellInfo.col))
                             } else {
+                                paintedInternalCells.add(Pair(cellInfo.row, cellInfo.col))
                                 internalCellTouched = true
                             }
                         }
@@ -318,18 +441,30 @@ class MainActivity : Activity() {
                     true
                 }
                 MotionEvent.ACTION_UP -> {
-                    // On finger release, check:
-                    // 1. All border cells were painted
-                    // 2. No internal cell was touched
-                    if (paintedBorderCells.size >= totalBorderCells && !internalCellTouched) {
-                        showSuccessScreen()
-                    } else if (internalCellTouched) {
-                        showFailureScreen("Touch detected outside the borders.")
+                    val x = event.rawX.toInt()
+                    val y = event.rawY.toInt()
+
+                    // If finger lifted in the camera zone, ignore — don't validate yet
+                    if (isCameraZone(x, y)) {
+                        // Do nothing, let the user put finger back and continue
+                        true
                     } else {
-                        val painted = paintedBorderCells.size
-                        showFailureScreen("Borders incomplete: $painted / $totalBorderCells")
+                        // Normal validation on finger release
+                        if (paintedBorderCells.size >= totalBorderCells && !internalCellTouched) {
+                            showSuccessScreen()
+                        } else if (internalCellTouched) {
+                            showFailureScreen(
+                                "Touch detected outside the borders.",
+                                paintedBorderCells.size, totalBorderCells, paintedInternalCells.size
+                            )
+                        } else {
+                            showFailureScreen(
+                                "Borders incomplete.",
+                                paintedBorderCells.size, totalBorderCells, paintedInternalCells.size
+                            )
+                        }
+                        true
                     }
-                    true
                 }
                 else -> true
             }
@@ -342,13 +477,15 @@ class MainActivity : Activity() {
     // SCREEN 4: SUCCESS (Green Screen + ArUco tag5)
     // ==========================================
     private fun showSuccessScreen() {
+        Log.i("RTA_RESULT", "{\"status\":\"success\",\"device_type\":\"$deviceType\"}")
+
         val layout = RelativeLayout(this).apply {
             setBackgroundColor(Color.parseColor("#2E7D32")) // Dark green
             setOnClickListener { showArucoMarkersScreen() }
         }
 
         // ArUco marker for robot detection (tag7 = SUCCESS)
-        addArucoMarkers(layout, mapOf(MarkerPosition.CENTER to R.drawable.tag7), tagSizeDp = 140)
+        addCenteredArucoMarker(layout, R.drawable.tag14)
 
         val message = TextView(this).apply {
             text = "ALIGNMENT APPROVED"
@@ -371,14 +508,16 @@ class MainActivity : Activity() {
     // ==========================================
     // SCREEN 5: FAILURE (Red Screen + ArUco tag6)
     // ==========================================
-    private fun showFailureScreen(errorMessage: String) {
+    private fun showFailureScreen(errorMessage: String, hits: Int = 0, totalBorder: Int = 0, errors: Int = 0) {
+        Log.i("RTA_RESULT", "{\"status\":\"fail\",\"hits\":$hits,\"total\":$totalBorder,\"errors\":$errors,\"reason\":\"$errorMessage\",\"device_type\":\"$deviceType\"}")
+
         val layout = RelativeLayout(this).apply {
             setBackgroundColor(Color.parseColor("#C62828")) // Dark red
             setOnClickListener { showArucoMarkersScreen() }
         }
 
         // ArUco marker for robot detection (tag8 = FAILURE)
-        addArucoMarkers(layout, mapOf(MarkerPosition.CENTER to R.drawable.tag8), tagSizeDp = 140)
+        addCenteredArucoMarker(layout, R.drawable.tag15)
 
         val message = TextView(this).apply {
             text = "ALIGNMENT FAILED"
@@ -392,7 +531,23 @@ class MainActivity : Activity() {
         ).apply {
             addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
             addRule(RelativeLayout.CENTER_HORIZONTAL)
-            setMargins(0, 0, 0, 180)
+            setMargins(0, 0, 0, 260)
+        })
+
+        // Score summary
+        val scoreText = TextView(this).apply {
+            text = "✅ Hits: $hits / $totalBorder    ❌ Errors: $errors"
+            textSize = 18f
+            setTextColor(Color.WHITE)
+            gravity = Gravity.CENTER
+        }
+        layout.addView(scoreText, RelativeLayout.LayoutParams(
+            RelativeLayout.LayoutParams.WRAP_CONTENT,
+            RelativeLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+            addRule(RelativeLayout.CENTER_HORIZONTAL)
+            setMargins(0, 0, 0, 200)
         })
 
         val detail = TextView(this).apply {
