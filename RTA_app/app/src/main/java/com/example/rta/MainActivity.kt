@@ -451,7 +451,7 @@ class MainActivity : Activity() {
                     } else {
                         // Normal validation on finger release
                         if (paintedBorderCells.size >= totalBorderCells && !internalCellTouched) {
-                            showSuccessScreen()
+                            showSuccessScreen(paintedBorderCells.size, totalBorderCells)
                         } else if (internalCellTouched) {
                             showFailureScreen(
                                 "Touch detected outside the borders.",
@@ -476,8 +476,8 @@ class MainActivity : Activity() {
     // ==========================================
     // SCREEN 4: SUCCESS (Green Screen + ArUco tag5)
     // ==========================================
-    private fun showSuccessScreen() {
-        Log.i("RTA_RESULT", "{\"status\":\"success\",\"device_type\":\"$deviceType\"}")
+    private fun showSuccessScreen(hits: Int = 0, totalBorder: Int = 0) {
+        Log.i("RTA_RESULT", "{\"status\":\"success\",\"hits\":$hits,\"total\":$totalBorder,\"errors\":0,\"device_type\":\"$deviceType\"}")
 
         val layout = RelativeLayout(this).apply {
             setBackgroundColor(Color.parseColor("#2E7D32")) // Dark green
