@@ -1,0 +1,10 @@
+# Copie este arquivo para local.properties e configure o caminho do Android SDK
+# Este arquivo não deve ser versionado no Git pois contém caminhos específicos da máquina
+
+# Caminho do Android SDK
+# Linux/Mac: sdk.dir=/home/seu_usuario/Android/Sdk
+# Windows: sdk.dir=C\:\\Users\\seu_usuario\\AppData\\Local\\Android\\Sdk
+sdk.dir=/path/to/your/android/sdk
+
+# Alternativamente, você pode definir a variável de ambiente ANDROID_HOME:
+# export ANDROID_HOME=/path/to/your/android/sdk
