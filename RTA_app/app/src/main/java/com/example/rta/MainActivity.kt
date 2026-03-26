@@ -22,6 +22,32 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
 class MainActivity : Activity() {
+    // --- Parâmetros do marcador (calculados dinamicamente) ---
+    private var markerRealWidthMm: Float = 0f
+    private var markerRealHeightMm: Float = 0f
+    private var markerXDistanceMm: Float = 0f
+
+    // IP do servidor Python (ajuste conforme necessário)
+    private val pythonServerIp = "192.168.0.100" // <-- Coloque o IP do PC aqui
+    private val pythonServerPort = 50505
+
+    // Envia os parâmetros via socket para o Python
+    private fun sendMarkerParamsToPython() {
+        Thread {
+            try {
+                val socket = java.net.Socket(pythonServerIp, pythonServerPort)
+                val params = """{"MARKER_REAL_WIDTH_MM":$markerRealWidthMm,"MARKER_REAL_HEIGHT_MM":$markerRealHeightMm,"MARKER_X_DISTANCE_MM":$markerXDistanceMm}"""
+                val out = socket.getOutputStream()
+                out.write(params.toByteArray())
+                out.flush()
+                out.close()
+                socket.close()
+                Log.i("RTA", "Parâmetros enviados para o Python: $params")
+            } catch (e: Exception) {
+                Log.e("RTA", "Erro ao enviar parâmetros para o Python: ${e.message}")
+            }
+        }.start()
+    }
 
     // Device type: "flat" (4 markers) or "foldable" (8 markers)
     // Set via ADB: adb shell am start -n com.example.rta/.MainActivity --es device_type foldable
@@ -98,6 +124,26 @@ class MainActivity : Activity() {
 
         // Set brightness to maximum
         setMaximumBrightness()
+
+        // --- Cálculo dinâmico dos parâmetros do marcador ---
+        val density = resources.displayMetrics.density
+        val xdpi = resources.displayMetrics.xdpi
+        val ydpi = resources.displayMetrics.ydpi
+        val tagSizeDp = 120f // mesmo valor padrão de addLateralArucoMarkers
+        val tagSizePx = tagSizeDp * density
+        markerRealWidthMm = tagSizePx / xdpi * 25.4f
+        markerRealHeightMm = tagSizePx / ydpi * 25.4f
+
+        // Espaçamento entre marcadores (horizontal): diferença entre left e right
+        val marginDp = 16f
+        val marginPx = marginDp * density
+        val screenWidth = resources.displayMetrics.widthPixels
+        val left = marginPx
+        val right = screenWidth - marginPx - tagSizePx
+        markerXDistanceMm = (right - left) / xdpi * 25.4f
+
+        // Envia os parâmetros do marcador para o Python
+        sendMarkerParamsToPython()
 
         // 1. FIRST start Screen 1 (THIS CREATES THE WINDOW)
         showArucoMarkersScreen()
@@ -630,31 +676,17 @@ class MainActivity : Activity() {
     // Set screen brightness to maximum
     private fun setMaximumBrightness() {
         try {
-            // Set brightness to maximum in window attributes
-            val layoutParams = window.attributes
-            layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
-            window.attributes = layoutParams
-
-            // Try to set system brightness to maximum (requires WRITE_SETTINGS permission)
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    if (Settings.System.canWrite(this)) {
-                        Settings.System.putInt(
-                            contentResolver,
-                            Settings.System.SCREEN_BRIGHTNESS,
-                            255 // Maximum brightness (0-255)
-                        )
-                    }
-                } else {
-                    @Suppress("DEPRECATION")
-                    Settings.System.putInt(
-                        contentResolver,
-                        Settings.System.SCREEN_BRIGHTNESS,
-                        255
-                    )
-                }
-            } catch (e: Exception) {
-                Log.w("MainActivity", "Could not set system brightness: ${e.message}")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val lp = window.attributes
+                lp.screenBrightness = 1.0f
+                window.attributes = lp
+            } else {
+                @Suppress("DEPRECATION")
+                Settings.System.putInt(
+                    contentResolver,
+                    Settings.System.SCREEN_BRIGHTNESS,
+                    255
+                )
             }
         } catch (e: Exception) {
             Log.e("MainActivity", "Error setting brightness: ${e.message}")
