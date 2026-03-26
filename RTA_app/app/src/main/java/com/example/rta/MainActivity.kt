@@ -6,11 +6,13 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.WindowInsets
+import android.view.WindowManager
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -92,7 +94,10 @@ class MainActivity : Activity() {
         deviceType = intent.getStringExtra("device_type") ?: "flat"
         
         // Keep the screen on so the robot doesn't lose calibration
-        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // Set brightness to maximum
+        setMaximumBrightness()
 
         // 1. FIRST start Screen 1 (THIS CREATES THE WINDOW)
         showArucoMarkersScreen()
@@ -180,6 +185,25 @@ class MainActivity : Activity() {
                 }
             }
         }
+
+        // Reset button in the center of the screen
+        val resetButton = Button(this).apply {
+            text = "RESET"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            background = GradientDrawable().apply {
+                setColor(Color.RED)
+                cornerRadius = 20f
+            }
+            setPadding(40, 80, 40, 80)
+            setOnClickListener { showArucoMarkersScreen() }
+        }
+        layout.addView(resetButton, RelativeLayout.LayoutParams(
+            RelativeLayout.LayoutParams.WRAP_CONTENT,
+            RelativeLayout.LayoutParams.WRAP_CONTENT
+        ).apply {
+            addRule(RelativeLayout.CENTER_IN_PARENT)
+        })
 
         setContentView(layout)
     }
@@ -601,5 +625,39 @@ class MainActivity : Activity() {
                 "h_px": ${bounds.height()}
             }
         """.trimIndent()
+    }
+
+    // Set screen brightness to maximum
+    private fun setMaximumBrightness() {
+        try {
+            // Set brightness to maximum in window attributes
+            val layoutParams = window.attributes
+            layoutParams.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
+            window.attributes = layoutParams
+
+            // Try to set system brightness to maximum (requires WRITE_SETTINGS permission)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (Settings.System.canWrite(this)) {
+                        Settings.System.putInt(
+                            contentResolver,
+                            Settings.System.SCREEN_BRIGHTNESS,
+                            255 // Maximum brightness (0-255)
+                        )
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    Settings.System.putInt(
+                        contentResolver,
+                        Settings.System.SCREEN_BRIGHTNESS,
+                        255
+                    )
+                }
+            } catch (e: Exception) {
+                Log.w("MainActivity", "Could not set system brightness: ${e.message}")
+            }
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Error setting brightness: ${e.message}")
+        }
     }
 }
