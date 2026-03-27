@@ -62,14 +62,15 @@ def initialize_components():
 def configure_coordinate_transform():
     """Configurar transformação de coordenadas específica para seu setup."""
     
-    # Calibração de câmera (ajustar para sua câmera real)
+    # Calibração de câmera (agora usando valores dinâmicos de config.py)
+    import config
     camera_cal = CameraCalibration(
         focal_length_x=500.0,
         focal_length_y=500.0,
         principal_point_x=0.5,
         principal_point_y=0.5,
-        marker_real_width_mm=100.0,  # Tamanho real do marker
-        marker_real_height_mm=100.0
+        marker_real_width_mm=config.MARKER_REAL_WIDTH_MM,  # Tamanho real do marker
+        marker_real_height_mm=config.MARKER_REAL_HEIGHT_MM
     )
     
     # Configuração de mapeamento de eixos

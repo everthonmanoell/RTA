@@ -198,3 +198,29 @@ class CoordinateTransform:
         self.camera_cal.marker_real_width_mm = reference_marker_width_mm
         self.camera_cal.marker_real_height_mm = reference_marker_height_mm
         self.logger.info(f"Calibration updated: {reference_marker_width_mm}x{reference_marker_height_mm}mm")
+
+    def image_point_to_robot_pose(
+        self,
+        image_x: float,
+        image_y: float,
+        image_width: int,
+        image_height: int,
+        current_robot_x: float,
+        current_robot_y: float,
+        current_robot_z: float,
+    ) -> tuple[float, float, float]:
+        offset_x_mm, offset_y_mm = self.image_to_robot_2d(
+            image_x=image_x,
+            image_y=image_y,
+            image_width=image_width,
+            image_height=image_height,
+        )
+
+        return self.apply_robot_transform(
+            camera_frame_x=offset_x_mm,
+            camera_frame_y=offset_y_mm,
+            camera_frame_z=0.0,
+            current_robot_x=current_robot_x,
+            current_robot_y=current_robot_y,
+            current_robot_z=current_robot_z,
+        )

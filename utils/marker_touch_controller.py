@@ -1,15 +1,6 @@
-"""
-MarkerTouchController: Manages interaction with fiducial markers.
-
-Coordinates the sequence of alignment and touch operations to interact
-with markers on the mobile device screen via the robot arm.
-"""
-
 import logging
 import time
-from typing import List, Optional
-
-import numpy as np
+from typing import List, Optional, Tuple
 
 from drivers.alignment.auto_alignment import AutoAlignment
 from drivers.alignment.marker_detector import MarkerDetector, MarkerInfo
@@ -20,220 +11,273 @@ from utils.coordinate_transform import CoordinateTransform
 
 class MarkerTouchController:
     """
-    Coordinates visual alignment and touching of fiducial markers.
-    
-    Orchestrates the sequence:
-    1. Detect markers in the mobile screen (via robot camera)
-    2. Align robot position (RZ rotation for parallelism)
-    3. Approach markers (XYZ positioning)
-    4. Execute touch action at marker centers
+    Controller operacional para interação do robô com a tela do dispositivo.
+
+    Responsabilidades:
+    - converter coordenadas da imagem para coordenadas do robô
+    - tocar no centro de marcadores
+    - tocar em pixels específicos (ex.: botão vermelho)
+    - gerar pontos de borda para swipe
+    - executar swipe contínuo
     """
-    
-    def __init__(self, robot_arm, mobile_device, camera: RobotCamera,
-                 auto_align: Optional[AutoAlignment] = None,
-                 rot_align: Optional[RotationAlignment] = None,
-                 detector: Optional[MarkerDetector] = None):
-        """
-        Initialize MarkerTouchController.
-        
-        Args:
-            robot_arm: Robot interface.
-            mobile_device: Mobile device interface (for touch commands).
-            camera (RobotCamera): Robot camera interface.
-            auto_align (Optional[AutoAlignment]): Auto-alignment controller.
-            rot_align (Optional[RotationAlignment]): Rotation alignment controller.
-            detector (Optional[MarkerDetector]): Marker detector.
-        """
+
+    def __init__(
+        self,
+        robot_arm,
+        mobile_device,
+        camera: RobotCamera,
+        transform: CoordinateTransform,
+        auto_align: Optional[AutoAlignment] = None,
+        rot_align: Optional[RotationAlignment] = None,
+        detector: Optional[MarkerDetector] = None,
+    ):
         self.robot_arm = robot_arm
         self.device = mobile_device
         self.camera = camera
+        self.transform = transform
+        self.auto_align = auto_align
+        self.rot_align = rot_align
         self.detector = detector or MarkerDetector()
-        self.auto_align = auto_align or AutoAlignment(robot_arm, camera, self.detector)
-        self.rot_align = rot_align or RotationAlignment(robot_arm, camera, self.detector)
+
         self.logger = logging.getLogger(__name__)
-        
-        # Configuration
-        self.approach_distance_mm = 200.0
-        self.touch_delay_before_lift = 0.5
-        self.touch_delay_after_touch = 0.5
-        self.target_marker_ids = None
-    
-    def detect_markers_in_screen(self) -> Optional[List[MarkerInfo]]:
+
+        # alturas e tempos operacionais
+        self.approach_height_mm = 10.0
+        self.touch_delay_before_lift = 0.2
+        self.touch_delay_after_touch = 0.3
+
+    # -------------------------------------------------
+    # Utilidades internas
+    # -------------------------------------------------
+
+    def _capture_frame_shape(self) -> Tuple[int, int]:
         """
-        Detect fiducial markers currently visible in device screen.
-        
-        Uses robot camera to detect markers on mobile device screen.
-        
-        Returns:
-            Optional[List[MarkerInfo]]: Detected markers or None if failed.
+        Captura um frame e retorna (height, width).
         """
         frame = self.camera.capture_frame()
         if frame is None:
-            self.logger.error("Failed to capture frame for marker detection")
-            return None
-        
-        ids, corners = self.detector.detect_markers(frame)
-        if ids is None or len(ids) == 0:
-            self.logger.warning("No markers detected in screen")
-            return None
-        
-        corners = self.detector.refine_corners(frame, corners)
-        marker_infos = [self.detector.get_marker_info(int(ids[i][0]), corners[i]) 
-                       for i in range(len(ids))]
-        
-        self.logger.info(f"Detected {len(marker_infos)} markers")
-        return marker_infos
-    
-    def set_target_markers(self, marker_ids: Optional[List[int]] = None):
+            raise RuntimeError("Não foi possível capturar frame da câmera.")
+        height, width = frame.shape[:2]
+        return height, width
+
+    def _get_current_robot_pose(self) -> Tuple[float, float, float]:
         """
-        Set which markers to target (by ID).
-        
-        Args:
-            marker_ids (Optional[List[int]]): List of marker IDs to touch.
-                If None, will touch all detected markers.
+        Obtém a pose atual do robô.
+
+        Ajuste este método se a sua classe Denso usar outro nome de método
+        para retornar posição.
         """
-        self.target_marker_ids = marker_ids
-        self.logger.info(f"Target markers set to: {marker_ids}")
-    
-    def align_for_markers(self) -> bool:
+        if hasattr(self.robot_arm, "get_position"):
+            pose = self.robot_arm.get_position()
+            if len(pose) >= 3:
+                return pose[0], pose[1], pose[2]
+
+        raise AttributeError(
+            "robot_arm não possui método compatível para obter posição atual "
+            "(esperado: get_position)."
+        )
+
+    def _move_robot(self, x: float, y: float, z: float, speed: Optional[float] = None) -> None:
         """
-        Perform full alignment sequence for marker interaction.
-        
-        1. Rotate (RZ) to achieve parallelism
-        2. Center and approach markers
-        
-        Returns:
-            bool: True if alignment successful.
+        Wrapper para movimento do robô.
+
+        Ajuste este método se a sua classe Denso usar outro nome/assinatura
+        para movimentação.
         """
-        self.logger.info("Starting alignment sequence")
-        
-        # Step 1: Rotation alignment (RZ)
-        self.logger.info("Step 1: Performing rotation alignment")
-        if not self.rot_align.run_alignment_loop():
-            self.logger.error("Rotation alignment failed")
-            return False
-        
-        time.sleep(1.0)
-        
-        # Step 2: Calibrate distance (if not already done)
-        if self.auto_align.reference_marker_area is None:
-            self.logger.info("Step 2a: Calibrating distance reference")
-            if not self.auto_align.calibrate_distance():
-                self.logger.error("Distance calibration failed")
-                return False
-        
-        # Step 3: Approach to target distance
-        self.logger.info(f"Step 2b: Approaching to {self.approach_distance_mm}mm")
-        if not self.auto_align.approach_marker(self.approach_distance_mm):
-            self.logger.error("Approach failed")
-            return False
-        
-        self.logger.info("Alignment sequence completed successfully")
-        return True
-    
-    def get_marker_screen_position(self, marker_info: MarkerInfo) -> tuple:
-        """
-        Get the screen coordinates of a marker for touch.
-        
-        Args:
-            marker_info (MarkerInfo): Detected marker.
-            
-        Returns:
-            tuple: (x, y) in device screen coordinates.
-        """
-        return (int(marker_info.centroid[0]), int(marker_info.centroid[1]))
-    
-    def touch_marker_on_screen(self, marker_info: MarkerInfo) -> bool:
-        """
-        Touch a marker on the device screen via robot.
-        
-        Args:
-            marker_info (MarkerInfo): Marker to touch.
-            
-        Returns:
-            bool: True if touch executed.
-        """
-        screen_x, screen_y = self.get_marker_screen_position(marker_info)
-        
-        self.logger.info(f"Touching marker at screen coords ({screen_x}, {screen_y})")
-        
-        # Execute touch on device
-        try:
-            # Assuming device has a touch method
-            if hasattr(self.device, 'touch'):
-                result = self.device.touch(screen_x, screen_y)
+        if hasattr(self.robot_arm, "move_to"):
+            if speed is not None:
+                self.robot_arm.move_to(x, y, z, speed=speed)
             else:
-                self.logger.error("Device does not support touch interface")
-                return False
-            
-            time.sleep(self.touch_delay_after_touch)
-            return True
-        
-        except Exception as e:
-            self.logger.error(f"Touch execution failed: {e}")
-            return False
-    
-    def touch_all_detected_markers(self) -> List[bool]:
+                self.robot_arm.move_to(x, y, z)
+            return
+
+        raise AttributeError(
+            "robot_arm não possui método compatível para mover "
+            "(esperado: move_to)."
+        )
+
+    def _image_to_robot_pose(self, x_px: int, y_px: int) -> Tuple[float, float, float]:
         """
-        Touch all detected markers in sequence.
-        
-        Returns:
-            List[bool]: Success status for each marker touched.
+        Converte um ponto da imagem para pose alvo do robô usando o
+        CoordinateTransform real do seu projeto.
+
+        Fluxo:
+        1. ponto da imagem
+        2. deslocamento no frame da câmera
+        3. aplicação no frame atual do robô
         """
-        markers = self.detect_markers_in_screen()
-        if not markers:
-            self.logger.error("No markers to touch")
-            return []
-        
-        results = []
-        for i, marker in enumerate(markers):
-            # Check if should touch this marker
-            if self.target_marker_ids and marker.marker_id not in self.target_marker_ids:
-                self.logger.debug(f"Skipping marker {marker.marker_id}")
-                continue
-            
-            self.logger.info(f"Touching marker {i+1}/{len(markers)} (ID: {marker.marker_id})")
-            success = self.touch_marker_on_screen(marker)
-            results.append(success)
-            
-            if not success:
-                self.logger.warning(f"Failed to touch marker {marker.marker_id}")
-        
-        return results
-    
-    def run_full_sequence(self, target_marker_ids: Optional[List[int]] = None) -> bool:
+        image_height, image_width = self._capture_frame_shape()
+
+        offset_x_mm, offset_y_mm = self.transform.image_to_robot_2d(
+            image_x=x_px,
+            image_y=y_px,
+            image_width=image_width,
+            image_height=image_height,
+        )
+
+        current_robot_x, current_robot_y, current_robot_z = self._get_current_robot_pose()
+
+        target_x, target_y, target_z = self.transform.apply_robot_transform(
+            camera_frame_x=offset_x_mm,
+            camera_frame_y=offset_y_mm,
+            camera_frame_z=0.0,
+            current_robot_x=current_robot_x,
+            current_robot_y=current_robot_y,
+            current_robot_z=current_robot_z,
+        )
+
+        return target_x, target_y, target_z
+
+    # -------------------------------------------------
+    # Toques
+    # -------------------------------------------------
+
+    def touch_pixel(self, x: int, y: int, z_touch: float) -> bool:
         """
-        Execute complete sequence: detect, align, and touch markers.
-        
+        Toca em um pixel específico da imagem/tela.
+
         Args:
-            target_marker_ids (Optional[List[int]]): Specific markers to touch.
-            
+            x: coordenada X em pixel
+            y: coordenada Y em pixel
+            z_touch: altura Z de toque
+
         Returns:
-            bool: True if sequence completed successfully.
+            bool
         """
-        self.logger.info("Starting full marker touch sequence")
-        
-        # Set targets
-        if target_marker_ids:
-            self.set_target_markers(target_marker_ids)
-        
-        # Detect markers
-        markers = self.detect_markers_in_screen()
-        if not markers:
-            self.logger.error("No markers detected")
-            return False
-        
-        # Align
-        if not self.align_for_markers():
-            self.logger.error("Alignment failed")
-            return False
-        
-        # Touch markers
-        results = self.touch_all_detected_markers()
-        
-        if all(results):
-            self.logger.info("All markers touched successfully")
+        try:
+            target_x, target_y, _ = self._image_to_robot_pose(x, y)
+
+            self.logger.info(
+                f"Tocando pixel ({x}, {y}) -> robô ({target_x:.2f}, {target_y:.2f}, {z_touch:.2f})"
+            )
+
+            # aproxima
+            self._move_robot(target_x, target_y, z_touch + self.approach_height_mm)
+            time.sleep(0.1)
+
+            # toca
+            self._move_robot(target_x, target_y, z_touch)
+            time.sleep(self.touch_delay_before_lift)
+
+            # sobe
+            self._move_robot(target_x, target_y, z_touch + self.approach_height_mm)
+            time.sleep(self.touch_delay_after_touch)
+
             return True
-        else:
-            self.logger.warning(f"Some touches failed: {sum(1 for r in results if not r)}/{len(results)}")
+
+        except Exception as e:
+            self.logger.error(f"Falha ao tocar pixel ({x}, {y}): {e}")
+            return False
+
+    def touch_marker_center(self, marker_info: MarkerInfo, z_touch: float) -> bool:
+        """
+        Toca no centro do marcador detectado.
+        """
+        cx, cy = marker_info.centroid
+
+        self.logger.info(
+            f"Tocando centro do marcador {marker_info.marker_id} em ({cx}, {cy})"
+        )
+
+        return self.touch_pixel(int(cx), int(cy), z_touch=z_touch)
+
+    # -------------------------------------------------
+    # Swipe
+    # -------------------------------------------------
+
+    def get_grid_border_points(self, margin_px: int = 30) -> List[Tuple[int, int]]:
+        """
+        Gera pontos de borda para um swipe retangular.
+
+        Por enquanto, usa as bordas da imagem capturada.
+        Isso é útil como primeira versão operacional.
+
+        Args:
+            margin_px: margem interna para evitar tocar exatamente no limite
+
+        Returns:
+            Lista de pontos (x, y)
+        """
+        try:
+            image_height, image_width = self._capture_frame_shape()
+
+            points = [
+                (margin_px, margin_px),
+                (image_width - margin_px, margin_px),
+                (image_width - margin_px, image_height - margin_px),
+                (margin_px, image_height - margin_px),
+                (margin_px, margin_px),
+            ]
+
+            self.logger.info(f"Pontos de borda gerados: {points}")
+            return points
+
+        except Exception as e:
+            self.logger.error(f"Falha ao gerar pontos de borda: {e}")
+            return []
+
+    def swipe_along_points(
+        self,
+        points: List[Tuple[int, int]],
+        z_touch: float,
+        speed: float = 50.0,
+    ) -> bool:
+        """
+        Executa swipe contínuo ao longo dos pontos informados.
+
+        Args:
+            points: lista de pontos em pixel
+            z_touch: altura Z de toque
+            speed: velocidade de movimento
+
+        Returns:
+            bool
+        """
+        if not points or len(points) < 2:
+            self.logger.error("Pontos insuficientes para swipe.")
+            return False
+
+        try:
+            first_x, first_y = points[0]
+            target_x, target_y, _ = self._image_to_robot_pose(first_x, first_y)
+
+            # aproxima
+            self._move_robot(
+                target_x,
+                target_y,
+                z_touch + self.approach_height_mm,
+                speed=speed,
+            )
+            time.sleep(0.1)
+
+            # encosta
+            self._move_robot(
+                target_x,
+                target_y,
+                z_touch,
+                speed=speed,
+            )
+            time.sleep(0.1)
+
+            # percorre
+            for x, y in points[1:]:
+                target_x, target_y, _ = self._image_to_robot_pose(x, y)
+                self._move_robot(target_x, target_y, z_touch, speed=speed)
+                time.sleep(0.05)
+
+            # sobe no final
+            last_x, last_y = points[-1]
+            target_x, target_y, _ = self._image_to_robot_pose(last_x, last_y)
+            self._move_robot(
+                target_x,
+                target_y,
+                z_touch + self.approach_height_mm,
+                speed=speed,
+            )
+
+            self.logger.info("Swipe contínuo realizado com sucesso.")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Falha no swipe: {e}")
             return False
