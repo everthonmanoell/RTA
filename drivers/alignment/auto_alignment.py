@@ -347,3 +347,15 @@ class AutoAlignment:
         
         self.logger.info("Approach successful")
         return True
+    
+    def get_touch_z(self) -> float:
+        """
+        Retorna a altura Z ideal para o toque, baseada na posição atual do robô após alinhamento.
+        Pode ser ajustado conforme a lógica de segurança/calibração do seu sistema.
+        """
+        # Usa a posição Z atual do robô como referência de toque
+        pose = self.robot_arm.get_cartesian_pose()
+        if pose is not None:
+            return pose.z
+        # Fallback para altura padrão de aproximação
+        return self.TARGET_DISTANCE_MM

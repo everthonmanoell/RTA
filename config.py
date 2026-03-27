@@ -25,17 +25,29 @@ CAMERA_PROPERTIES = {
     # "exposure": -5,  # negativo para auto
 }
 
+## id marcador de falha/sucesso final (na tela do app)
+#TODO colocar os ids
+FINAL_SUCCESS_MARKER_ID = 100
+FINAL_FAILURE_MARKER_ID = 200
+
 # ============================================================================
 # CALIBRAÇÃO DE MARKERS
 # ============================================================================
 
-# Tamanho real dos seus markers ArUco em milímetros
-MARKER_REAL_WIDTH_MM = 100.0
-MARKER_REAL_HEIGHT_MM = 100.0
 
-# Espaçamento entre os 4 markers (para cálculo de ângulo em z_aligner)
-# Distância X entre o par esquerdo e o par direito
-MARKER_X_DISTANCE_MM = 500.0
+# Tamanho real dos seus markers ArUco em milímetros e espaçamento
+# Agora pode ser definido dinamicamente via socket (ver utils/receive_marker_params.py)
+try:
+    from utils.receive_marker_params import receive_marker_params
+    _marker_params = receive_marker_params()
+    MARKER_REAL_WIDTH_MM = _marker_params["MARKER_REAL_WIDTH_MM"]
+    MARKER_REAL_HEIGHT_MM = _marker_params["MARKER_REAL_HEIGHT_MM"]
+    MARKER_X_DISTANCE_MM = _marker_params["MARKER_X_DISTANCE_MM"]
+except Exception as e:
+    print(f"[config.py] Erro ao carregar parâmetros dinâmicos: {e}. Usando valores padrão.")
+    MARKER_REAL_WIDTH_MM = 100.0
+    MARKER_REAL_HEIGHT_MM = 100.0
+    MARKER_X_DISTANCE_MM = 500.0
 
 # Profundidade de referência para calibração de distância
 # (distância em que você quer calibrar)
