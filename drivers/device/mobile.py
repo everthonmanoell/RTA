@@ -278,7 +278,7 @@ def map_raw_touch_to_screen(
     x_range: tuple[int, int],
     y_range: tuple[int, int],
     screen_size: tuple[int, int],
-) -> tuple[int, int]:
+) -> tuple[int, int] | None:
     """
     Converte coordenadas brutas do touchscreen para pixels reais da tela.
     """
@@ -287,7 +287,7 @@ def map_raw_touch_to_screen(
     screen_w, screen_h = screen_size
 
     if max_x <= min_x or max_y <= min_y or screen_w <= 0 or screen_h <= 0:
-        return (0, 0)
+        return None
 
     norm_x = (raw_x - min_x) / (max_x - min_x)
     norm_y = (raw_y - min_y) / (max_y - min_y)
@@ -761,10 +761,6 @@ class Mobile:
         print(f"[Mobile] Y range: {self.y_range}")
 
     def wait_for_touch_feedback(self, timeout: float = 3) -> Optional[tuple[int, int]]:
-        """
-        Aguarda um toque real e retorna sua posição em pixel de tela.
-        Retorna None se houver timeout.
-        """
         tracker = TouchTracker()
         start = time.time()
 
@@ -782,6 +778,10 @@ class Mobile:
                     y_range=self.y_range,
                     screen_size=self.screen_size,
                 )
+
+                if touch_px is None:
+                    return None
+
                 return touch_px
 
         return None

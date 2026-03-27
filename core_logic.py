@@ -28,7 +28,8 @@ def initialize_components():
     if not robot.connect():
         raise RuntimeError("Falha ao conectar ao robô")
 
-    robot.motor_on()
+    if not robot.motor_on():
+        raise RuntimeError("Falha ao ligar motor do robô")
 
     device = Mobile()
 
