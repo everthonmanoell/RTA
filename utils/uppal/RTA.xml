@@ -254,7 +254,7 @@ marker_index = 0</label>
 			<source ref="id44"/>
 			<target ref="id45"/>
 			<label kind="guard" x="2643" y="-127">marker_index = NUM_MARKERS</label>
-			<label kind="assignment" x="2643" y="-102">swipre_executed = false</label>
+			<label kind="assignment" x="2643" y="-102">swipe_executed = false</label>
 		</transition>
 		<transition id="id58">
 			<source ref="id42"/>
