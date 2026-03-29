@@ -10,7 +10,8 @@ requires-python = ">=3.11"
 dependencies = [
     "numpy (>=1.26.0,<2.3.0)",
     "opencv-python (>=4.10.0,<5.0.0.0)",
-    "pupil-apriltags (>=1.0.4.post11,<2.0.0)"
+    "pupil-apriltags (>=1.0.4.post11,<2.0.0)",
+    "pipx (>=1.11.0,<2.0.0)"
     
 ]
 
