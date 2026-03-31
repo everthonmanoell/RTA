@@ -12,6 +12,10 @@ bool aligned = false;
 bool touch_ok = false;
 bool swipe_executed = false;
 
+int detect_markers_attempts = 0;
+int error_touch = 0;
+int final_result_failures = 0;
+
 const int RESULT_NONE = 0;
 const int RESULT_SUCCESS = 1;
 const int RESULT_FAILURE = 2;
@@ -19,210 +23,103 @@ int[0,2] final_result = RESULT_NONE;
 
 int[0, NUM_MARKERS] marker_index = 0;</declaration>
 	<template>
-		<name x="5" y="5">RTA</name>
-		<declaration>// Place local declarations here.
-</declaration>
-		<location id="id0" x="-178" y="-841">
-			<name x="-195" y="-875">Idle</name>
-		</location>
-		<location id="id1" x="153" y="-841">
-			<name x="94" y="-875">turn_on_robot_engine</name>
-		</location>
-		<location id="id2" x="0" y="-841">
-			<name x="-42" y="-875">conect_robot</name>
-		</location>
-		<location id="id3" x="442" y="-841">
-			<name x="297" y="-883">move_to_region_of_interest</name>
-		</location>
-		<location id="id4" x="646" y="-841">
-			<name x="578" y="-875">turn_on_camera</name>
-		</location>
-		<location id="id5" x="884" y="-841">
-			<name x="773" y="-875">locate_fiducial_markers</name>
-		</location>
-		<location id="id6" x="1173" y="-841">
-			<name x="1028" y="-875">align_robot_with_fiduciais_markers</name>
-		</location>
-		<location id="id7" x="1462" y="-841">
-			<name x="1369" y="-875">touch_markers_with_robot</name>
-		</location>
-		<location id="id8" x="1700" y="-841">
-			<name x="1666" y="-875">touched</name>
-		</location>
-		<location id="id9" x="1564" y="-1003">
-			<name x="1496" y="-1037">save_robot_position</name>
-		</location>
-		<location id="id10" x="1589" y="-671">
-			<name x="1496" y="-705">reset_markers_screen</name>
-		</location>
-		<location id="id11" x="1921" y="-841">
-			<name x="1811" y="-875">build_map_in_function_of_z</name>
-		</location>
-		<location id="id12" x="2176" y="-841">
-			<name x="2082" y="-875">align_test_borders</name>
-		</location>
-		<location id="id13" x="2380" y="-841">
-			<name x="2295" y="-875">back_to_safe_position</name>
-		</location>
-		<location id="id14" x="2652" y="-841">
-			<name x="2533" y="-875">align_test_borders_response</name>
-		</location>
-		<location id="id15" x="2958" y="-841">
-			<name x="2899" y="-875">save_the_map</name>
-		</location>
-		<init ref="id0"/>
-		<transition id="id16">
-			<source ref="id14"/>
-			<target ref="id3"/>
-			<label kind="guard" x="2609" y="-714">false</label>
-			<nail x="2660" y="-629"/>
-			<nail x="442" y="-637"/>
-		</transition>
-		<transition id="id17">
-			<source ref="id14"/>
-			<target ref="id15"/>
-			<label kind="guard" x="2813" y="-867">true</label>
-		</transition>
-		<transition id="id18">
-			<source ref="id13"/>
-			<target ref="id14"/>
-		</transition>
-		<transition id="id19">
-			<source ref="id12"/>
-			<target ref="id13"/>
-		</transition>
-		<transition id="id20">
-			<source ref="id11"/>
-			<target ref="id12"/>
-		</transition>
-		<transition id="id21">
-			<source ref="id8"/>
-			<target ref="id11"/>
-		</transition>
-		<transition id="id22">
-			<source ref="id10"/>
-			<target ref="id3"/>
-			<nail x="442" y="-680"/>
-		</transition>
-		<transition id="id23">
-			<source ref="id8"/>
-			<target ref="id10"/>
-			<label kind="guard" x="1683" y="-739">false</label>
-			<nail x="1700" y="-671"/>
-		</transition>
-		<transition id="id24">
-			<source ref="id9"/>
-			<target ref="id7"/>
-			<nail x="1453" y="-1003"/>
-		</transition>
-		<transition id="id25">
-			<source ref="id8"/>
-			<target ref="id9"/>
-			<label kind="guard" x="1674" y="-1011">true(4x)</label>
-			<nail x="1691" y="-1003"/>
-		</transition>
-		<transition id="id26">
-			<source ref="id7"/>
-			<target ref="id8"/>
-		</transition>
-		<transition id="id27">
-			<source ref="id6"/>
-			<target ref="id7"/>
-		</transition>
-		<transition id="id28">
-			<source ref="id0"/>
-			<target ref="id2"/>
-		</transition>
-		<transition id="id29">
-			<source ref="id5"/>
-			<target ref="id6"/>
-		</transition>
-		<transition id="id30">
-			<source ref="id4"/>
-			<target ref="id5"/>
-		</transition>
-		<transition id="id31">
-			<source ref="id3"/>
-			<target ref="id4"/>
-		</transition>
-		<transition id="id32">
-			<source ref="id1"/>
-			<target ref="id3"/>
-		</transition>
-		<transition id="id33">
-			<source ref="id2"/>
-			<target ref="id1"/>
-		</transition>
-	</template>
-	<template>
-		<name>RTA_new</name>
-		<location id="id34" x="-501" y="-93">
+		<name>Rta</name>
+		<location id="id0" x="-501" y="-93">
 			<name x="-518" y="-127">Idle</name>
 		</location>
-		<location id="id35" x="-408" y="-93">
+		<location id="id1" x="-408" y="-93">
 			<name x="-450" y="-136">ConnectRobot</name>
 		</location>
-		<location id="id36" x="-127" y="-93">
+		<location id="id2" x="-127" y="-93">
 			<name x="-153" y="-127">MotorOn</name>
 		</location>
-		<location id="id37" x="161" y="-93">
-			<name x="93" y="-127">MoveToDeviceRegion</name>
+		<location id="id3" x="161" y="-93">
+			<name x="127" y="-127">MoveToROI</name>
 		</location>
-		<location id="id38" x="510" y="-93">
+		<location id="id4" x="510" y="-93">
 			<name x="485" y="-127">CameraOn</name>
 		</location>
-		<location id="id39" x="816" y="-93">
+		<location id="id5" x="816" y="-93">
 			<name x="765" y="-127">DetectMarkers</name>
 		</location>
-		<location id="id40" x="1266" y="-102">
+		<location id="id6" x="1266" y="-102">
 			<name x="1206" y="-136">AlignWithMarkers</name>
 		</location>
-		<location id="id41" x="1598" y="-102">
+		<location id="id7" x="1598" y="-102">
 			<name x="1547" y="-136">TouchMarker</name>
 		</location>
-		<location id="id42" x="2048" y="-102">
+		<location id="id8" x="2048" y="-102">
 			<name x="2012" y="-136">CheckTouch</name>
 		</location>
-		<location id="id43" x="2048" y="-246">
+		<location id="id9" x="2048" y="-246">
 			<name x="1997" y="-280">ResetMarkers</name>
 		</location>
-		<location id="id44" x="2541" y="-102">
+		<location id="id10" x="2541" y="-102">
 			<name x="2499" y="-136">GenerateMap</name>
 		</location>
-		<location id="id45" x="2941" y="-102">
+		<location id="id11" x="2941" y="-102">
 			<name x="2898" y="-136">SwipeBorders</name>
 		</location>
-		<location id="id46" x="3255" y="-102">
+		<location id="id12" x="3255" y="-102">
 			<name x="3221" y="-136">SafePose</name>
 		</location>
-		<location id="id47" x="3536" y="-102">
+		<location id="id13" x="3536" y="-102">
 			<name x="3468" y="-136">ReadFinalMarker</name>
 		</location>
-		<location id="id48" x="3527" y="-425">
+		<location id="id14" x="3527" y="-425">
 			<name x="3476" y="-459">ReturnToStart</name>
 		</location>
-		<location id="id49" x="3893" y="-102">
+		<location id="id15" x="3893" y="-102">
 			<name x="3868" y="-136">SaveMap</name>
 		</location>
-		<location id="id50" x="4258" y="-102">
-			<name x="4241" y="-136">Done</name>
+		<location id="id16" x="4309" y="-102">
+			<name x="4292" y="-136">Done</name>
 		</location>
-		<init ref="id34"/>
-		<transition id="id51">
-			<source ref="id49"/>
-			<target ref="id50"/>
-			<label kind="guard" x="3952" y="-127">final_result == RESULT_SUCESS</label>
-			<label kind="assignment" x="4054" y="-102">true</label>
+		<location id="id17" x="4080" y="-102">
+			<name x="4046" y="-136">MotorOff</name>
+		</location>
+		<location id="id18" x="816" y="-289">
+			<name x="799" y="-323">Error</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id19">
+			<source ref="id13"/>
+			<target ref="id18"/>
+			<label kind="guard" x="2482" y="-340">final_result_failures &gt;=15</label>
+			<nail x="3264" y="-314"/>
+			<nail x="884" y="-314"/>
 		</transition>
-		<transition id="id52">
-			<source ref="id47"/>
-			<target ref="id49"/>
+		<transition id="id20">
+			<source ref="id8"/>
+			<target ref="id18"/>
+			<label kind="guard" x="1555" y="-314">error_touch &gt;= 15</label>
+			<nail x="1827" y="-289"/>
+			<nail x="833" y="-289"/>
+		</transition>
+		<transition id="id21">
+			<source ref="id5"/>
+			<target ref="id18"/>
+			<label kind="guard" x="688" y="-212">detect_markers_attempts &gt;= 20</label>
+		</transition>
+		<transition id="id22">
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="assignment" x="4122" y="-102">motor_on = false</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id15"/>
+			<target ref="id17"/>
+			<label kind="guard" x="3969" y="-127">true</label>
+		</transition>
+		<transition id="id24">
+			<source ref="id13"/>
+			<target ref="id15"/>
 			<label kind="guard" x="3604" y="-127">final_result == RESULT_SUCCESS</label>
 			<label kind="assignment" x="3697" y="-102">true</label>
 		</transition>
-		<transition id="id53">
-			<source ref="id48"/>
-			<target ref="id37"/>
+		<transition id="id25">
+			<source ref="id14"/>
+			<target ref="id3"/>
 			<label kind="guard" x="1130" y="-450">true</label>
 			<label kind="assignment" x="1088" y="-425">markers_found = false,
 aligned = false,
@@ -232,116 +129,116 @@ final_result = RESULT_NONE,
 marker_index = 0</label>
 			<nail x="161" y="-433"/>
 		</transition>
-		<transition id="id54">
-			<source ref="id47"/>
-			<target ref="id48"/>
+		<transition id="id26">
+			<source ref="id13"/>
+			<target ref="id14"/>
 			<label kind="guard" x="3425" y="-289">final_result == RESULT_FAILURE</label>
-			<label kind="assignment" x="3519" y="-246">true</label>
+			<label kind="assignment" x="3417" y="-246">true, final_result_failures++</label>
 		</transition>
-		<transition id="id55">
-			<source ref="id46"/>
-			<target ref="id47"/>
+		<transition id="id27">
+			<source ref="id12"/>
+			<target ref="id13"/>
 			<label kind="guard" x="3323" y="-127">swipe_executed</label>
 			<label kind="assignment" x="3366" y="-102">true</label>
 		</transition>
-		<transition id="id56">
-			<source ref="id45"/>
-			<target ref="id46"/>
+		<transition id="id28">
+			<source ref="id11"/>
+			<target ref="id12"/>
 			<label kind="guard" x="3085" y="-127">true</label>
 			<label kind="assignment" x="3017" y="-102">swipe_executed = true</label>
 		</transition>
-		<transition id="id57">
-			<source ref="id44"/>
-			<target ref="id45"/>
-			<label kind="guard" x="2643" y="-127">marker_index = NUM_MARKERS</label>
+		<transition id="id29">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="2643" y="-127">marker_index == NUM_MARKERS</label>
 			<label kind="assignment" x="2643" y="-102">swipe_executed = false</label>
 		</transition>
-		<transition id="id58">
-			<source ref="id42"/>
-			<target ref="id44"/>
-			<label kind="guard" x="2116" y="-127">touch_ok &amp;&amp; marker_index == NUM_MARKERS = -1</label>
+		<transition id="id30">
+			<source ref="id8"/>
+			<target ref="id10"/>
+			<label kind="guard" x="2116" y="-127">touch_ok &amp;&amp; marker_index == NUM_MARKERS -1</label>
 			<label kind="assignment" x="2167" y="-102">marker_index = marker_index + 1</label>
 		</transition>
-		<transition id="id59">
-			<source ref="id42"/>
-			<target ref="id41"/>
+		<transition id="id31">
+			<source ref="id8"/>
+			<target ref="id7"/>
 			<label kind="guard" x="1649" y="-34">touch_ok &amp;&amp; marker_index &lt; NUM_MARKERS - 1</label>
-			<label kind="assignment" x="1683" y="0">marker_index = marker_index + 1</label>
+			<label kind="assignment" x="1615" y="8">marker_index = marker_index + 1</label>
 			<nail x="2048" y="0"/>
 			<nail x="1598" y="0"/>
 		</transition>
-		<transition id="id60">
-			<source ref="id43"/>
-			<target ref="id37"/>
+		<transition id="id32">
+			<source ref="id9"/>
+			<target ref="id3"/>
 			<nail x="161" y="-238"/>
 		</transition>
-		<transition id="id61">
-			<source ref="id42"/>
-			<target ref="id43"/>
+		<transition id="id33">
+			<source ref="id8"/>
+			<target ref="id9"/>
 			<label kind="guard" x="2006" y="-221">!touch_ok</label>
-			<label kind="assignment" x="1980" y="-195">marker_index = 0</label>
+			<label kind="assignment" x="1980" y="-195">marker_index = 0, error_touch++</label>
 		</transition>
-		<transition id="id62">
-			<source ref="id39"/>
-			<target ref="id39"/>
+		<transition id="id34">
+			<source ref="id5"/>
+			<target ref="id5"/>
 			<label kind="guard" x="697" y="-25">camera_on &amp;&amp; !markers_found</label>
-			<label kind="assignment" x="722" y="17">markers_found = false</label>
+			<label kind="assignment" x="722" y="17">markers_found = false, detect_markers_attempts++</label>
 			<nail x="867" y="8"/>
 			<nail x="765" y="8"/>
 		</transition>
-		<transition id="id63">
-			<source ref="id41"/>
-			<target ref="id42"/>
+		<transition id="id35">
+			<source ref="id7"/>
+			<target ref="id8"/>
 			<label kind="guard" x="1674" y="-136">aligned &amp;&amp; marker_index &lt; NUM_MARKERS</label>
-			<label kind="assignment" x="1742" y="-102">touch_ok = false</label>
+			<label kind="assignment" x="1802" y="-102">true</label>
 		</transition>
-		<transition id="id64">
-			<source ref="id40"/>
-			<target ref="id41"/>
+		<transition id="id36">
+			<source ref="id6"/>
+			<target ref="id7"/>
 			<label kind="guard" x="1385" y="-127">markers_found</label>
 			<label kind="assignment" x="1377" y="-102">aligned = true</label>
 		</transition>
-		<transition id="id65">
-			<source ref="id39"/>
-			<target ref="id40"/>
+		<transition id="id37">
+			<source ref="id5"/>
+			<target ref="id6"/>
 			<label kind="guard" x="926" y="-127">camera_on &amp;&amp; markers_found</label>
 			<label kind="assignment" x="969" y="-93">marker_index = 0</label>
 		</transition>
-		<transition id="id66">
-			<source ref="id38"/>
-			<target ref="id39"/>
+		<transition id="id38">
+			<source ref="id4"/>
+			<target ref="id5"/>
 			<label kind="guard" x="612" y="-127">true</label>
 			<label kind="assignment" x="578" y="-93">camera_on = true</label>
 		</transition>
-		<transition id="id67">
-			<source ref="id37"/>
-			<target ref="id38"/>
+		<transition id="id39">
+			<source ref="id3"/>
+			<target ref="id4"/>
 			<label kind="guard" x="289" y="-127">motor_on</label>
 			<label kind="assignment" x="255" y="-93">aligned = false,
 markers_found = false,
 touch_ok = false</label>
 		</transition>
-		<transition id="id68">
-			<source ref="id36"/>
-			<target ref="id37"/>
+		<transition id="id40">
+			<source ref="id2"/>
+			<target ref="id3"/>
 			<label kind="guard" x="-59" y="-119">robot_connected</label>
 			<label kind="assignment" x="-59" y="-85">motor_on = true</label>
 		</transition>
-		<transition id="id69">
-			<source ref="id35"/>
-			<target ref="id36"/>
+		<transition id="id41">
+			<source ref="id1"/>
+			<target ref="id2"/>
 			<label kind="guard" x="-289" y="-119">true</label>
 			<label kind="assignment" x="-357" y="-85">robot_connected = true</label>
 		</transition>
-		<transition id="id70">
-			<source ref="id34"/>
-			<target ref="id35"/>
+		<transition id="id42">
+			<source ref="id0"/>
+			<target ref="id1"/>
 		</transition>
 	</template>
 	<system>// Place template instantiations here.
-Process = Template();
+rta = Rta();
 // List one or more processes to be composed into a system.
-system Process;
+system rta;
 </system>
 	<queries>
 		<query>
