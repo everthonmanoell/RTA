@@ -92,6 +92,8 @@ def main() -> int:
     runtime = {
         "markers": [],
         "z_touch": None,
+        "fiducial_touches": [],
+        "last_touch_success": False,
         "last_state": "idle",
         "state_enter_time": time.time(),
     }
@@ -143,8 +145,10 @@ def main() -> int:
         return ok
 
     def touch_marker_fn(index: int) -> bool:
+        """Toca marcador escutando continuamente durante o movimento."""
         markers = runtime["markers"]
         if index < 0 or index >= len(markers):
+            runtime["last_touch_success"] = False
             return False
 
         z_touch = runtime["z_touch"]
@@ -156,23 +160,41 @@ def main() -> int:
         target_x, target_y = marker.centroid
         area_px = marker.area
 
-        ok = controller.touch_marker_center(marker, z_touch=z_touch)
+        # Fluxo ativo no runtime: escuta enquanto move e para no toque.
+        ok, touch_info = controller.touch_marker_listen_while_moving(
+            marker, z_touch=z_touch, speed=50.0, touch_timeout=args.touch_timeout
+        )
 
-        # Record metric: expected position, area, and marker index
+        if touch_info:
+            actual_x, actual_y = touch_info.get("touch_position", (target_x, target_y))
+            position_error = touch_info.get("position_error_px", 0.0)
+            touch_pressure = touch_info.get("touch_pressure", 0)
+            logging.info(
+                f"Marcador {marker.marker_id}: toque em ({actual_x:.1f}, {actual_y:.1f}), "
+                f"erro={position_error:.1f}px, pressão={touch_pressure}g"
+            )
+        else:
+            actual_x, actual_y = target_x, target_y
+
         metrics_logger.record_touch(
             test_metrics,
             marker_index=index,
             target_x=target_x,
             target_y=target_y,
-            actual_x=target_x,  # For now, assume perfect; enhance with actual position if available
-            actual_y=target_y,
+            actual_x=actual_x,
+            actual_y=actual_y,
             area_px=area_px,
         )
 
+        if ok and touch_info:
+            runtime["fiducial_touches"].append(touch_info)
+
+        runtime["last_touch_success"] = bool(ok)
         return ok
 
     def check_touch_fn(_index: int) -> bool:
-        return device.wait_for_touch_feedback(timeout=args.touch_timeout) is not None
+        # O toque já é validado dentro de touch_marker_fn via listen-while-moving.
+        return bool(runtime.get("last_touch_success", False))
 
     def reset_markers_fn() -> None:
         frame = camera.capture_frame()
@@ -194,6 +216,7 @@ def main() -> int:
         runtime["z_touch"] = None
 
     def swipe_borders_fn() -> bool:
+        """Swipe com monitoramento de segurança (pressão, sinal)."""
         z_touch = runtime["z_touch"]
         if z_touch is None:
             z_touch = auto_align.get_touch_z()
@@ -211,8 +234,14 @@ def main() -> int:
             return False
 
         swipe_start = time.time()
-        ok = controller.swipe_along_points(points, z_touch=z_touch)
+        # Use novo fluxo seguro: monitora pressão e sinal durante swipe
+        ok, swipe_reason = controller.swipe_with_safety_monitoring(points, z_touch=z_touch)
         swipe_duration = time.time() - swipe_start
+
+        # Se swipe falhou por motivos de segurança, ir a safe_pose para ler resultado
+        if not ok and swipe_reason in ["signal_loss", "excessive_pressure"]:
+            logging.warning(f"Swipe falhou por: {swipe_reason}. Movendo para safe_pose.")
+            robot.move_safe(preserve_orientation=True)
 
         # Record swipe metric
         metrics_logger.record_swipe(
