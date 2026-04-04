@@ -14,7 +14,7 @@ class Denso(AbstractRobot):
     - movimentação para safe pose
     """
 
-    #TODO PRECISA AJUSTAR OS VALORES REAIS
+    # TODO PRECISA AJUSTAR OS VALORES REAIS
     # Ajuste com os valores REAIS da sua pose segura
     SAFE_X = 0.0
     SAFE_Y = 0.0
@@ -25,6 +25,15 @@ class Denso(AbstractRobot):
     SAFE_RX = 180.0
     SAFE_RY = 0.0
     SAFE_RZ = 180.0
+
+    # ROI (region of interest): pose para a camera enxergar a tela alvo.
+    # Ajuste esses valores para o setup real (suporte, distancia e inclinacao).
+    ROI_X = 0.0
+    ROI_Y = 0.0
+    ROI_Z = 250.0
+    ROI_RX = 180.0
+    ROI_RY = 0.0
+    ROI_RZ = 180.0
 
     def __init__(self, workspace_name: str, control_name: str, options: str):
         self.denso_robot = DensoRobot(workspace_name, control_name, options)
@@ -131,5 +140,25 @@ class Denso(AbstractRobot):
 
             return self.move_cartesian(safe_pose)
 
+        except Exception:
+            return False
+
+    def move_to_roi(self) -> bool:
+        """
+        Move o robô para a pose de ROI (camera apontada para o dispositivo).
+
+        Returns:
+            bool
+        """
+        try:
+            roi_pose = Pose(
+                x=self.ROI_X,
+                y=self.ROI_Y,
+                z=self.ROI_Z,
+                rx=self.ROI_RX,
+                ry=self.ROI_RY,
+                rz=self.ROI_RZ,
+            )
+            return self.move_cartesian(roi_pose)
         except Exception:
             return False
