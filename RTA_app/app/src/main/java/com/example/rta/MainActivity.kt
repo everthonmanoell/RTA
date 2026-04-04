@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.content.Context
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
@@ -20,23 +21,95 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import org.json.JSONObject
 
 class MainActivity : Activity() {
+    private val markerTagSizeDp = 120f
+    private val markerMarginDp = 16f
+
     // --- Parâmetros do marcador (calculados dinamicamente) ---
     private var markerRealWidthMm: Float = 0f
     private var markerRealHeightMm: Float = 0f
     private var markerXDistanceMm: Float = 0f
 
-    // IP do servidor Python (ajuste conforme necessário)
-    private val pythonServerIp = "192.168.0.100" // <-- Coloque o IP do PC aqui
-    private val pythonServerPort = 50505
+    // Python endpoint can be configured at runtime (Intent -> SharedPreferences -> default).
+    private var pythonServerIp = "192.168.0.100"
+    private var pythonServerPort = 50505
+
+    companion object {
+        private const val PREFS_NAME = "rta_runtime_config"
+        private const val PREF_KEY_PYTHON_IP = "python_server_ip"
+        private const val PREF_KEY_PYTHON_PORT = "python_server_port"
+        private const val EXTRA_PYTHON_IP = "python_server_ip"
+        private const val EXTRA_PYTHON_PORT = "python_server_port"
+    }
+
+    private fun applyPythonServerConfigFromIntentOrPrefs() {
+        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        val intentIp = intent?.getStringExtra(EXTRA_PYTHON_IP)?.trim().orEmpty()
+        val intentPort = intent?.getIntExtra(EXTRA_PYTHON_PORT, -1) ?: -1
+
+        val hasIntentIp = intentIp.isNotEmpty()
+        val hasIntentPort = intentPort in 1..65535
+
+        if (hasIntentIp || hasIntentPort) {
+            if (hasIntentIp) {
+                pythonServerIp = intentIp
+                prefs.edit().putString(PREF_KEY_PYTHON_IP, pythonServerIp).apply()
+            }
+
+            if (hasIntentPort) {
+                pythonServerPort = intentPort
+                prefs.edit().putInt(PREF_KEY_PYTHON_PORT, pythonServerPort).apply()
+            }
+
+            Log.i("RTA", "Python server loaded from Intent: $pythonServerIp:$pythonServerPort")
+            return
+        }
+
+        val storedIp = prefs.getString(PREF_KEY_PYTHON_IP, null)
+        val storedPort = prefs.getInt(PREF_KEY_PYTHON_PORT, -1)
+
+        if (!storedIp.isNullOrBlank()) {
+            pythonServerIp = storedIp
+        }
+        if (storedPort in 1..65535) {
+            pythonServerPort = storedPort
+        }
+
+        Log.i("RTA", "Python server loaded from prefs/default: $pythonServerIp:$pythonServerPort")
+    }
 
     // Envia os parâmetros via socket para o Python
     private fun sendMarkerParamsToPython() {
         Thread {
             try {
                 val socket = java.net.Socket(pythonServerIp, pythonServerPort)
-                val params = """{"MARKER_REAL_WIDTH_MM":$markerRealWidthMm,"MARKER_REAL_HEIGHT_MM":$markerRealHeightMm,"MARKER_X_DISTANCE_MM":$markerXDistanceMm}"""
+                val dm = resources.displayMetrics
+                val params = JSONObject().apply {
+                    put("MARKER_REAL_WIDTH_MM", markerRealWidthMm)
+                    put("MARKER_REAL_HEIGHT_MM", markerRealHeightMm)
+                    put("MARKER_X_DISTANCE_MM", markerXDistanceMm)
+
+                    put("tag_size_dp", markerTagSizeDp)
+                    put("tag_size_px", markerTagSizeDp * dm.density)
+                    put("margin_dp", markerMarginDp)
+                    put("margin_px", markerMarginDp * dm.density)
+
+                    put("density", dm.density)
+                    put("density_dpi", dm.densityDpi)
+                    put("xdpi", dm.xdpi)
+                    put("ydpi", dm.ydpi)
+                    put("screen_width_px", dm.widthPixels)
+                    put("screen_height_px", dm.heightPixels)
+
+                    put("device_type", deviceType)
+                    put("manufacturer", Build.MANUFACTURER)
+                    put("model", Build.MODEL)
+                    put("sdk_int", Build.VERSION.SDK_INT)
+                }.toString()
+
                 val out = socket.getOutputStream()
                 out.write(params.toByteArray())
                 out.flush()
@@ -116,6 +189,8 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        applyPythonServerConfigFromIntentOrPrefs()
+
         // Read device type from ADB intent extra (defaults to "flat")
         deviceType = intent.getStringExtra("device_type") ?: "flat"
         
@@ -129,14 +204,12 @@ class MainActivity : Activity() {
         val density = resources.displayMetrics.density
         val xdpi = resources.displayMetrics.xdpi
         val ydpi = resources.displayMetrics.ydpi
-        val tagSizeDp = 120f // mesmo valor padrão de addLateralArucoMarkers
-        val tagSizePx = tagSizeDp * density
+        val tagSizePx = markerTagSizeDp * density
         markerRealWidthMm = tagSizePx / xdpi * 25.4f
         markerRealHeightMm = tagSizePx / ydpi * 25.4f
 
         // Espaçamento entre marcadores (horizontal): diferença entre left e right
-        val marginDp = 16f
-        val marginPx = marginDp * density
+        val marginPx = markerMarginDp * density
         val screenWidth = resources.displayMetrics.widthPixels
         val left = marginPx
         val right = screenWidth - marginPx - tagSizePx
@@ -279,8 +352,8 @@ class MainActivity : Activity() {
     private fun addLateralArucoMarkers(
         layout: RelativeLayout,
         tags: List<Int>,
-        tagSizeDp: Int = 120,
-        marginDp: Int = 16
+        tagSizeDp: Int = markerTagSizeDp.toInt(),
+        marginDp: Int = markerMarginDp.toInt()
     ): List<ImageView> {
         val density = resources.displayMetrics.density
         val tagSize = (tagSizeDp * density).toInt()

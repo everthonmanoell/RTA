@@ -125,7 +125,11 @@ class Rta(GraphMachine):
             {'trigger': 'detect_markers_to_align_with_markers', 'source': 'detect_markers', 'dest': 'align_with_markers', 'conditions': ['camera_on', 'markers_found'], 'after': ['set_marker_index_zero']},
             {'trigger': 'camera_on_to_detect_markers', 'source': 'camera_on', 'dest': 'detect_markers', 'conditions': ['always_true'], 'after': ['set_camera_on_true']},
             {'trigger': 'move_to_r_o_i_to_camera_on', 'source': 'move_to_r_o_i', 'dest': 'camera_on', 'conditions': ['motor_on'], 'after': ['set_aligned_false', 'set_markers_found_false', 'set_touch_ok_false']},
+            {'trigger': 'motor_on_to_error', 'source': 'motor_on', 'dest': 'error', 'conditions': ['motor_on_attempts_gte_max']},
+            {'trigger': 'motor_on_to_motor_on', 'source': 'motor_on', 'dest': 'motor_on', 'unless': ['motor_on', 'motor_on_attempts_gte_max']},
             {'trigger': 'motor_on_to_move_to_r_o_i', 'source': 'motor_on', 'dest': 'move_to_r_o_i', 'conditions': ['motor_on']},
+            {'trigger': 'connect_robot_to_error', 'source': 'connect_robot', 'dest': 'error', 'conditions': ['connect_robot_attempts_gte_max']},
+            {'trigger': 'connect_robot_to_connect_robot', 'source': 'connect_robot', 'dest': 'connect_robot', 'unless': ['robot_connected', 'connect_robot_attempts_gte_max']},
             {'trigger': 'connect_robot_to_motor_on', 'source': 'connect_robot', 'dest': 'motor_on', 'conditions': ['robot_connected']},
             {'trigger': 'idle_to_connect_robot', 'source': 'idle', 'dest': 'connect_robot'},
         ]
