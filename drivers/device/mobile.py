@@ -10,7 +10,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Callable, Iterator, List, Optional
 
-
 # ==========================================
 # ADB getevent codes (Linux input protocol)
 # ==========================================
@@ -785,6 +784,101 @@ class Mobile:
                 return touch_px
 
         return None
+
+    def wait_for_touch_with_pressure(
+        self, timeout: float = 3, max_pressure_threshold: int = 3000
+    ) -> Optional[dict]:
+        """
+        Espera por toque e retorna dados incluindo pressão e posição.
+
+        Retorna:
+            {
+                "position": (x, y),
+                "pressure": int,
+                "duration_sec": float,
+                "timestamp": float,
+                "excessive_pressure": bool
+            }
+            ou None se timeout
+        """
+        tracker = TouchTracker()
+        start = time.time()
+
+        for evt in self.listener.iter_events():
+            if time.time() - start > timeout:
+                return None
+
+            point = tracker.feed(evt)
+
+            if point and point.action == TouchAction.UP:
+                touch_px = map_raw_touch_to_screen(
+                    raw_x=point.x,
+                    raw_y=point.y,
+                    x_range=self.x_range,
+                    y_range=self.y_range,
+                    screen_size=self.screen_size,
+                )
+
+                if touch_px is None:
+                    return None
+
+                avg_pressure = tracker.avg_pressure
+                excessive = avg_pressure > max_pressure_threshold
+
+                return {
+                    "position": touch_px,
+                    "pressure": int(avg_pressure),
+                    "duration_sec": tracker.duration,
+                    "timestamp": time.time(),
+                    "excessive_pressure": excessive,
+                }
+
+        return None
+
+    def monitor_swipe_for_signal_loss(self, timeout: float = 10.0) -> tuple[bool, str]:
+        """
+        Monitora uma sequência de swipe para detectar perda de sinal ou pressão excessiva.
+
+        Retorna:
+            (signal_ok: bool, reason: str)
+            - signal_ok=True: swipe completado sem problemas
+            - signal_ok=False, reason="signal_loss": dispositivo parou de responder
+            - signal_ok=False, reason="excessive_pressure": pressão muito forte
+        """
+        tracker = TouchTracker()
+        start = time.time()
+        last_event_time = start
+        signal_loss_threshold = 0.5  # segundos sem evento
+
+        try:
+            for evt in self.listener.iter_events():
+                elapsed = time.time() - start
+
+                if elapsed > timeout:
+                    return True, "completed"
+
+                # Verifica se perdeu sinal (nenhum evento por muito tempo)
+                current_time = time.time()
+                if current_time - last_event_time > signal_loss_threshold:
+                    # Há um toque ativo mas nenhum evento por signal_loss_threshold segundos
+                    if tracker.total_points > 0 and not tracker.points[-1].action == TouchAction.UP:
+                        return False, "signal_loss"
+
+                last_event_time = current_time
+                point = tracker.feed(evt)
+
+                # Detecta pressão excessiva
+                if point and point.pressure > 3000:
+                    return False, "excessive_pressure"
+
+                # Se toque terminou naturalmente, swipe completou
+                if point and point.action == TouchAction.UP:
+                    return True, "completed"
+
+        except Exception as e:
+            return False, f"error:{str(e)}"
+
+        return True, "timeout_ok"
 
     def stop(self) -> None:
         self.listener.stop()
