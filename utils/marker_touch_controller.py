@@ -218,7 +218,12 @@ class MarkerTouchController:
     # Swipe
     # -------------------------------------------------
 
-    def get_grid_border_points(self, margin_px: int = 30) -> List[Tuple[int, int]]:
+    def get_grid_border_points(
+        self,
+        margin_px: int = 30,
+        screen_width_px: int | None = None,
+        screen_height_px: int | None = None,
+    ) -> List[Tuple[int, int]]:
         """
         Gera pontos de borda para um swipe retangular.
 
@@ -228,12 +233,23 @@ class MarkerTouchController:
         try:
             image_height, image_width = self._capture_frame_shape()
 
+            # If the app supplied the screen resolution, convert the device-side
+            # border margin to camera-image coordinates.
+            margin_x = margin_px
+            margin_y = margin_px
+            if screen_width_px and screen_height_px and screen_width_px > 0 and screen_height_px > 0:
+                margin_x = int(round((margin_px / screen_width_px) * image_width))
+                margin_y = int(round((margin_px / screen_height_px) * image_height))
+
+            margin_x = max(1, min(margin_x, image_width // 2 - 1))
+            margin_y = max(1, min(margin_y, image_height // 2 - 1))
+
             points = [
-                (margin_px, margin_px),
-                (image_width - margin_px, margin_px),
-                (image_width - margin_px, image_height - margin_px),
-                (margin_px, image_height - margin_px),
-                (margin_px, margin_px),
+                (margin_x, margin_y),
+                (image_width - margin_x, margin_y),
+                (image_width - margin_x, image_height - margin_y),
+                (margin_x, image_height - margin_y),
+                (margin_x, margin_y),
             ]
 
             self.logger.info(f"Pontos de borda gerados: {points}")

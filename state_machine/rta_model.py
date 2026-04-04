@@ -10,6 +10,11 @@ class RtaModel:
         self.num_markers = max(1, int(num_markers))
         self.marker_index = 0
 
+        self.max_connect_robot_attempts = 3
+        self.max_motor_on_attempts = 3
+        self.connect_robot_attempt = 0
+        self.motor_on_attempt = 0
+
         self.aligned_flag = False
         self.robot_connected_flag = False
         self.motor_on_flag = False
@@ -114,6 +119,12 @@ class RtaModel:
     def detect_markers_attempts_gte_twenty(self):
         return self.detect_markers_attempts >= 20
 
+    def connect_robot_attempts_gte_max(self):
+        return self.connect_robot_attempt >= self.max_connect_robot_attempts
+
+    def motor_on_attempts_gte_max(self):
+        return self.motor_on_attempt >= self.max_motor_on_attempts
+
     def always_true(self):
         return True
 
@@ -144,23 +155,31 @@ class RtaModel:
 
         If no adapter is configured, keep the flag as False.
         """
+        self.connect_robot_attempt += 1
+
         if self.denso_robot is None:
             self.robot_connected_flag = False
             return
 
         try:
             self.robot_connected_flag = bool(self.denso_robot.connect())
+            if self.robot_connected_flag:
+                self.connect_robot_attempt = 0
         except Exception:
             self.robot_connected_flag = False
 
     def turn_motor_on_action(self):
         """Try to enable motor after the robot is connected."""
+        self.motor_on_attempt += 1
+
         if not self.robot_connected_flag or self.denso_robot is None:
             self.motor_on_flag = False
             return
 
         try:
             self.motor_on_flag = bool(self.denso_robot.motor_on())
+            if self.motor_on_flag:
+                self.motor_on_attempt = 0
         except Exception:
             self.motor_on_flag = False
 

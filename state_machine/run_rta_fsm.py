@@ -163,7 +163,14 @@ def main() -> int:
             z_touch = auto_align.get_touch_z()
             runtime["z_touch"] = z_touch
 
-        points = controller.get_grid_border_points()
+        margin_px = int(getattr(config, "MARKER_MARGIN_PX", 30.0))
+        screen_width_px = int(getattr(config, "SCREEN_WIDTH_PX", 0.0))
+        screen_height_px = int(getattr(config, "SCREEN_HEIGHT_PX", 0.0))
+        points = controller.get_grid_border_points(
+            margin_px=margin_px,
+            screen_width_px=screen_width_px,
+            screen_height_px=screen_height_px,
+        )
         if not points:
             return False
 

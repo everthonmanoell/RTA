@@ -43,11 +43,27 @@ try:
     MARKER_REAL_WIDTH_MM = _marker_params["MARKER_REAL_WIDTH_MM"]
     MARKER_REAL_HEIGHT_MM = _marker_params["MARKER_REAL_HEIGHT_MM"]
     MARKER_X_DISTANCE_MM = _marker_params["MARKER_X_DISTANCE_MM"]
+    MARKER_MARGIN_PX = _marker_params.get("MARKER_MARGIN_PX", 30.0)
+    MARKER_TAG_SIZE_PX = _marker_params.get("tag_size_px", 0.0)
+    DEVICE_DENSITY = _marker_params.get("density", 0.0)
+    DEVICE_DENSITY_DPI = _marker_params.get("density_dpi", 0.0)
+    DEVICE_XDPI = _marker_params.get("xdpi", 0.0)
+    DEVICE_YDPI = _marker_params.get("ydpi", 0.0)
+    SCREEN_WIDTH_PX = _marker_params.get("screen_width_px", 0.0)
+    SCREEN_HEIGHT_PX = _marker_params.get("screen_height_px", 0.0)
 except Exception as e:
     print(f"[config.py] Erro ao carregar parâmetros dinâmicos: {e}. Usando valores padrão.")
     MARKER_REAL_WIDTH_MM = 100.0
     MARKER_REAL_HEIGHT_MM = 100.0
     MARKER_X_DISTANCE_MM = 500.0
+    MARKER_MARGIN_PX = 30.0
+    MARKER_TAG_SIZE_PX = 0.0
+    DEVICE_DENSITY = 0.0
+    DEVICE_DENSITY_DPI = 0.0
+    DEVICE_XDPI = 0.0
+    DEVICE_YDPI = 0.0
+    SCREEN_WIDTH_PX = 0.0
+    SCREEN_HEIGHT_PX = 0.0
 
 # Profundidade de referência para calibração de distância
 # (distância em que você quer calibrar)
