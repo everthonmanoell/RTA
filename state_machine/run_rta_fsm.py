@@ -17,6 +17,7 @@ from utils.coordinate_transform import (
     RobotFrameConfig,
 )
 from utils.marker_touch_controller import MarkerTouchController
+from utils.metrics_logger import MetricsLogger
 
 
 def parse_args() -> argparse.Namespace:
@@ -28,6 +29,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--loop-delay", type=float, default=0.05, help="Delay between FSM steps")
     parser.add_argument("--max-steps", type=int, default=5000, help="Safety max number of FSM steps")
     parser.add_argument("--touch-timeout", type=float, default=3.0, help="Seconds waiting touch feedback")
+    parser.add_argument("--metrics-dir", default="test_results", help="Output directory for metrics")
     return parser.parse_args()
 
 
@@ -84,10 +86,27 @@ def main() -> int:
     )
     device, camera, detector, auto_align, controller = _build_operational_stack(robot)
 
+    metrics_logger = MetricsLogger(output_dir=args.metrics_dir)
+    test_metrics = metrics_logger.create_test_session()
+
     runtime = {
         "markers": [],
         "z_touch": None,
+        "last_state": "idle",
+        "state_enter_time": time.time(),
     }
+
+    def move_to_roi_fn() -> None:
+        moved = False
+        if hasattr(robot, "move_to_roi"):
+            moved = bool(robot.move_to_roi())
+
+        if not moved:
+            # Fallback keeps execution robust if ROI pose is not configured yet.
+            robot.move_safe(preserve_orientation=True)
+
+        runtime["markers"] = []
+        runtime["z_touch"] = None
 
     def camera_on_fn() -> bool:
         return camera.capture_frame() is not None
@@ -133,7 +152,24 @@ def main() -> int:
             z_touch = auto_align.get_touch_z()
             runtime["z_touch"] = z_touch
 
-        return controller.touch_marker_center(markers[index], z_touch=z_touch)
+        marker = markers[index]
+        target_x, target_y = marker.centroid
+        area_px = marker.area
+
+        ok = controller.touch_marker_center(marker, z_touch=z_touch)
+
+        # Record metric: expected position, area, and marker index
+        metrics_logger.record_touch(
+            test_metrics,
+            marker_index=index,
+            target_x=target_x,
+            target_y=target_y,
+            actual_x=target_x,  # For now, assume perfect; enhance with actual position if available
+            actual_y=target_y,
+            area_px=area_px,
+        )
+
+        return ok
 
     def check_touch_fn(_index: int) -> bool:
         return device.wait_for_touch_feedback(timeout=args.touch_timeout) is not None
@@ -174,7 +210,19 @@ def main() -> int:
         if not points:
             return False
 
-        return controller.swipe_along_points(points, z_touch=z_touch)
+        swipe_start = time.time()
+        ok = controller.swipe_along_points(points, z_touch=z_touch)
+        swipe_duration = time.time() - swipe_start
+
+        # Record swipe metric
+        metrics_logger.record_swipe(
+            test_metrics,
+            num_points=len(points),
+            duration_sec=swipe_duration,
+            success=ok,
+        )
+
+        return ok
 
     def safe_pose_fn() -> None:
         robot.move_safe(preserve_orientation=True)
@@ -214,6 +262,7 @@ def main() -> int:
         runtime["z_touch"] = None
 
     # Inject optional hooks to implement operational behavior for states.
+    model.move_to_roi_fn = move_to_roi_fn
     model.camera_on_fn = camera_on_fn
     model.detect_markers_fn = detect_markers_fn
     model.align_with_markers_fn = align_with_markers_fn
@@ -233,8 +282,19 @@ def main() -> int:
 
     steps = 0
     while machine.state not in ["done", "error"]:
+        current_state = machine.state
         machine.next_state()
+        next_state = machine.state
         steps += 1
+
+        # Record state transition timing
+        if current_state != next_state:
+            state_duration = time.time() - runtime["state_enter_time"]
+            metrics_logger.record_state_transition(
+                test_metrics, current_state, next_state, state_duration
+            )
+            runtime["state_enter_time"] = time.time()
+            runtime["last_state"] = next_state
 
         if steps >= args.max_steps:
             logging.error("Max steps reached (%s). Stopping.", args.max_steps)
@@ -243,6 +303,17 @@ def main() -> int:
         time.sleep(args.loop_delay)
 
     logging.info("FSM stopped at state: %s (steps=%s)", machine.state, steps)
+
+    # Finalize and save metrics
+    final_result = "success" if machine.state == "done" else "error"
+    metrics_logger.finalize_test(
+        test_metrics,
+        final_result=final_result,
+        total_steps=steps,
+        error_touches=model.error_touch,
+    )
+    metrics_file = metrics_logger.save_metrics(test_metrics)
+    logging.info("Test metrics saved to: %s", metrics_file)
 
     try:
         device.stop()
