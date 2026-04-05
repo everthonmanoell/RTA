@@ -51,6 +51,14 @@ try:
     DEVICE_YDPI = _marker_params.get("ydpi", 0.0)
     SCREEN_WIDTH_PX = _marker_params.get("screen_width_px", 0.0)
     SCREEN_HEIGHT_PX = _marker_params.get("screen_height_px", 0.0)
+    DEVICE_ORIENTATION = _marker_params.get("orientation", "unknown")
+    DEVICE_ROTATION = _marker_params.get("rotation", 0)
+    SYSTEM_INSET_LEFT_PX = _marker_params.get("inset_left_px", 0.0)
+    SYSTEM_INSET_TOP_PX = _marker_params.get("inset_top_px", 0.0)
+    SYSTEM_INSET_RIGHT_PX = _marker_params.get("inset_right_px", 0.0)
+    SYSTEM_INSET_BOTTOM_PX = _marker_params.get("inset_bottom_px", 0.0)
+    METADATA_TIMESTAMP_MS = _marker_params.get("timestamp_ms", 0.0)
+    METADATA_ELAPSED_REALTIME_MS = _marker_params.get("elapsed_realtime_ms", 0.0)
 except Exception as e:
     print(f"[config.py] Erro ao carregar parâmetros dinâmicos: {e}. Usando valores padrão.")
     MARKER_REAL_WIDTH_MM = 100.0
@@ -64,6 +72,14 @@ except Exception as e:
     DEVICE_YDPI = 0.0
     SCREEN_WIDTH_PX = 0.0
     SCREEN_HEIGHT_PX = 0.0
+    DEVICE_ORIENTATION = "unknown"
+    DEVICE_ROTATION = 0
+    SYSTEM_INSET_LEFT_PX = 0.0
+    SYSTEM_INSET_TOP_PX = 0.0
+    SYSTEM_INSET_RIGHT_PX = 0.0
+    SYSTEM_INSET_BOTTOM_PX = 0.0
+    METADATA_TIMESTAMP_MS = 0.0
+    METADATA_ELAPSED_REALTIME_MS = 0.0
 
 # Profundidade de referência para calibração de distância
 # (distância em que você quer calibrar)

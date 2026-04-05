@@ -19,6 +19,14 @@ default_params = {
     "ydpi": 0.0,
     "screen_width_px": 0.0,
     "screen_height_px": 0.0,
+    "orientation": "unknown",
+    "rotation": 0,
+    "inset_left_px": 0.0,
+    "inset_top_px": 0.0,
+    "inset_right_px": 0.0,
+    "inset_bottom_px": 0.0,
+    "timestamp_ms": 0.0,
+    "elapsed_realtime_ms": 0.0,
 }
 
 # Função para aguardar parâmetros do app Android
@@ -38,7 +46,14 @@ def receive_marker_params(timeout_seconds: float = 15.0):
 
         with conn:
             print(f"Conectado por {addr}")
-            data = conn.recv(1024)
+            chunks = []
+            while True:
+                chunk = conn.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+
+            data = b"".join(chunks)
             if not data:
                 print("Nenhum dado recebido. Usando parâmetros padrão.")
                 return default_params
@@ -56,6 +71,14 @@ def receive_marker_params(timeout_seconds: float = 15.0):
                 ydpi = float(params.get("ydpi", default_params["ydpi"]))
                 screen_width_px = float(params.get("screen_width_px", default_params["screen_width_px"]))
                 screen_height_px = float(params.get("screen_height_px", default_params["screen_height_px"]))
+                orientation = str(params.get("orientation", default_params["orientation"]))
+                rotation = int(params.get("rotation", default_params["rotation"]))
+                inset_left_px = float(params.get("inset_left_px", default_params["inset_left_px"]))
+                inset_top_px = float(params.get("inset_top_px", default_params["inset_top_px"]))
+                inset_right_px = float(params.get("inset_right_px", default_params["inset_right_px"]))
+                inset_bottom_px = float(params.get("inset_bottom_px", default_params["inset_bottom_px"]))
+                timestamp_ms = float(params.get("timestamp_ms", default_params["timestamp_ms"]))
+                elapsed_realtime_ms = float(params.get("elapsed_realtime_ms", default_params["elapsed_realtime_ms"]))
 
                 # Optional fallback: derive marker size from tag_size_px and display DPI.
                 if (width_mm <= 0 or height_mm <= 0) and "tag_size_px" in params:
@@ -80,6 +103,14 @@ def receive_marker_params(timeout_seconds: float = 15.0):
                     "ydpi": ydpi,
                     "screen_width_px": screen_width_px,
                     "screen_height_px": screen_height_px,
+                    "orientation": orientation,
+                    "rotation": rotation,
+                    "inset_left_px": inset_left_px,
+                    "inset_top_px": inset_top_px,
+                    "inset_right_px": inset_right_px,
+                    "inset_bottom_px": inset_bottom_px,
+                    "timestamp_ms": timestamp_ms,
+                    "elapsed_realtime_ms": elapsed_realtime_ms,
                 }
             except Exception as e:
                 print(f"Erro ao decodificar parâmetros: {e}")
