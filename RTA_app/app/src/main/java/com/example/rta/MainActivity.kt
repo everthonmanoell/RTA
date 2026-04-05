@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.content.Context
+import android.content.res.Configuration
 import android.provider.Settings
 import android.util.DisplayMetrics
 import android.util.Log
@@ -86,23 +88,31 @@ class MainActivity : Activity() {
         Thread {
             try {
                 val socket = java.net.Socket(pythonServerIp, pythonServerPort)
-                val dm = resources.displayMetrics
+                val snapshot = captureDisplaySnapshot()
                 val params = JSONObject().apply {
                     put("MARKER_REAL_WIDTH_MM", markerRealWidthMm)
                     put("MARKER_REAL_HEIGHT_MM", markerRealHeightMm)
                     put("MARKER_X_DISTANCE_MM", markerXDistanceMm)
 
                     put("tag_size_dp", markerTagSizeDp)
-                    put("tag_size_px", markerTagSizeDp * dm.density)
+                    put("tag_size_px", markerTagSizeDp * snapshot.density)
                     put("margin_dp", markerMarginDp)
-                    put("margin_px", markerMarginDp * dm.density)
+                    put("margin_px", markerMarginDp * snapshot.density)
 
-                    put("density", dm.density)
-                    put("density_dpi", dm.densityDpi)
-                    put("xdpi", dm.xdpi)
-                    put("ydpi", dm.ydpi)
-                    put("screen_width_px", dm.widthPixels)
-                    put("screen_height_px", dm.heightPixels)
+                    put("density", snapshot.density)
+                    put("density_dpi", snapshot.densityDpi)
+                    put("xdpi", snapshot.xdpi)
+                    put("ydpi", snapshot.ydpi)
+                    put("screen_width_px", snapshot.widthPx)
+                    put("screen_height_px", snapshot.heightPx)
+                    put("orientation", snapshot.orientation)
+                    put("rotation", snapshot.rotation)
+                    put("inset_left_px", snapshot.insetLeftPx)
+                    put("inset_top_px", snapshot.insetTopPx)
+                    put("inset_right_px", snapshot.insetRightPx)
+                    put("inset_bottom_px", snapshot.insetBottomPx)
+                    put("timestamp_ms", System.currentTimeMillis())
+                    put("elapsed_realtime_ms", SystemClock.elapsedRealtime())
 
                     put("device_type", deviceType)
                     put("manufacturer", Build.MANUFACTURER)
@@ -726,7 +736,24 @@ class MainActivity : Activity() {
         return bitmap
     }
 
-    private fun extractPreciseDeviceMetrics(): String {
+    private data class DisplaySnapshot(
+        val widthPx: Int,
+        val heightPx: Int,
+        val density: Float,
+        val densityDpi: Int,
+        val xdpi: Float,
+        val ydpi: Float,
+        val orientation: String,
+        val rotation: Int,
+        val insetLeftPx: Int,
+        val insetTopPx: Int,
+        val insetRightPx: Int,
+        val insetBottomPx: Int
+    )
+
+    private fun captureDisplaySnapshot(): DisplaySnapshot {
+        val dm = resources.displayMetrics
+
         val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             windowManager.currentWindowMetrics.bounds
         } else {
@@ -736,12 +763,61 @@ class MainActivity : Activity() {
             android.graphics.Rect(0, 0, metrics.widthPixels, metrics.heightPixels)
         }
 
+        val rotation = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            display?.rotation ?: 0
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.rotation
+        }
+
+        val orientation = when (resources.configuration.orientation) {
+            Configuration.ORIENTATION_PORTRAIT -> "portrait"
+            Configuration.ORIENTATION_LANDSCAPE -> "landscape"
+            else -> "undefined"
+        }
+
+        val (insetLeftPx, insetTopPx, insetRightPx, insetBottomPx) =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val wi = windowManager.currentWindowMetrics.windowInsets
+                val sysInsets = wi.getInsetsIgnoringVisibility(
+                    WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+                )
+                listOf(sysInsets.left, sysInsets.top, sysInsets.right, sysInsets.bottom)
+            } else {
+                listOf(0, 0, 0, 0)
+            }
+
+        return DisplaySnapshot(
+            widthPx = bounds.width(),
+            heightPx = bounds.height(),
+            density = dm.density,
+            densityDpi = dm.densityDpi,
+            xdpi = dm.xdpi,
+            ydpi = dm.ydpi,
+            orientation = orientation,
+            rotation = rotation,
+            insetLeftPx = insetLeftPx,
+            insetTopPx = insetTopPx,
+            insetRightPx = insetRightPx,
+            insetBottomPx = insetBottomPx
+        )
+    }
+
+    private fun extractPreciseDeviceMetrics(): String {
+        val snapshot = captureDisplaySnapshot()
+
         return """
             {
                 "fabricante": "${Build.MANUFACTURER}",
                 "modelo": "${Build.MODEL}",
-                "w_px": ${bounds.width()},
-                "h_px": ${bounds.height()}
+                "w_px": ${snapshot.widthPx},
+                "h_px": ${snapshot.heightPx},
+                "orientation": "${snapshot.orientation}",
+                "rotation": ${snapshot.rotation},
+                "inset_left_px": ${snapshot.insetLeftPx},
+                "inset_top_px": ${snapshot.insetTopPx},
+                "inset_right_px": ${snapshot.insetRightPx},
+                "inset_bottom_px": ${snapshot.insetBottomPx}
             }
         """.trimIndent()
     }
