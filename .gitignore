@@ -1,2 +1,12 @@
 # ignoring FOV
 FOV/
+__pycache__/
+abstract/__pycache__/
+drivers/__pycache__/__init__.cpython-311.pyc
+drivers/alignment/__pycache__/
+drivers/device/__pycache__/__init__.cpython-311.pyc
+drivers/device/__pycache__/mobile.cpython-311.pyc
+drivers/robot/__pycache__/
+drivers/vision/__pycache__/
+utils/__pycache__/
+state_machine/__pycache__/

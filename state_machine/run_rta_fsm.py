@@ -64,6 +64,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-steps", type=int, default=5000, help="Safety max number of FSM steps")
     parser.add_argument("--touch-timeout", type=float, default=3.0, help="Seconds waiting touch feedback")
     parser.add_argument("--metrics-dir", default="test_results", help="Output directory for metrics")
+    parser.add_argument(
+        "--stop-at-state",
+        choices=["connect_robot", "motor_on", "move_to_roi"],
+        default=None,
+        help="Stop execution as soon as the FSM reaches this state",
+    )
     return parser.parse_args()
 
 
@@ -154,13 +160,30 @@ def main() -> int:
     }
 
     def move_to_roi_fn() -> None:
+        before_pose = robot.get_cartesian_pose()
         moved = False
         if hasattr(robot, "move_to_roi"):
             moved = bool(robot.move_to_roi())
 
         if not moved:
             # Fallback keeps execution robust if ROI pose is not configured yet.
+            logging.warning("move_to_roi() retornou False. Aplicando fallback move_safe().")
             robot.move_safe(preserve_orientation=True)
+
+        after_pose = robot.get_cartesian_pose()
+        if before_pose is not None and after_pose is not None:
+            dx = after_pose.x - before_pose.x
+            dy = after_pose.y - before_pose.y
+            dz = after_pose.z - before_pose.z
+            logging.info(
+                "ROI delta de pose: dx=%.3f, dy=%.3f, dz=%.3f (moved=%s)",
+                dx,
+                dy,
+                dz,
+                moved,
+            )
+        else:
+            logging.info("Não foi possível comparar pose antes/depois do move_to_roi (moved=%s)", moved)
 
         runtime["markers"] = []
         runtime["z_touch"] = None
@@ -371,6 +394,10 @@ def main() -> int:
         next_state = machine.state
         steps += 1
 
+        if args.stop_at_state and next_state == args.stop_at_state:
+            logging.info("Stop target reached: %s", next_state)
+            break
+
         # Record state transition timing
         if current_state != next_state:
             state_duration = time.time() - runtime["state_enter_time"]
@@ -390,6 +417,8 @@ def main() -> int:
 
     # Finalize and save metrics
     final_result = "success" if machine.state == "done" else "error"
+    if args.stop_at_state and machine.state == args.stop_at_state:
+        final_result = f"stopped_at_{args.stop_at_state}"
     metrics_logger.finalize_test(
         test_metrics,
         final_result=final_result,
@@ -413,6 +442,9 @@ def main() -> int:
         robot.disconnect()
     except Exception:
         pass
+
+    if args.stop_at_state and machine.state == args.stop_at_state:
+        return 0
 
     return 0 if machine.state == "done" else 1
 
