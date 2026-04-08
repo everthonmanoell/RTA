@@ -163,11 +163,11 @@ ROTATION_ALIGNMENT_CONFIG = {
 # ============================================================================
 
 TOUCH_CONFIG = {
-    # Distância de aproximação para toque
+    "enabled": True,
     "approach_distance_mm": 150.0,  # Mais perto para maior precisão
-    
+    "offset_x": 88.0,
     # Timings de toque
-    "touch_delay_before_lift": 0.5,  # segundos (pressionado)
+    "offset_z": 75.0,
     "touch_delay_after_touch": 0.5,  # segundos (aguardar resposta)
 }
 
@@ -178,7 +178,7 @@ TOUCH_CONFIG = {
 # Configure aqui o TCP da ferramenta (ex.: caneta) em relação ao flange.
 # O bootstrap do FSM usa esses valores automaticamente quando o motor liga.
 TOOL_CONFIG = {
-    "enabled": False,
+    "enabled": True,
     "tag": "pen_tool",
     "offset_x": 88.0,
     "offset_y": 0.0,

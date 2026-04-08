@@ -1,5 +1,8 @@
+import logging
+
 from aether_rdk import DensoRobot
 from aether_rdk.datatypes import CartesianAxis, Joint, Offset3D, Pose
+
 from abstract.abstract_robot import AbstractRobot
 
 
@@ -34,15 +37,24 @@ class Denso(AbstractRobot):
     ROI_RX = -179.75
     ROI_RY = -3.88
     ROI_RZ = 178.94
+    DEFAULT_FIG = 5
 
     def __init__(self, workspace_name: str, control_name: str, options: str):
         self.denso_robot = DensoRobot(workspace_name, control_name, options)
+        self._motor_on_state = False
+        self._logger = logging.getLogger(__name__)
 
     def connect(self) -> bool:
-        return self.denso_robot.connect()
+        connected = self.denso_robot.connect()
+        if not connected:
+            self._motor_on_state = False
+        return connected
 
     def disconnect(self) -> bool:
-        return self.denso_robot.disconnect()
+        disconnected = self.denso_robot.disconnect()
+        if disconnected:
+            self._motor_on_state = False
+        return disconnected
 
     def motor_on(self) -> bool:
         """
@@ -51,8 +63,10 @@ class Denso(AbstractRobot):
         try:
             self.denso_robot.take_arm()
             self.denso_robot.robot.motor_on()
+            self._motor_on_state = True
             return True
         except Exception:
+            self._motor_on_state = False
             return False
 
     def motor_off(self) -> bool:
@@ -62,12 +76,27 @@ class Denso(AbstractRobot):
         try:
             self.denso_robot.robot.motor_off()
             self.denso_robot.give_arm()
+            self._motor_on_state = False
             return True
         except Exception:
             return False
 
     def is_motor_on(self) -> bool:
-        return self.denso_robot.robot.motor_enabled
+        try:
+            robot_api = self.denso_robot.robot
+
+            if hasattr(robot_api, "motor_enabled"):
+                return bool(getattr(robot_api, "motor_enabled"))
+
+            if hasattr(robot_api, "is_motor_on"):
+                is_motor_on_attr = getattr(robot_api, "is_motor_on")
+                if callable(is_motor_on_attr):
+                    return bool(is_motor_on_attr())
+                return bool(is_motor_on_attr)
+        except Exception:
+            pass
+
+        return bool(self._motor_on_state)
 
     def set_arm_speed(
         self,
@@ -94,7 +123,20 @@ class Denso(AbstractRobot):
         return self.denso_robot.robot.move_joints(command)
 
     def move_cartesian(self, command: Pose) -> bool:
-        return self.denso_robot.robot.move_pose(command)
+        try:
+            return self.denso_robot.robot.move_pose(command)
+        except Exception as e:
+            self._logger.error(
+                "Falha em move_cartesian para pose x=%.3f y=%.3f z=%.3f rx=%.3f ry=%.3f rz=%.3f: %s",
+                command.x,
+                command.y,
+                command.z,
+                command.rx,
+                command.ry,
+                command.rz,
+                e,
+            )
+            return False
 
     def get_cartesian_pose(self) -> Pose | None:
         return self.denso_robot.robot.get_pose()
@@ -115,8 +157,10 @@ class Denso(AbstractRobot):
             bool
         """
         try:
+            current_pose = self.get_cartesian_pose()
+            fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
+
             if preserve_orientation:
-                current_pose = self.get_cartesian_pose()
                 if current_pose is None:
                     return False
 
@@ -127,6 +171,7 @@ class Denso(AbstractRobot):
                     rx=current_pose.rx,
                     ry=current_pose.ry,
                     rz=current_pose.rz,
+                    fig=fig,
                 )
             else:
                 safe_pose = Pose(
@@ -136,11 +181,13 @@ class Denso(AbstractRobot):
                     rx=self.SAFE_RX,
                     ry=self.SAFE_RY,
                     rz=self.SAFE_RZ,
+                    fig=fig,
                 )
 
             return self.move_cartesian(safe_pose)
 
-        except Exception:
+        except Exception as e:
+            self._logger.error("Falha em move_safe: %s", e)
             return False
 
     def move_to_roi(self) -> bool:
@@ -151,6 +198,9 @@ class Denso(AbstractRobot):
             bool
         """
         try:
+            current_pose = self.get_cartesian_pose()
+            fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
+
             roi_pose = Pose(
                 x=self.ROI_X,
                 y=self.ROI_Y,
@@ -158,7 +208,9 @@ class Denso(AbstractRobot):
                 rx=self.ROI_RX,
                 ry=self.ROI_RY,
                 rz=self.ROI_RZ,
+                fig=fig,
             )
             return self.move_cartesian(roi_pose)
-        except Exception:
+        except Exception as e:
+            self._logger.error("Falha em move_to_roi: %s", e)
             return False

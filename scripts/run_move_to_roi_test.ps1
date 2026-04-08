@@ -1,0 +1,99 @@
+<#
+Script de teste rápido da FSM até um estado alvo (padrão: move_to_roi).
+
+Como usar (na raiz do repositório):
+    .\scripts\run_move_to_roi_test.ps1
+
+Quando o IP mudar, atualize estes parâmetros:
+    -RobotServerIp  : IP do controlador/robô Denso (usado em --options "Server=...")
+    -PythonServerIp : IP que o app Android usa para enviar parâmetros para o Python.
+                                        Com `adb reverse`, deixe 127.0.0.1.
+
+Exemplo completo:
+    .\scripts\run_move_to_roi_test.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.17.128" -PythonServerIp "127.0.0.1"
+#>
+
+param(
+    [Parameter(Mandatory = $false)]
+    [string]$WorkspaceName = "RTA_WORKSPACE",
+
+    [Parameter(Mandatory = $false)]
+    [string]$ControlName = "rta",
+
+    [Parameter(Mandatory = $false)]
+    # IP do Denso virtual/real (lado Python -> robô)
+    [string]$RobotServerIp = "192.168.17.128",
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("flat", "foldable", "one", "two", "three", "six", "seven", "eight")]
+    [string]$DeviceType = "flat",
+
+    [Parameter(Mandatory = $false)]
+    # IP que o Android usa para conectar no listener Python (lado app -> Python)
+    # Com adb reverse, use 127.0.0.1. Sem reverse, use o IPv4 da máquina.
+    [string]$PythonServerIp = "127.0.0.1",
+
+    [Parameter(Mandatory = $false)]
+    # Porta do listener Python em utils/receive_marker_params.py
+    [int]$PythonServerPort = 50505,
+
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("connect_robot", "motor_on", "move_to_roi")]
+    [string]$StopAtState = "move_to_roi",
+
+    [Parameter(Mandatory = $false)]
+    [int]$MaxSteps = 50,
+
+    [Parameter(Mandatory = $false)]
+    [double]$LoopDelay = 0.05
+)
+
+$ErrorActionPreference = "Stop"
+
+$repoRoot = Split-Path -Parent $PSScriptRoot
+Set-Location $repoRoot
+
+Write-Host "[1/5] Verificando ADB device..."
+adb devices
+
+Write-Host "[2/5] Configurando adb reverse para tcp:$PythonServerPort..."
+# Redireciona localhost do Android para a mesma porta no host (USB).
+adb reverse "tcp:$PythonServerPort" "tcp:$PythonServerPort"
+
+Write-Host "[3/5] Forçando restart do app RTA..."
+# Importante para garantir novo onCreate() e reenvio dos parâmetros.
+adb shell am force-stop com.example.rta
+
+# Inicia o app alguns instantes depois, enquanto o Python já estará escutando.
+$startAppJob = Start-Job -ScriptBlock {
+    param($appIp, $appPort, $deviceType)
+    Start-Sleep -Seconds 1
+    adb shell am start -S -n com.example.rta/.MainActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
+} -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType
+
+Write-Host "[4/5] Executando FSM até '$StopAtState'..."
+$cmd = @(
+    "run",
+    "python",
+    "state_machine/run_rta_fsm.py",
+    "--workspace", $WorkspaceName,
+    "--control", $ControlName,
+    # options do RC8 provider: aponta para o IP do robô/controlador
+    "--options", "Server=$RobotServerIp",
+    "--stop-at-state", $StopAtState,
+    "--max-steps", "$MaxSteps",
+    "--loop-delay", "$LoopDelay"
+)
+
+& poetry @cmd
+$pythonExitCode = $LASTEXITCODE
+
+Write-Host "[5/5] Resultado do start do app:"
+Receive-Job -Job $startAppJob -Wait | Out-String | Write-Host
+Remove-Job -Job $startAppJob -Force
+
+if ($pythonExitCode -ne 0) {
+    Write-Error "FSM finalizou com exit code $pythonExitCode"
+}
+
+Write-Host "Teste finalizado com sucesso (exit code 0)."
