@@ -172,6 +172,23 @@ TOUCH_CONFIG = {
 }
 
 # ============================================================================
+# CONFIGURAÇÃO DE TOOL (TCP)
+# ============================================================================
+
+# Configure aqui o TCP da ferramenta (ex.: caneta) em relação ao flange.
+# O bootstrap do FSM usa esses valores automaticamente quando o motor liga.
+TOOL_CONFIG = {
+    "enabled": False,
+    "tag": "pen_tool",
+    "offset_x": 88.0,
+    "offset_y": 0.0,
+    "offset_z": 75.0,
+    "offset_rx": 0.0,
+    "offset_ry": 0.0,
+    "offset_rz": 0.0,
+}
+
+# ============================================================================
 # CALIBRAÇÃO DE CÂMERA INTRÍNSECA (Opcional, mais avançado)
 # ============================================================================
 
