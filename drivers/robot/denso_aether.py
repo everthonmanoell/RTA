@@ -16,24 +16,24 @@ class Denso(AbstractRobot):
 
     # TODO PRECISA AJUSTAR OS VALORES REAIS
     # Ajuste com os valores REAIS da sua pose segura
-    SAFE_X = 0.0
-    SAFE_Y = 0.0
-    SAFE_Z = 200.0
+    SAFE_X = 316.87
+    SAFE_Y = 14.56
+    SAFE_Z = 542.34
 
     # Se você souber a orientação segura exata, mantenha aqui.
     # Se preferir preservar a orientação atual, veja o método move_safe().
-    SAFE_RX = 180.0
-    SAFE_RY = 0.0
-    SAFE_RZ = 180.0
+    SAFE_RX = -179.75
+    SAFE_RY = -3.88
+    SAFE_RZ = 178.94
 
     # ROI (region of interest): pose para a camera enxergar a tela alvo.
     # Ajuste esses valores para o setup real (suporte, distancia e inclinacao).
-    ROI_X = 0.0
-    ROI_Y = 0.0
-    ROI_Z = 250.0
-    ROI_RX = 180.0
-    ROI_RY = 0.0
-    ROI_RZ = 180.0
+    ROI_X = 316.87
+    ROI_Y = 14.56
+    ROI_Z = 542.34
+    ROI_RX = -179.75
+    ROI_RY = -3.88
+    ROI_RZ = 178.94
 
     def __init__(self, workspace_name: str, control_name: str, options: str):
         self.denso_robot = DensoRobot(workspace_name, control_name, options)

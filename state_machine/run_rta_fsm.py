@@ -1,7 +1,9 @@
 import argparse
 import logging
 import time
+from types import MethodType
 
+from aether_rdk.datatypes import Offset3D
 from rta import Rta
 from rta_model import RtaModel
 
@@ -18,6 +20,38 @@ from utils.coordinate_transform import (
 )
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
+
+
+def _configure_tool_from_config(robot: Denso) -> bool:
+    tool_cfg = getattr(config, "TOOL_CONFIG", {})
+    if not isinstance(tool_cfg, dict):
+        logging.error("TOOL_CONFIG inválido: esperado dict.")
+        return False
+
+    if not tool_cfg.get("enabled", False):
+        logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
+        return True
+
+    tag = str(tool_cfg.get("tag", "pen_tool"))
+    offset = Offset3D(
+        x=float(tool_cfg.get("offset_x", 0.0)),
+        y=float(tool_cfg.get("offset_y", 0.0)),
+        z=float(tool_cfg.get("offset_z", 0.0)),
+        rx=float(tool_cfg.get("offset_rx", 0.0)),
+        ry=float(tool_cfg.get("offset_ry", 0.0)),
+        rz=float(tool_cfg.get("offset_rz", 0.0)),
+    )
+
+    if not robot.create_tool_reference(offset, tag):
+        logging.error("Falha ao criar referência de tool '%s'.", tag)
+        return False
+
+    if not robot.set_current_tool_by_tag(tag):
+        logging.error("Falha ao selecionar tool '%s'.", tag)
+        return False
+
+    logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
+    return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,6 +118,27 @@ def main() -> int:
         control_name=args.control,
         options=args.options,
     )
+
+    def _turn_motor_on_action_with_tool(self):
+        """Liga motor e configura tool automaticamente ao entrar em operação."""
+        self.motor_on_attempt += 1
+
+        if not self.robot_connected_flag or self.denso_robot is None:
+            self.motor_on_flag = False
+            return
+
+        try:
+            self.motor_on_flag = bool(self.denso_robot.motor_on())
+            if self.motor_on_flag:
+                if _configure_tool_from_config(robot):
+                    self.motor_on_attempt = 0
+                else:
+                    self.motor_on_flag = False
+        except Exception:
+            self.motor_on_flag = False
+
+    model.turn_motor_on_action = MethodType(_turn_motor_on_action_with_tool, model)
+
     device, camera, detector, auto_align, controller = _build_operational_stack(robot)
 
     metrics_logger = MetricsLogger(output_dir=args.metrics_dir)
