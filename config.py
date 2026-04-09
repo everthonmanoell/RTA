@@ -5,6 +5,8 @@ Este arquivo fornece valores de exemplo e orientações para calibrar
 o sistema de alinhamento visual para seu setup específico.
 """
 
+import os
+
 # ============================================================================
 # CONFIGURAÇÃO DE CÂMERA
 # ============================================================================
@@ -12,8 +14,8 @@ o sistema de alinhamento visual para seu setup específico.
 CAMERA_CONFIG = {
     "camera_id": 0,  # ID da câmera no OpenCV (0 = primária)
     "output_dir": "log_images",  # Diretório para salvar frames
-    "frame_width": 640,  # Resolução recomendada
-    "frame_height": 480,
+    "frame_width": 1080,  # Resolução recomendada
+    "frame_height": 720,
 }
 
 # Propriedades OpenCV para sua câmera
@@ -36,10 +38,56 @@ FINAL_FAILURE_MARKER_ID = 200
 
 
 # Tamanho real dos seus markers ArUco em milímetros e espaçamento
-# Agora pode ser definido dinamicamente via socket (ver utils/receive_marker_params.py)
+# Carregamento priorizado:
+# 1. ADB: Obtém DisplayMetrics direto do device (resoluçao, DPI, tag_size, offset).
+#    → Rápido, confiável, não depende do app.
+# 2. Socket: Tenta receber DisplayMetrics + insets do app Android (opcional, para refinar).
+# 3. Cache: Último payload válido se ADB e socket falharem.
+# 4. Defaults: Fallback final se tudo falhar.
+
+_marker_params = None
+DEVICE_TYPE = str(os.getenv("RTA_DEVICE_TYPE", "flat")).strip().lower() or "flat"
+_adb_device_type = "foldable" if DEVICE_TYPE == "foldable" else "flat"
+
+# CAMADA 1: Tenta ADB first (mais rápido e confiável)
 try:
-    from utils.receive_marker_params import receive_marker_params
-    _marker_params = receive_marker_params()
+    from utils.adb_device_metrics import get_device_metrics_via_adb
+    _marker_params = get_device_metrics_via_adb(device_type=_adb_device_type)
+    if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
+        print("[config.py] DisplayMetrics via ADB: OK")
+    else:
+        print("[config.py] ADB retornou dados inválidos. Tentando socket...")
+        _marker_params = None
+except Exception as adb_err:
+    print(f"[config.py] ADB falhou: {adb_err}. Tentando socket...")
+    _marker_params = None
+
+# CAMADA 2: Se ADB falhou, tenta socket (insets opcionais)
+if _marker_params is None:
+    try:
+        from utils.receive_marker_params import receive_marker_params
+        socket_params = receive_marker_params(timeout_seconds=12.0)
+        if socket_params and socket_params.get("screen_width_px", 0.0) > 0:
+            _marker_params = socket_params
+            print("[config.py] DisplayMetrics via socket: OK")
+        else:
+            print("[config.py] Socket retornou dados inválidos.")
+    except Exception as socket_err:
+        print(f"[config.py] Socket falhou: {socket_err}.")
+
+# CAMADA 3: Se ADB e socket falharam, tenta cache
+if _marker_params is None:
+    try:
+        from utils.receive_marker_params import _load_cached_params
+        cached = _load_cached_params()
+        if cached:
+            _marker_params = cached
+            print("[config.py] DisplayMetrics via cache: OK")
+    except Exception as cache_err:
+        print(f"[config.py] Cache falhou: {cache_err}.")
+
+# CAMADA 4: Se tudo falhou, defaults
+if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
     MARKER_REAL_WIDTH_MM = _marker_params["MARKER_REAL_WIDTH_MM"]
     MARKER_REAL_HEIGHT_MM = _marker_params["MARKER_REAL_HEIGHT_MM"]
     MARKER_X_DISTANCE_MM = _marker_params["MARKER_X_DISTANCE_MM"]
@@ -59,8 +107,10 @@ try:
     SYSTEM_INSET_BOTTOM_PX = _marker_params.get("inset_bottom_px", 0.0)
     METADATA_TIMESTAMP_MS = _marker_params.get("timestamp_ms", 0.0)
     METADATA_ELAPSED_REALTIME_MS = _marker_params.get("elapsed_realtime_ms", 0.0)
-except Exception as e:
-    print(f"[config.py] Erro ao carregar parâmetros dinâmicos: {e}. Usando valores padrão.")
+    DEVICE_MODEL = str(_marker_params.get("device_model", "unknown")).strip() or "unknown"
+    print(f"[config.py] Screen: {SCREEN_WIDTH_PX:.0f}x{SCREEN_HEIGHT_PX:.0f} @ {DEVICE_DENSITY_DPI} DPI, tag_size_px={MARKER_TAG_SIZE_PX:.1f}, margin_px={MARKER_MARGIN_PX:.1f}, model={DEVICE_MODEL}")
+else:
+    print("[config.py] Nenhuma fonte válida de DisplayMetrics. Usando DEFAULTS.")
     MARKER_REAL_WIDTH_MM = 100.0
     MARKER_REAL_HEIGHT_MM = 100.0
     MARKER_X_DISTANCE_MM = 500.0
@@ -80,6 +130,7 @@ except Exception as e:
     SYSTEM_INSET_BOTTOM_PX = 0.0
     METADATA_TIMESTAMP_MS = 0.0
     METADATA_ELAPSED_REALTIME_MS = 0.0
+    DEVICE_MODEL = "unknown"
 
 # Profundidade de referência para calibração de distância
 # (distância em que você quer calibrar)
@@ -119,16 +170,22 @@ AUTO_ALIGNMENT_CONFIG = {
     "target_distance_mm": 200.0,  # Distância padrão de aproximação
     
     # Ganhos de controle proporcional (PID simplificado)
-    "xy_gain": 0.3,  # Quanto da correção XY aplicar por iteração
-    "z_gain": 0.2,   # Quanto da correção Z aplicar por iteração
+    "xy_gain": 0.08,  # Reduzido drasticamente para evitar oscilação
+    "z_gain": 0.1,   # Quanto da correção Z aplicar por iteração
     
     # Limites de segurança para eixo Z do robô
     "z_max": 600.0,  # mm
     "z_min": 100.0,  # mm
     
     # Limites de iteração e tempo
-    "max_iterations": 20,
-    "iteration_delay": 0.5,  # segundos entre iterações
+    "max_iterations": 20,  # Aumentado pois os ganhos agora são menores
+    "iteration_delay": 0.35,  # segundos entre iterações
+    "max_xy_step_mm": 4.0,  # Reduzido para movimentos mais suaves
+    "max_z_step_mm": 4.0,    # limite por iteração em profundidade
+    "max_xy_drift_mm": 120.0,  # distância máxima permitida a partir do início do align
+    "max_no_improvement_iters": 6,  # aumentado para dar mais chances de convergência
+    "min_improvement_mm": 0.5,  # melhora mínima mais agressiva
+    "min_markers_for_align": 2,  # inspirado no FOV: permite pré-align com conjunto parcial
     
     # Velocidade de aproximação
     "approach_speed": 5.0,  # mm por iteração
