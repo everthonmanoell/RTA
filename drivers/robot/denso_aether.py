@@ -31,12 +31,20 @@ class Denso(AbstractRobot):
 
     # ROI (region of interest): pose para a camera enxergar a tela alvo.
     # Ajuste esses valores para o setup real (suporte, distancia e inclinacao).
-    ROI_X = 316.87
-    ROI_Y = 14.56
-    ROI_Z = 542.34
-    ROI_RX = -179.75
-    ROI_RY = -3.88
-    ROI_RZ = 178.94
+    # ROI_X = 236.12
+    # ROI_Y = 7.47
+    # ROI_Z = 172.85
+    # ROI_RX = 179.21
+    # ROI_RY = -3.18
+    # ROI_RZ = 179.27
+    # DEFAULT_FIG = 5
+
+    ROI_X = 226.39
+    ROI_Y = 7.47
+    ROI_Z = 226.68
+    ROI_RX = 179.25
+    ROI_RY = -1.60
+    ROI_RZ = 179.38
     DEFAULT_FIG = 5
 
     def __init__(self, workspace_name: str, control_name: str, options: str):

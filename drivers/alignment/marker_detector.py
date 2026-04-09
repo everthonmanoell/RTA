@@ -33,17 +33,31 @@ class MarkerDetector:
     geometric calculations.
     """
     
-    def __init__(self, marker_dict: int = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)):
+    def __init__(self, marker_dict=None, fallback_dicts: Optional[Sequence] = None):
         """
         Initialize MarkerDetector.
         
         Args:
             marker_dict: ArUco dictionary to use for detection.
+            fallback_dicts: Optional additional dictionaries to try when
+                detection fails in the primary dictionary.
         """
+        if marker_dict is None:
+            marker_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+
         self.detector = cv2.aruco.ArucoDetector(marker_dict)
+        self.fallback_detectors = [
+            cv2.aruco.ArucoDetector(curr_dict)
+            for curr_dict in (fallback_dicts or [])
+        ]
         self.logger = logging.getLogger(__name__)
     
-    def detect_markers(self, image: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[List]]:
+    def detect_markers(
+        self,
+        image: np.ndarray,
+        *,
+        log_missing: bool = True,
+    ) -> Tuple[Optional[np.ndarray], Optional[List]]:
         """
         Detect all ArUco markers in image.
         
@@ -57,8 +71,18 @@ class MarkerDetector:
                 Returns (None, None) if no markers detected.
         """
         corners, ids, rejected = self.detector.detectMarkers(image)
+        if ids is not None and len(ids) > 0:
+            return ids, corners
+
+        for idx, fallback_detector in enumerate(self.fallback_detectors, start=1):
+            corners, ids, rejected = fallback_detector.detectMarkers(image)
+            if ids is not None and len(ids) > 0:
+                self.logger.info("Markers detected using fallback dictionary #%s", idx)
+                return ids, corners
         
         if ids is None or len(ids) == 0:
+            if not log_missing:
+                return None, None
             self.logger.warning("No markers detected")
             return None, None
         

@@ -107,7 +107,11 @@ class MarkerTouchController:
         """
         Move o robô para uma pose cartesiana usando a API real do Denso.
         """
-        pose = Pose(x=x, y=y, z=z, rx=rx, ry=ry, rz=rz)
+        # Obter fig (frame/figura) da pose atual do robô
+        current_pose = self.robot_arm.get_cartesian_pose()
+        fig = current_pose.fig if current_pose is not None else 5
+
+        pose = Pose(x=x, y=y, z=z, rx=rx, ry=ry, rz=rz, fig=fig)
 
         success = self.robot_arm.move_cartesian(pose)
 

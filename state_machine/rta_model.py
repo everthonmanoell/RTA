@@ -12,8 +12,12 @@ class RtaModel:
 
         self.max_connect_robot_attempts = 3
         self.max_motor_on_attempts = 3
+        self.max_camera_on_attempts = 5
+        self.max_align_with_markers_attempts = 8
         self.connect_robot_attempt = 0
         self.motor_on_attempt = 0
+        self.camera_on_attempt = 0
+        self.align_with_markers_attempt = 0
 
         self.aligned_flag = False
         self.robot_connected_flag = False
@@ -46,6 +50,9 @@ class RtaModel:
 
     def set_aligned_false(self):
         self.aligned_flag = False
+
+    def set_align_with_markers_attempt_zero(self):
+        self.align_with_markers_attempt = 0
 
     def marker_index_eq_num_markers(self):
         return self.marker_index == self.num_markers
@@ -125,6 +132,12 @@ class RtaModel:
     def motor_on_attempts_gte_max(self):
         return self.motor_on_attempt >= self.max_motor_on_attempts
 
+    def camera_on_attempts_gte_max(self):
+        return self.camera_on_attempt >= self.max_camera_on_attempts
+
+    def align_with_markers_attempts_gte_max(self):
+        return self.align_with_markers_attempt >= self.max_align_with_markers_attempts
+
     def always_true(self):
         return True
 
@@ -136,6 +149,9 @@ class RtaModel:
 
     def markers_found(self):
         return self.markers_found_flag
+
+    def markers_not_found(self):
+        return not self.markers_found_flag
 
     def marker_index_eq_num_markers_minus_one(self):
         return self.marker_index == self.num_markers - 1
@@ -201,14 +217,18 @@ class RtaModel:
             self.move_to_roi_fn()
 
     def camera_on_action(self):
+        self.camera_on_attempt += 1
+
         if callable(self.camera_on_fn):
             try:
                 self.camera_on_flag = bool(self.camera_on_fn())
+                if self.camera_on_flag:
+                    self.camera_on_attempt = 0
                 return
             except Exception:
                 pass
 
-        self.camera_on_flag = True
+        self.camera_on_flag = False
 
     def detect_markers_action(self):
         """Try marker detection and update markers_found flag."""
@@ -219,7 +239,8 @@ class RtaModel:
                 if self.markers_found_flag:
                     self.detect_markers_attempts = 0
                 return
-            except Exception:
+            except Exception as exc:
+                print(f"[RtaModel] detect_markers_action error: {exc}")
                 self.markers_found_flag = False
                 return
 
@@ -232,11 +253,20 @@ class RtaModel:
         if callable(self.align_with_markers_fn):
             try:
                 self.aligned_flag = bool(self.align_with_markers_fn())
+                if self.aligned_flag:
+                    self.align_with_markers_attempt = 0
+                else:
+                    self.align_with_markers_attempt += 1
                 return
             except Exception:
+                self.align_with_markers_attempt += 1
                 pass
 
         self.aligned_flag = self.markers_found_flag
+        if self.aligned_flag:
+            self.align_with_markers_attempt = 0
+        else:
+            self.align_with_markers_attempt += 1
 
     def touch_marker_action(self):
         if callable(self.touch_marker_fn):
