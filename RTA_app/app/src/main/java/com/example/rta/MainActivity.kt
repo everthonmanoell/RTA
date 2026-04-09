@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
 import android.content.Context
 import android.content.res.Configuration
@@ -24,10 +26,16 @@ import android.widget.TextView
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import org.json.JSONObject
+import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
 
 class MainActivity : Activity() {
     private val markerTagSizeDp = 120f
     private val markerMarginDp = 16f
+    private val markerSendMaxAttempts = 20
+    private val markerSendRetryDelayMs = 750L
+    @Volatile
+    private var markerSendInProgress = false
 
     // --- Parâmetros do marcador (calculados dinamicamente) ---
     private var markerRealWidthMm: Float = 0f
@@ -36,7 +44,7 @@ class MainActivity : Activity() {
 
     // Python endpoint can be configured at runtime (Intent -> SharedPreferences -> default).
     private var pythonServerIp = "192.168.0.100"
-    private var pythonServerPort = 50505
+    private var pythonServerPort = 50605
 
     companion object {
         private const val PREFS_NAME = "rta_runtime_config"
@@ -85,9 +93,14 @@ class MainActivity : Activity() {
 
     // Envia os parâmetros via socket para o Python
     private fun sendMarkerParamsToPython() {
+        if (markerSendInProgress) {
+            Log.i("RTA", "Envio de parâmetros já em andamento; ignorando chamada duplicada")
+            return
+        }
+        markerSendInProgress = true
+
         Thread {
             try {
-                val socket = java.net.Socket(pythonServerIp, pythonServerPort)
                 val snapshot = captureDisplaySnapshot()
                 val params = JSONObject().apply {
                     put("MARKER_REAL_WIDTH_MM", markerRealWidthMm)
@@ -119,15 +132,55 @@ class MainActivity : Activity() {
                     put("model", Build.MODEL)
                     put("sdk_int", Build.VERSION.SDK_INT)
                 }.toString()
+                val payload = params.toByteArray(Charsets.UTF_8)
 
-                val out = socket.getOutputStream()
-                out.write(params.toByteArray())
-                out.flush()
-                out.close()
-                socket.close()
-                Log.i("RTA", "Parâmetros enviados para o Python: $params")
+                var sent = false
+                for (attempt in 1..markerSendMaxAttempts) {
+                    try {
+                        java.net.Socket().use { socket ->
+                            socket.tcpNoDelay = true
+                            socket.connect(InetSocketAddress(pythonServerIp, pythonServerPort), 1500)
+                            socket.soTimeout = 1500
+                            val out = socket.getOutputStream()
+                            out.write(payload)
+                            out.flush()
+                            socket.shutdownOutput()
+
+                            val ackBytes = ByteArray(2)
+                            val read = socket.getInputStream().read(ackBytes)
+                            val ack = if (read > 0) String(ackBytes, 0, read) else ""
+                            if (ack != "OK") {
+                                throw SocketTimeoutException("ACK inválido ou ausente: '$ack'")
+                            }
+                        }
+
+                        Log.i(
+                            "RTA",
+                            "Parâmetros enviados para o Python (tentativa $attempt/$markerSendMaxAttempts, bytes=${payload.size}): $params"
+                        )
+                        sent = true
+                        break
+                    } catch (e: Exception) {
+                        Log.e(
+                            "RTA",
+                            "Falha ao enviar parâmetros (tentativa $attempt/$markerSendMaxAttempts): ${e.message}"
+                        )
+                        if (attempt < markerSendMaxAttempts) {
+                            Thread.sleep(markerSendRetryDelayMs)
+                        }
+                    }
+                }
+
+                if (!sent) {
+                    Log.e(
+                        "RTA",
+                        "Falha definitiva ao enviar parâmetros para o Python após $markerSendMaxAttempts tentativas"
+                    )
+                }
             } catch (e: Exception) {
                 Log.e("RTA", "Erro ao enviar parâmetros para o Python: ${e.message}")
+            } finally {
+                markerSendInProgress = false
             }
         }.start()
     }
@@ -219,14 +272,12 @@ class MainActivity : Activity() {
         markerRealHeightMm = tagSizePx / ydpi * 25.4f
 
         // Espaçamento entre marcadores (horizontal): diferença entre left e right
+        val snapshot = captureDisplaySnapshot()
         val marginPx = markerMarginDp * density
-        val screenWidth = resources.displayMetrics.widthPixels
+        val usableWidthPx = snapshot.widthPx.toFloat()
         val left = marginPx
-        val right = screenWidth - marginPx - tagSizePx
-        markerXDistanceMm = (right - left) / xdpi * 25.4f
-
-        // Envia os parâmetros do marcador para o Python
-        sendMarkerParamsToPython()
+        val right = usableWidthPx - marginPx - tagSizePx
+        markerXDistanceMm = maxOf(0f, (right - left) / xdpi * 25.4f)
 
         // 1. FIRST start Screen 1 (THIS CREATES THE WINDOW)
         showArucoMarkersScreen()
@@ -235,12 +286,22 @@ class MainActivity : Activity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             window.insetsController?.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
         }
+
+        // Envia os parâmetros do marcador após a janela estar montada.
+        Handler(Looper.getMainLooper()).postDelayed({
+            sendMarkerParamsToPython()
+        }, 250)
     }
 
     override fun onResume() {
         super.onResume()
         // Always return to ArUco markers screen when app comes back to foreground
         showArucoMarkersScreen()
+
+        // Reenvia parâmetros em onResume para cobrir race conditions de startup.
+        Handler(Looper.getMainLooper()).postDelayed({
+            sendMarkerParamsToPython()
+        }, 250)
     }
 
     // ==========================================
@@ -365,45 +426,91 @@ class MainActivity : Activity() {
         tagSizeDp: Int = markerTagSizeDp.toInt(),
         marginDp: Int = markerMarginDp.toInt()
     ): List<ImageView> {
+        val snapshot = captureDisplaySnapshot()
         val density = resources.displayMetrics.density
         val tagSize = (tagSizeDp * density).toInt()
         val margin = (marginDp * density).toInt()
-        val screenHeight = resources.displayMetrics.heightPixels
-        val screenWidth = resources.displayMetrics.widthPixels
+        val contentLeft = 0
+        val contentTop = 0
+        val contentRight = snapshot.widthPx
+        val contentBottom = snapshot.heightPx
 
-        val left = margin
-        val right = screenWidth - margin - tagSize
-        val centerX = (screenWidth - tagSize) / 2
+        val contentWidth = maxOf(tagSize + (2 * margin) + 1, contentRight - contentLeft)
+        val contentHeight = maxOf(tagSize + (2 * margin) + 1, contentBottom - contentTop)
 
-        val positions: List<Pair<Int, Int>>
+        val areaLeft = contentLeft
+        val areaTop = contentTop
+        val areaRight = areaLeft + contentWidth
+        val areaBottom = areaTop + contentHeight
+
+        val left = areaLeft + margin
+        val right = areaRight - margin - tagSize
+        val createdViews = mutableListOf<ImageView>()
 
         if (tags.size <= 6) {
-            // Diagonal placement for flat devices
-            val top = margin
-            val bottom = screenHeight - margin - tagSize
-            val centerY = (screenHeight - tagSize) / 2
-            val midTopY = (top + centerY) / 2
-            val midBottomY = (centerY + bottom) / 2
+            for ((i, resId) in tags.withIndex()) {
+                val tag = ImageView(this).apply {
+                    setImageResource(resId)
+                    setBackgroundColor(Color.WHITE)
+                    scaleType = ImageView.ScaleType.FIT_XY
+                    adjustViewBounds = false
+                }
 
-            positions = listOf(
-                left to top,            // 1: Top-Left
-                right to bottom,        // 2: Bottom-Right
-                left to bottom,         // 3: Bottom-Left
-                right to top,           // 4: Top-Right
-                left to centerY,        // 5: Center-Left
-                right to centerY        // 6: Center-Right
-            )
+                val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
+                    when (i) {
+                        0 -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_START)
+                            addRule(RelativeLayout.ALIGN_PARENT_TOP)
+                            marginStart = margin
+                            topMargin = margin
+                        }
+                        1 -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_END)
+                            addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+                            marginEnd = margin
+                            bottomMargin = margin
+                        }
+                        2 -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_START)
+                            addRule(RelativeLayout.ALIGN_PARENT_BOTTOM)
+                            marginStart = margin
+                            bottomMargin = margin
+                        }
+                        3 -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_END)
+                            addRule(RelativeLayout.ALIGN_PARENT_TOP)
+                            marginEnd = margin
+                            topMargin = margin
+                        }
+                        4 -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_START)
+                            addRule(RelativeLayout.CENTER_VERTICAL)
+                            marginStart = margin
+                        }
+                        else -> {
+                            addRule(RelativeLayout.ALIGN_PARENT_END)
+                            addRule(RelativeLayout.CENTER_VERTICAL)
+                            marginEnd = margin
+                        }
+                    }
+                }
+
+                layout.addView(tag, params)
+                createdViews.add(tag)
+            }
+
+            return createdViews
         } else {
             // Foldable: split screen in 2 equal halves
-            val halfHeight = screenHeight / 2
+            val halfHeight = contentHeight / 2
 
             // Top half corners
-            val topHalfTop = margin
-            val topHalfBottom = halfHeight - margin - tagSize
+            val topHalfTop = areaTop + margin
+            val topHalfBottom = areaTop + halfHeight - margin - tagSize
 
             // Bottom half corners
-            val bottomHalfTop = halfHeight + margin
-            val bottomHalfBottom = screenHeight - margin - tagSize
+            val bottomHalfTop = areaTop + halfHeight + margin
+            val bottomHalfBottom = areaBottom - margin - tagSize
 
             // First 4: corners of the top half
             val topHalfPositions = listOf(
@@ -436,29 +543,28 @@ class MainActivity : Activity() {
                 )
             }
 
-            positions = topHalfPositions + bottomHalfPositions
-        }
+            val positions = topHalfPositions + bottomHalfPositions
+            for ((i, resId) in tags.withIndex()) {
+                if (i >= positions.size) break
+                val (x, y) = positions[i]
 
-        val createdViews = mutableListOf<ImageView>()
+                val tag = ImageView(this).apply {
+                    setImageResource(resId)
+                    setBackgroundColor(Color.WHITE)
+                    scaleType = ImageView.ScaleType.FIT_XY
+                    adjustViewBounds = false
+                }
+                val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
+                    leftMargin = x
+                    topMargin = y
+                }
 
-        for ((i, resId) in tags.withIndex()) {
-            if (i >= positions.size) break
-            val (x, y) = positions[i]
-
-            val tag = ImageView(this).apply {
-                setImageResource(resId)
-                setBackgroundColor(Color.WHITE)
+                layout.addView(tag, params)
+                createdViews.add(tag)
             }
-            val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
-                leftMargin = x
-                topMargin = y
-            }
 
-            layout.addView(tag, params)
-            createdViews.add(tag)
+            return createdViews
         }
-
-        return createdViews
     }
 
     /**

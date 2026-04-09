@@ -22,7 +22,7 @@ param(
 
     [Parameter(Mandatory = $false)]
     # IP do Denso virtual/real (lado Python -> robô)
-    [string]$RobotServerIp = "192.168.17.128",
+    [string]$RobotServerIp = "192.168.160.225",
 
     [Parameter(Mandatory = $false)]
     [ValidateSet("flat", "foldable", "one", "two", "three", "six", "seven", "eight")]
@@ -35,18 +35,27 @@ param(
 
     [Parameter(Mandatory = $false)]
     # Porta do listener Python em utils/receive_marker_params.py
-    [int]$PythonServerPort = 50505,
+    [int]$PythonServerPort = 50605,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("connect_robot", "motor_on", "move_to_roi")]
-    [string]$StopAtState = "move_to_roi",
+    [ValidateSet("connect_robot", "motor_on", "move_to_roi", "camera_on", "detect_markers", "align_with_markers", "touch_marker", "check_touch", "generate_map")]
+    [string]$StopAtState = "align_with_markers",
 
     [Parameter(Mandatory = $false)]
-    [int]$MaxSteps = 50,
+    [int]$MaxSteps = 120,
 
     [Parameter(Mandatory = $false)]
-    [double]$LoopDelay = 0.05
+    [double]$LoopDelay = 0.05,
+
+    [Parameter(Mandatory = $false)]
+    [switch]$ShowCameraPreview
 )
+
+if ($args -contains '--show-camera-preview' -or $args -contains '-show-camera-preview') {
+    $ShowCameraPreview = $true
+}
+
+$ShowCameraPreview = [bool]$ShowCameraPreview
 
 $ErrorActionPreference = "Stop"
 
@@ -72,18 +81,42 @@ $startAppJob = Start-Job -ScriptBlock {
 } -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType
 
 Write-Host "[4/5] Executando FSM até '$StopAtState'..."
+$markerCountByDeviceType = @{
+    "flat" = 4
+    "foldable" = 8
+    "one" = 1
+    "two" = 2
+    "three" = 3
+    "six" = 6
+    "seven" = 7
+    "eight" = 8
+}
+$numMarkers = 4
+if ($markerCountByDeviceType.ContainsKey($DeviceType)) {
+    $numMarkers = [int]$markerCountByDeviceType[$DeviceType]
+}
+
+$env:RTA_DEVICE_TYPE = $DeviceType
+$env:RTA_NUM_MARKERS = "$numMarkers"
+
 $cmd = @(
     "run",
     "python",
     "state_machine/run_rta_fsm.py",
     "--workspace", $WorkspaceName,
     "--control", $ControlName,
+    "--device-type", $DeviceType,
+    "--num-markers", "$numMarkers",
     # options do RC8 provider: aponta para o IP do robô/controlador
     "--options", "Server=$RobotServerIp",
     "--stop-at-state", $StopAtState,
     "--max-steps", "$MaxSteps",
     "--loop-delay", "$LoopDelay"
 )
+
+if ($ShowCameraPreview) {
+    $cmd += "--show-camera-preview"
+}
 
 & poetry @cmd
 $pythonExitCode = $LASTEXITCODE

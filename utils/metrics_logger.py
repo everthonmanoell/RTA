@@ -59,6 +59,7 @@ class TestMetrics:
     state_transitions: List[StateTransitionMetric] = field(default_factory=list)
     touch_events: List[TouchMetric] = field(default_factory=list)
     swipe_events: List[Dict[str, Any]] = field(default_factory=list)
+    device_model: str = "unknown"
     final_result: Optional[str] = None
     total_steps: int = 0
     error_touches: int = 0
@@ -84,6 +85,7 @@ class TestMetrics:
         """Convert to serializable dict."""
         return {
             "test_id": self.test_id,
+            "device_model": self.device_model,
             "start_time": datetime.fromtimestamp(self.start_time).isoformat(),
             "end_time": datetime.fromtimestamp(self.end_time).isoformat()
             if self.end_time
@@ -175,11 +177,19 @@ class MetricsLogger:
 
     def save_metrics(self, metrics: TestMetrics) -> Path:
         """Save metrics to JSON file."""
+        import numpy as np
+        
         output_file = self.output_dir / f"{metrics.test_id}.json"
+
+        class NumpyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, (np.floating, np.integer)):
+                    return float(obj) if isinstance(obj, np.floating) else int(obj)
+                return super().default(obj)
 
         try:
             with open(output_file, "w") as f:
-                json.dump(metrics.to_dict(), f, indent=2)
+                json.dump(metrics.to_dict(), f, indent=2, cls=NumpyEncoder)
             self.logger.info(f"Metrics saved to {output_file}")
             return output_file
         except Exception as e:

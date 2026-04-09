@@ -9,7 +9,7 @@ preprocessing, and caching.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import cv2
 import numpy as np
@@ -23,19 +23,23 @@ class RobotCamera:
     and visual alignment, independent of mobile device screen orientation.
     """
     
-    def __init__(self, camera_id: int = 0, output_dir: str = "log_images"):
+    def __init__(self, camera_id: int = 0, output_dir: str = "log_images", show_preview: bool = False):
         """
         Initialize RobotCamera with OpenCV camera source.
         
         Args:
             camera_id (int): OpenCV camera index. Default 0 for primary camera.
             output_dir (str): Directory for storing captured images.
+            show_preview (bool): If True, show the live camera frame in an OpenCV window.
         """
         self.camera_id = camera_id
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.cap = None
         self.logger = logging.getLogger(__name__)
+        self.show_preview = bool(show_preview)
+        self.preview_window_name = "RTA Camera Preview"
+        self.preview_overlay_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None
         
         # Initialize camera on first use
         self._camera_opened = False
@@ -69,6 +73,16 @@ class RobotCamera:
         if not ret:
             self.logger.error("Failed to capture frame")
             return None
+
+        if self.show_preview:
+            try:
+                preview_frame = frame
+                if self.preview_overlay_fn is not None:
+                    preview_frame = self.preview_overlay_fn(frame.copy())
+                cv2.imshow(self.preview_window_name, preview_frame)
+                cv2.waitKey(1)
+            except Exception as exc:
+                self.logger.debug("Camera preview unavailable: %s", exc)
         
         return frame
     
@@ -133,6 +147,11 @@ class RobotCamera:
         if self.cap is not None:
             self.cap.release()
             self._camera_opened = False
+            if self.show_preview:
+                try:
+                    cv2.destroyWindow(self.preview_window_name)
+                except Exception:
+                    pass
             self.logger.info("Camera released")
     
     def __del__(self):
