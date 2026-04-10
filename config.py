@@ -229,6 +229,27 @@ TOUCH_CONFIG = {
 }
 
 # ============================================================================
+# VELOCIDADES DE MOVIMENTACAO DO ROBO
+# ============================================================================
+
+ROBOT_MOTION_CONFIG = {
+    # Velocidade base para movimentos gerais (ROI, safe_pose, alinhamento, etc.)
+    "general_speed": 12.0,
+    "general_accel": 12.0,
+    "general_decel": 12.0,
+
+    # Velocidade dedicada para toques
+    "touch_speed": 8.0,
+    "touch_accel": 8.0,
+    "touch_decel": 8.0,
+
+    # Velocidade dedicada para swipe
+    "swipe_speed": 6.0,
+    "swipe_accel": 6.0,
+    "swipe_decel": 6.0,
+}
+
+# ============================================================================
 # CONFIGURAÇÃO DE TOOL (TCP)
 # ============================================================================
 

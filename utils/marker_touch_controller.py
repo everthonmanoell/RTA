@@ -87,13 +87,20 @@ class MarkerTouchController:
 
         return pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz
 
-    def _set_robot_speed(self, speed: float) -> None:
+    def _set_robot_speed(
+        self,
+        speed: float,
+        accel: Optional[float] = None,
+        decel: Optional[float] = None,
+    ) -> None:
         """
         Ajusta a velocidade do braço, se a API do robô suportar.
         """
         if hasattr(self.robot_arm, "set_arm_speed"):
             try:
-                self.robot_arm.set_arm_speed(speed, speed, speed)
+                resolved_accel = float(accel) if accel is not None else float(speed)
+                resolved_decel = float(decel) if decel is not None else float(speed)
+                self.robot_arm.set_arm_speed(float(speed), resolved_accel, resolved_decel)
             except Exception as e:
                 self.logger.warning(f"Não foi possível ajustar velocidade do braço: {e}")
 
@@ -335,6 +342,8 @@ class MarkerTouchController:
         points: List[Tuple[int, int]],
         z_touch: float,
         speed: float = 50.0,
+        accel: Optional[float] = None,
+        decel: Optional[float] = None,
     ) -> bool:
         """
         Executa swipe contínuo ao longo dos pontos informados.
@@ -352,7 +361,7 @@ class MarkerTouchController:
             return False
 
         try:
-            self._set_robot_speed(speed)
+            self._set_robot_speed(speed, accel=accel, decel=decel)
 
             first_x, first_y = points[0]
             target_x, target_y, _, rx, ry, rz = self._image_to_robot_pose(first_x, first_y)
@@ -488,6 +497,8 @@ class MarkerTouchController:
         points: List[Tuple[int, int]],
         z_touch: float,
         speed: float = 50.0,
+        accel: Optional[float] = None,
+        decel: Optional[float] = None,
     ) -> tuple[bool, str]:
         """
         Executa swipe com monitoramento de segurança.
@@ -509,7 +520,7 @@ class MarkerTouchController:
             return False, "insufficient_points"
 
         try:
-            self._set_robot_speed(speed)
+            self._set_robot_speed(speed, accel=accel, decel=decel)
 
             # Aproxima no primeiro ponto
             first_x, first_y = points[0]
@@ -591,6 +602,8 @@ class MarkerTouchController:
         ry: float,
         rz: float,
         speed: float = 50.0,
+        accel: Optional[float] = None,
+        decel: Optional[float] = None,
         touch_timeout: float = 10.0,
         approach_height: float = 10.0,
     ) -> tuple[bool, Optional[dict]]:
@@ -692,7 +705,7 @@ class MarkerTouchController:
         self.logger.debug("[LISTEN] Thread de listener iniciada")
 
         try:
-            self._set_robot_speed(speed)
+            self._set_robot_speed(speed, accel=accel, decel=decel)
 
             # Aproxima a altura de abordagem
             current_pose = self._get_current_robot_pose()
@@ -772,6 +785,8 @@ class MarkerTouchController:
         marker_info: MarkerInfo,
         z_touch: float,
         speed: float = 50.0,
+        accel: Optional[float] = None,
+        decel: Optional[float] = None,
         touch_timeout: float = 10.0,
     ) -> tuple[bool, Optional[dict]]:
         """
@@ -833,6 +848,8 @@ class MarkerTouchController:
                 ry=ry,
                 rz=rz,
                 speed=speed,
+                accel=accel,
+                decel=decel,
                 touch_timeout=touch_timeout,
             )
 
