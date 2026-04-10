@@ -39,7 +39,7 @@ class AutoAlignment:
     APPROACH_SPEED = 5.0  # mm per iteration
     
     # Control gains
-    XY_GAIN = 0.3  # Proportional gain for XY correction
+    XY_GAIN = 0.03  # Proportional gain for XY correction
     Z_GAIN = 0.2   # Proportional gain for Z correction
     
     MAX_ITERATIONS = 20
@@ -70,7 +70,27 @@ class AutoAlignment:
         
         # State tracking
         self.reference_marker_area = None
+        self.reference_marker_perimeter = None
         self.current_target_distance = self.TARGET_DISTANCE_MM
+
+    def _find_top_leftest_marker(self, marker_infos: list[MarkerInfo]) -> Optional[MarkerInfo]:
+        """
+        Select marker closest to image origin (0,0), matching FOV behavior.
+
+        In FOV this is the marker nearest to top-left; using the same strategy keeps
+        calibration/alignment consistent between both projects.
+        """
+        if not marker_infos:
+            return None
+
+        best = None
+        best_dist = float("inf")
+        for marker in marker_infos:
+            dist = float(np.linalg.norm(marker.centroid))
+            if dist < best_dist:
+                best_dist = dist
+                best = marker
+        return best
     
     def calibrate_distance(self) -> bool:
         """
@@ -93,10 +113,22 @@ class AutoAlignment:
         
         # Refine and get info
         corners = self.detector.refine_corners(frame, corners)
-        marker_info = self.detector.get_marker_info(int(ids[0][0]), corners[0])
+        marker_infos = []
+        for i, marker_id in enumerate(ids):
+            marker_infos.append(self.detector.get_marker_info(int(marker_id[0]), corners[i]))
+
+        marker_info = self.detector.find_closest_to_center(frame, marker_infos)
+        if marker_info is None:
+            self.logger.error("No valid marker for calibration")
+            return False
         
         self.reference_marker_area = marker_info.area
-        self.logger.info(f"Distance calibration: Reference area = {self.reference_marker_area:.1f} px²")
+        self.reference_marker_perimeter = marker_info.perimeter
+        self.logger.info(
+            "Distance calibration: Reference area=%.1f px² perimeter=%.1f px",
+            self.reference_marker_area,
+            self.reference_marker_perimeter,
+        )
         
         return True
     
@@ -275,8 +307,16 @@ class AutoAlignment:
         Returns:
             float: Z correction in mm (positive = move closer).
         """
+        # FOV-like depth estimation (perimeter ratio) is the primary strategy.
+        if self.reference_marker_perimeter is not None and marker_info.perimeter > 0:
+            estimated_distance = (
+                self.current_target_distance
+                * (self.reference_marker_perimeter / marker_info.perimeter)
+            )
+            return estimated_distance - self.current_target_distance
+
         if self.reference_marker_area is None:
-            self.logger.warning("Reference area not calibrated")
+            self.logger.warning("Reference marker not calibrated")
             return 0.0
         
         estimated_distance = self.transform.marker_size_to_depth(
@@ -285,7 +325,7 @@ class AutoAlignment:
             self.current_target_distance
         )
         
-        error = self.current_target_distance - estimated_distance
+        error = estimated_distance - self.current_target_distance
         return error
     
     def apply_correction(self, correction_x: float, correction_y: float, 
@@ -327,7 +367,7 @@ class AutoAlignment:
             new_z = self.Z_MIN
         
         current_pose.x = new_x
-        current_pose.y = new_y
+        current_pose.y = -new_y
         current_pose.z = new_z
         
         success = self.robot_arm.move_cartesian(current_pose)
@@ -383,7 +423,8 @@ class AutoAlignment:
                 self.logger.warning("No markers in frame")
                 return False
             
-            # Use homography-based centering if 4+ markers, otherwise use closest marker
+            # With a full set of markers, center by homography; otherwise use the marker
+            # closest to the image center as fallback.
             if len(marker_infos) >= 4:
                 corr_x, corr_y = self.calculate_homography_centering_correction(frame, marker_infos)
             else:
@@ -501,7 +542,7 @@ class AutoAlignment:
             if not marker_infos:
                 return False
             
-            # Use marker closest to center
+            # Depth uses the most stable marker near the image center.
             target = self.detector.find_closest_to_center(frame, marker_infos)
             if target is None:
                 return False

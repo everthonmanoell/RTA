@@ -9,6 +9,7 @@ class RtaModel:
     def __init__(self, num_markers=4):
         self.num_markers = max(1, int(num_markers))
         self.marker_index = 0
+        self.markers_count = 0
 
         self.max_connect_robot_attempts = 3
         self.max_motor_on_attempts = 3
@@ -149,6 +150,9 @@ class RtaModel:
 
     def markers_found(self):
         return self.markers_found_flag
+
+    def markers_ready_for_align(self):
+        return self.markers_found_flag and self.markers_count >= self.num_markers
 
     def markers_not_found(self):
         return not self.markers_found_flag
