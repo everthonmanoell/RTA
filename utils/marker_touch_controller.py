@@ -2,6 +2,8 @@ import logging
 import time
 from typing import List, Optional, Tuple
 
+import cv2
+import numpy as np
 from aether_rdk.datatypes import Pose
 
 from drivers.alignment.auto_alignment import AutoAlignment
@@ -262,6 +264,70 @@ class MarkerTouchController:
 
         except Exception as e:
             self.logger.error(f"Falha ao gerar pontos de borda: {e}")
+            return []
+
+    def get_grid_border_points_from_screen_quad(
+        self,
+        screen_quad,
+        margin_px: int = 30,
+        screen_width_px: int | None = None,
+        screen_height_px: int | None = None,
+    ) -> List[Tuple[int, int]]:
+        """
+        Gera pontos de borda para swipe a partir de um quadrilátero de tela já estimado.
+
+        Args:
+            screen_quad: 4 pontos da tela em coordenadas de imagem [tl, tr, br, bl].
+            margin_px: margem em pixels da tela do dispositivo (device space).
+            screen_width_px: largura da tela do dispositivo.
+            screen_height_px: altura da tela do dispositivo.
+        """
+        try:
+            if (
+                screen_quad is None
+                or screen_width_px is None
+                or screen_height_px is None
+                or screen_width_px <= 0
+                or screen_height_px <= 0
+            ):
+                return []
+
+            quad = np.asarray(screen_quad, dtype=np.float32).reshape((4, 2))
+
+            # Build homography from device coordinates -> image coordinates.
+            src = np.array(
+                [
+                    [0.0, 0.0],
+                    [float(screen_width_px), 0.0],
+                    [float(screen_width_px), float(screen_height_px)],
+                    [0.0, float(screen_height_px)],
+                ],
+                dtype=np.float32,
+            )
+            dst = quad
+            h_mat = cv2.getPerspectiveTransform(src, dst)
+
+            margin_x = max(1.0, min(float(margin_px), float(screen_width_px) / 2.0 - 1.0))
+            margin_y = max(1.0, min(float(margin_px), float(screen_height_px) / 2.0 - 1.0))
+
+            inner = np.array(
+                [
+                    [margin_x, margin_y],
+                    [float(screen_width_px) - margin_x, margin_y],
+                    [float(screen_width_px) - margin_x, float(screen_height_px) - margin_y],
+                    [margin_x, float(screen_height_px) - margin_y],
+                    [margin_x, margin_y],
+                ],
+                dtype=np.float32,
+            ).reshape((-1, 1, 2))
+
+            projected = cv2.perspectiveTransform(inner, h_mat).reshape((-1, 2))
+            points = [(int(round(p[0])), int(round(p[1]))) for p in projected]
+
+            self.logger.info(f"Pontos de borda (screen_quad) gerados: {points}")
+            return points
+        except Exception as e:
+            self.logger.error(f"Falha ao gerar pontos de borda por screen_quad: {e}")
             return []
 
     def swipe_along_points(

@@ -296,6 +296,8 @@ def main() -> int:
         "last_touch_success": False,
         "screen_quad": None,
         "screen_estimate_mode": "raw",
+        "aligned_screen_quad": None,
+        "aligned_screen_estimate_mode": "raw",
         "generated_map": None,
         "saved_map_file": None,
         "partial_recovery_moves": 0,
@@ -694,6 +696,8 @@ def main() -> int:
 
         runtime["markers"] = []
         runtime["z_touch"] = None
+        runtime["aligned_screen_quad"] = None
+        runtime["aligned_screen_estimate_mode"] = "raw"
 
     def _backoff_for_fov(reason: str, step_z_mm: float = 35.0) -> bool:
         """Recua em Z para aumentar campo de visão quando restam poucos marcadores."""
@@ -862,10 +866,12 @@ def main() -> int:
         if frame is None:
             logging.warning("DetectMarkers: captura de frame falhou (frame=None).")
             runtime["markers"] = []
+            model.markers_count = 0
             return False
 
         if not marker_infos:
             runtime["markers"] = []
+            model.markers_count = 0
             runtime["detect_no_marker_streak"] = int(runtime.get("detect_no_marker_streak", 0)) + 1
             runtime["detect_low_marker_streak"] = 0
             logging.info("DetectMarkers: nenhum marcador detectado.")
@@ -895,6 +901,7 @@ def main() -> int:
                 recovered_after_reacquire = _capture_markers_once(silent_no_markers=True)
                 if len(recovered_after_reacquire) >= min_markers_for_align:
                     runtime["markers"] = recovered_after_reacquire
+                    model.markers_count = len(recovered_after_reacquire)
                     runtime["detect_no_marker_streak"] = 0
                     recovered_ids = [m.marker_id for m in recovered_after_reacquire]
                     logging.info(
@@ -978,6 +985,7 @@ def main() -> int:
 
             if len(recovered_markers) >= required_markers:
                 runtime["markers"] = recovered_markers
+                model.markers_count = len(recovered_markers)
                 recovered_ids = [m.marker_id for m in recovered_markers]
                 logging.info(
                     "DetectMarkers: recuperação bem-sucedida (%d/%d). IDs=%s",
@@ -990,6 +998,7 @@ def main() -> int:
             # Estratégia FOV-like: com conjunto parcial estável, entra no align para recuperar os faltantes.
             if len(recovered_markers) >= min_markers_for_align:
                 runtime["markers"] = recovered_markers
+                model.markers_count = len(recovered_markers)
                 partial_ids = [m.marker_id for m in recovered_markers]
                 logging.warning(
                     "DetectMarkers: conjunto parcial aceito para pré-alinhamento (%d/%d). IDs=%s",
@@ -1000,6 +1009,7 @@ def main() -> int:
                 return True
 
             runtime["markers"] = []
+            model.markers_count = 0
             # Se ficar preso em 1 marcador por várias iterações, recua em Z para abrir FOV.
             now_ts = time.time()
             low_streak = int(runtime.get("detect_low_marker_streak", 0))
@@ -1017,6 +1027,7 @@ def main() -> int:
 
         runtime["detect_low_marker_streak"] = 0
         runtime["markers"] = marker_infos
+        model.markers_count = len(marker_infos)
         return True
 
     def align_with_markers_fn() -> bool:
@@ -1026,7 +1037,11 @@ def main() -> int:
             int(getattr(config, "AUTO_ALIGNMENT_CONFIG", {}).get("min_markers_for_align", 2)),
         )
 
-        visible_markers = _capture_markers_once()
+        # Usa primeiro o snapshot produzido em DetectMarkers para respeitar o ciclo FSM
+        # detect -> align -> touch. Se estiver vazio/insuficiente, tenta atualizar uma vez.
+        visible_markers = list(runtime.get("markers", []))
+        if len(visible_markers) < min_markers_for_align:
+            visible_markers = _capture_markers_once()
         if len(visible_markers) < min_markers_for_align:
             runtime["markers"] = []
             model.markers_found_flag = False
@@ -1038,6 +1053,7 @@ def main() -> int:
             return False
 
         runtime["markers"] = visible_markers
+        model.markers_count = len(visible_markers)
         model.markers_found_flag = True
 
         if auto_align.reference_marker_area is None and not auto_align.calibrate_distance():
@@ -1061,6 +1077,21 @@ def main() -> int:
                 runtime["markers"] = visible_after_align
                 model.markers_found_flag = True
                 runtime["z_touch"] = auto_align.get_touch_z()
+
+                # Congela a geometria de tela do frame validado no alinhamento.
+                try:
+                    _, _, aligned_mode, aligned_quad = _estimate_screen_rect_from_markers(visible_after_align)
+                    if aligned_quad is not None:
+                        runtime["aligned_screen_quad"] = aligned_quad.tolist()
+                        runtime["aligned_screen_estimate_mode"] = aligned_mode
+                    else:
+                        runtime["aligned_screen_quad"] = runtime.get("screen_quad")
+                        runtime["aligned_screen_estimate_mode"] = runtime.get("screen_estimate_mode", "raw")
+                except Exception as quad_err:
+                    logging.warning("AlignWithMarkers: falha ao congelar screen_quad (%s)", quad_err)
+                    runtime["aligned_screen_quad"] = runtime.get("screen_quad")
+                    runtime["aligned_screen_estimate_mode"] = runtime.get("screen_estimate_mode", "raw")
+
                 # Salva a pose cartesiana completa (x, y, z, rx, ry, rz) para uso no toque
                 current_pose = auto_align.get_current_pose()
                 if current_pose:
@@ -1076,10 +1107,11 @@ def main() -> int:
                 )
                 return True
 
-            runtime["markers"] = visible_after_align
-            model.markers_found_flag = len(visible_after_align) >= min_markers_for_align
+            # Mesmo com melhora parcial, volta para DetectMarkers para adquirir novo snapshot.
+            runtime["markers"] = []
+            model.markers_found_flag = False
             logging.warning(
-                "AlignWithMarkers: alinhou geometria, mas conjunto completo ainda não visível (%d/%d). Repetindo align.",
+                "AlignWithMarkers: alinhou geometria, mas conjunto completo ainda não visível (%d/%d). Voltando para DetectMarkers.",
                 len(visible_after_align),
                 required_markers,
             )
@@ -1096,10 +1128,11 @@ def main() -> int:
                     min_markers_for_align,
                 )
             else:
-                runtime["markers"] = visible_after_align
-                model.markers_found_flag = True
+                # Não alinhou ainda: força retorno para DetectMarkers para novo frame/snapshot.
+                runtime["markers"] = []
+                model.markers_found_flag = False
             logging.warning(
-                "AlignWithMarkers: ainda não alinhado (tentativa %d/%d).",
+                "AlignWithMarkers: ainda não alinhado (tentativa %d/%d). Voltando para DetectMarkers.",
                 int(getattr(model, "align_with_markers_attempt", 0)) + 1,
                 int(getattr(model, "max_align_with_markers_attempts", 0)),
             )
@@ -1266,11 +1299,30 @@ def main() -> int:
         margin_px = int(getattr(config, "MARKER_MARGIN_PX", 30.0))
         screen_width_px = int(getattr(config, "SCREEN_WIDTH_PX", 0.0))
         screen_height_px = int(getattr(config, "SCREEN_HEIGHT_PX", 0.0))
-        points = controller.get_grid_border_points(
-            margin_px=margin_px,
-            screen_width_px=screen_width_px,
-            screen_height_px=screen_height_px,
-        )
+
+        points = []
+        aligned_quad = runtime.get("aligned_screen_quad")
+        if aligned_quad is not None:
+            points = controller.get_grid_border_points_from_screen_quad(
+                screen_quad=aligned_quad,
+                margin_px=margin_px,
+                screen_width_px=screen_width_px,
+                screen_height_px=screen_height_px,
+            )
+            if points:
+                logging.info(
+                    "SwipeBorders: usando pontos baseados no aligned_screen_quad (mode=%s).",
+                    runtime.get("aligned_screen_estimate_mode", "raw"),
+                )
+
+        if not points:
+            points = controller.get_grid_border_points(
+                margin_px=margin_px,
+                screen_width_px=screen_width_px,
+                screen_height_px=screen_height_px,
+            )
+            if points:
+                logging.info("SwipeBorders: fallback para pontos retangulares da imagem.")
         if not points:
             return False
 
