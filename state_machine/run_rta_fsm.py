@@ -270,6 +270,47 @@ def main() -> int:
             auto_align.MAX_XY_DRIFT_MM,
         )
 
+    motion_cfg = getattr(config, "ROBOT_MOTION_CONFIG", {})
+    if not isinstance(motion_cfg, dict):
+        motion_cfg = {}
+
+    speed_profiles = {
+        "general": {
+            "speed": float(motion_cfg.get("general_speed", 12.0)),
+            "accel": float(motion_cfg.get("general_accel", motion_cfg.get("general_speed", 12.0))),
+            "decel": float(motion_cfg.get("general_decel", motion_cfg.get("general_speed", 12.0))),
+        },
+        "touch": {
+            "speed": float(motion_cfg.get("touch_speed", 8.0)),
+            "accel": float(motion_cfg.get("touch_accel", motion_cfg.get("touch_speed", 8.0))),
+            "decel": float(motion_cfg.get("touch_decel", motion_cfg.get("touch_speed", 8.0))),
+        },
+        "swipe": {
+            "speed": float(motion_cfg.get("swipe_speed", 6.0)),
+            "accel": float(motion_cfg.get("swipe_accel", motion_cfg.get("swipe_speed", 6.0))),
+            "decel": float(motion_cfg.get("swipe_decel", motion_cfg.get("swipe_speed", 6.0))),
+        },
+    }
+
+    def _apply_speed_profile(profile_name: str) -> None:
+        profile = speed_profiles.get(profile_name, speed_profiles["general"])
+        try:
+            robot.set_arm_speed(
+                float(profile["speed"]),
+                float(profile["accel"]),
+                float(profile["decel"]),
+            )
+        except Exception as speed_err:
+            logging.debug("Nao foi possivel aplicar profile de velocidade '%s': %s", profile_name, speed_err)
+
+    logging.info(
+        "RobotMotion config: general=%.1f touch=%.1f swipe=%.1f",
+        speed_profiles["general"]["speed"],
+        speed_profiles["touch"]["speed"],
+        speed_profiles["swipe"]["speed"],
+    )
+    _apply_speed_profile("general")
+
     logging.info(
         "Metadata de tela recebida: screen_width_px=%.1f screen_height_px=%.1f margin_px=%.1f tag_size_px=%.1f",
         float(getattr(config, "SCREEN_WIDTH_PX", 0.0)),
@@ -669,6 +710,7 @@ def main() -> int:
             logging.error("Falha ao salvar imagem debug de DetectMarkers: %s", output_path)
 
     def move_to_roi_fn() -> None:
+        _apply_speed_profile("general")
         before_pose = robot.get_cartesian_pose()
         moved = False
         if hasattr(robot, "move_to_roi"):
@@ -702,6 +744,7 @@ def main() -> int:
     def _backoff_for_fov(reason: str, step_z_mm: float = 35.0) -> bool:
         """Recua em Z para aumentar campo de visão quando restam poucos marcadores."""
         try:
+            _apply_speed_profile("general")
             current_pose = robot.get_cartesian_pose()
             if current_pose is None:
                 return False
@@ -1031,6 +1074,7 @@ def main() -> int:
         return True
 
     def align_with_markers_fn() -> bool:
+        _apply_speed_profile("general")
         required_markers = max(1, int(model.num_markers))
         min_markers_for_align = max(
             1,
@@ -1191,6 +1235,7 @@ def main() -> int:
 
     def touch_marker_fn(index: int) -> bool:
         """Toca marcador escutando continuamente durante o movimento."""
+        _apply_speed_profile("touch")
         markers = runtime["markers"]
         if index < 0 or index >= len(markers):
             runtime["last_touch_success"] = False
@@ -1221,7 +1266,9 @@ def main() -> int:
                     rx=float(pose_rx),
                     ry=float(pose_ry),
                     rz=float(pose_rz),
-                    speed=50.0,
+                    speed=float(speed_profiles["touch"]["speed"]),
+                    accel=float(speed_profiles["touch"]["accel"]),
+                    decel=float(speed_profiles["touch"]["decel"]),
                     touch_timeout=args.touch_timeout,
                 )
             except Exception as pose_err:
@@ -1231,12 +1278,22 @@ def main() -> int:
                 )
                 # Fallback: tenta conversão de imagem (original)
                 ok, touch_info = controller.touch_marker_listen_while_moving(
-                    marker, z_touch=z_touch, speed=50.0, touch_timeout=args.touch_timeout
+                    marker,
+                    z_touch=z_touch,
+                    speed=float(speed_profiles["touch"]["speed"]),
+                    accel=float(speed_profiles["touch"]["accel"]),
+                    decel=float(speed_profiles["touch"]["decel"]),
+                    touch_timeout=args.touch_timeout,
                 )
         else:
             # Sem aligned_pose, usa conversão de imagem
             ok, touch_info = controller.touch_marker_listen_while_moving(
-                marker, z_touch=z_touch, speed=50.0, touch_timeout=args.touch_timeout
+                marker,
+                z_touch=z_touch,
+                speed=float(speed_profiles["touch"]["speed"]),
+                accel=float(speed_profiles["touch"]["accel"]),
+                decel=float(speed_profiles["touch"]["decel"]),
+                touch_timeout=args.touch_timeout,
             )
 
         if touch_info:
@@ -1271,6 +1328,7 @@ def main() -> int:
         return bool(runtime.get("last_touch_success", False))
 
     def reset_markers_fn() -> None:
+        _apply_speed_profile("touch")
         frame = camera.capture_frame()
         if frame is None:
             runtime["markers"] = []
@@ -1291,6 +1349,7 @@ def main() -> int:
 
     def swipe_borders_fn() -> bool:
         """Swipe com monitoramento de segurança (pressão, sinal)."""
+        _apply_speed_profile("swipe")
         z_touch = runtime["z_touch"]
         if z_touch is None:
             z_touch = auto_align.get_touch_z()
@@ -1328,7 +1387,13 @@ def main() -> int:
 
         swipe_start = time.time()
         # Use novo fluxo seguro: monitora pressão e sinal durante swipe
-        ok, swipe_reason = controller.swipe_with_safety_monitoring(points, z_touch=z_touch)
+        ok, swipe_reason = controller.swipe_with_safety_monitoring(
+            points,
+            z_touch=z_touch,
+            speed=float(speed_profiles["swipe"]["speed"]),
+            accel=float(speed_profiles["swipe"]["accel"]),
+            decel=float(speed_profiles["swipe"]["decel"]),
+        )
         swipe_duration = time.time() - swipe_start
 
         # Se swipe falhou por motivos de segurança, ir a safe_pose para ler resultado
@@ -1347,6 +1412,7 @@ def main() -> int:
         return ok
 
     def safe_pose_fn() -> None:
+        _apply_speed_profile("general")
         robot.move_safe(preserve_orientation=True)
 
     def read_final_marker_fn() -> str:
@@ -1366,6 +1432,7 @@ def main() -> int:
         return model.RESULT_FAILURE
 
     def return_to_start_fn() -> None:
+        _apply_speed_profile("touch")
         frame = camera.capture_frame()
         if frame is None:
             return
