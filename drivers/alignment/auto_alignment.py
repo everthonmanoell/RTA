@@ -29,7 +29,7 @@ class AutoAlignment:
     """
     
     # Control parameters
-    CENTRALIZE_TOLERANCE = 5.0  # pixels
+    CENTRALIZE_TOLERANCE = 5.0  # mm
     DEPTH_TOLERANCE = 10.0  # mm
     TARGET_DISTANCE_MM = 200.0  # Default approach distance
     
@@ -44,7 +44,7 @@ class AutoAlignment:
     
     MAX_ITERATIONS = 20
     ITERATION_DELAY = 0.5  # seconds
-    MAX_XY_STEP_MM = 10.0
+    MAX_XY_STEP_MM = 5.0
     MAX_Z_STEP_MM = 8.0
     MAX_XY_DRIFT_MM = 120.0
     MAX_NO_IMPROVEMENT_ITERS = 4
@@ -72,6 +72,8 @@ class AutoAlignment:
         self.reference_marker_area = None
         self.reference_marker_perimeter = None
         self.current_target_distance = self.TARGET_DISTANCE_MM
+        self.target_marker_id: Optional[int] = None
+        self.last_error_px: Optional[float] = None
 
     def _find_top_leftest_marker(self, marker_infos: list[MarkerInfo]) -> Optional[MarkerInfo]:
         """
@@ -92,6 +94,52 @@ class AutoAlignment:
                 best = marker
         return best
     
+    def set_target_marker_id(self, marker_id: int) -> None:
+        self.target_marker_id = int(marker_id)
+        self.logger.info("Target marker definido para ID=%d", self.target_marker_id)
+
+
+    def _select_target_marker(
+        self,
+        frame: np.ndarray,
+        marker_infos: list[MarkerInfo],
+    ) -> Optional[MarkerInfo]:
+        """
+        Seleciona o marcador-alvo.
+        Se target_marker_id estiver definido, usa esse ID.
+        Caso contrário, usa o mais próximo do centro.
+        """
+        if not marker_infos:
+            return None
+
+        if self.target_marker_id is not None:
+            for marker in marker_infos:
+                if int(marker.marker_id) == int(self.target_marker_id):
+                    return marker
+
+            self.logger.warning(
+                "Marcador alvo ID=%d não encontrado no frame atual",
+                self.target_marker_id,
+            )
+            return None
+
+        return self.detector.find_closest_to_center(frame, marker_infos)
+
+
+    def compute_adaptive_gain(self, error_px: float) -> float:
+        """
+        Ganho adaptativo simples:
+        - erro grande -> ganho maior
+        - erro pequeno -> ganho menor
+        """
+        if error_px > 40.0:
+            return 0.35
+        if error_px > 20.0:
+            return 0.22
+        if error_px > 8.0:
+            return 0.12
+        return 0.06
+
     def calibrate_distance(self) -> bool:
         """
         Calibrate reference distance by capturing current marker area.
@@ -328,124 +376,165 @@ class AutoAlignment:
         error = estimated_distance - self.current_target_distance
         return error
     
-    def apply_correction(self, correction_x: float, correction_y: float, 
-                        correction_z: float) -> bool:
+    def apply_correction(
+        self,
+        correction_x: float,
+        correction_y: float,
+        correction_z: float,
+    ) -> bool:
         """
-        Apply XYZ correction to robot position.
-        
-        Args:
-            correction_x (float): X correction in mm.
-            correction_y (float): Y correction in mm.
-            correction_z (float): Z correction in mm.
-            
-        Returns:
-            bool: True if successful.
-        """
-        current_pose = self.robot_arm.get_cartesian_pose()
-        if current_pose is None:
-            self.logger.error("Failed to get robot pose")
-            return False
-        
-        # Apply gains.
-        delta_x = correction_x * self.XY_GAIN
-        delta_y = correction_y * self.XY_GAIN
-        delta_z = correction_z * self.Z_GAIN
+        Aplica correção XYZ na pose atual do robô.
 
-        # Clamp per-step movement to avoid runaway behavior.
+        Neste modo, correction_x / correction_y já são passos do robô em mm.
+        """
+        pose_before = self.robot_arm.get_cartesian_pose()
+        if pose_before is None:
+            self.logger.error("Failed to get robot pose before correction")
+            return False
+
+        current_x = float(pose_before.x)
+        current_y = float(pose_before.y)
+        current_z = float(pose_before.z)
+
+        # correction_x / correction_y JÁ são passos em mm
+        delta_x = correction_x
+        delta_y = correction_y
+        delta_z = correction_z
+
         delta_x = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, delta_x))
         delta_y = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, delta_y))
         delta_z = max(-self.MAX_Z_STEP_MM, min(self.MAX_Z_STEP_MM, delta_z))
 
-        new_x = current_pose.x - delta_x
-        new_y = current_pose.y - delta_y
-        new_z = current_pose.z + delta_z
-        
-        # Apply safety limits
+        new_x, new_y, new_z = self.transform.apply_robot_transform(
+            camera_frame_x=delta_x,
+            camera_frame_y=delta_y,
+            camera_frame_z=delta_z,
+            current_robot_x=current_x,
+            current_robot_y=current_y,
+            current_robot_z=current_z,
+        )
+
         if new_z > self.Z_MAX:
             new_z = self.Z_MAX
         elif new_z < self.Z_MIN:
             new_z = self.Z_MIN
-        
-        current_pose.x = new_x
-        current_pose.y = -new_y
-        current_pose.z = new_z
-        
-        success = self.robot_arm.move_cartesian(current_pose)
+
+        target_pose = pose_before
+        target_pose.x = new_x
+        target_pose.y = new_y
+        target_pose.z = new_z
+
+        self.logger.info(
+            "apply_correction BEFORE move | atual=(%.2f, %.2f, %.2f) | target=(%.2f, %.2f, %.2f) | delta=(%.2f, %.2f, %.2f)",
+            current_x,
+            current_y,
+            current_z,
+            new_x,
+            new_y,
+            new_z,
+            new_x - current_x,
+            new_y - current_y,
+            new_z - current_z,
+        )
+
+        success = self.robot_arm.move_cartesian(target_pose)
         if not success:
             self.logger.error("Failed to move robot")
             return False
-        
-        self.logger.debug(
-            "Applied correction raw(mm): X=%.2f Y=%.2f Z=%.2f | step(mm): dX=%.2f dY=%.2f dZ=%.2f",
-            correction_x,
-            correction_y,
-            correction_z,
-            delta_x,
-            delta_y,
-            delta_z,
+
+        time.sleep(0.4)
+
+        pose_after = self.robot_arm.get_cartesian_pose()
+        if pose_after is None:
+            self.logger.warning("Move command sent, but could not read pose after move")
+            return True
+
+        after_x = float(pose_after.x)
+        after_y = float(pose_after.y)
+        after_z = float(pose_after.z)
+
+        self.logger.info(
+            "apply_correction AFTER move | pose=(%.2f, %.2f, %.2f) | real_delta=(%.2f, %.2f, %.2f)",
+            after_x,
+            after_y,
+            after_z,
+            after_x - current_x,
+            after_y - current_y,
+            after_z - current_z,
         )
+
         return True
     
     def run_centering_loop(self, max_iterations: int = None) -> bool:
         """
-        Run XY centering control loop.
-        
-        Centers the closest marker in the image frame.
-        
-        Args:
-            max_iterations (int): Maximum iterations (uses class default if None).
-            
-        Returns:
-            bool: True if centering successful.
+        Loop de centralização em malha fechada usando 1 marcador.
+        Tira foto, detecta o marcador alvo, calcula erro até o centro da imagem,
+        move o robô e repete até convergir.
         """
-        max_iterations = max_iterations or self.MAX_ITERATIONS
-        iteration = 0
-        best_error_mm = float("inf")
+        resolved_max_iterations = int(max_iterations) if max_iterations is not None else int(self.MAX_ITERATIONS)
+        best_error_px = float("inf")
         no_improvement_iters = 0
 
         start_pose = self.robot_arm.get_cartesian_pose()
         if start_pose is None:
             self.logger.error("Failed to get initial robot pose for centering loop")
             return False
+
         start_x = float(start_pose.x)
         start_y = float(start_pose.y)
-        
-        self.logger.info("Starting centering loop")
-        
-        while iteration < max_iterations:
+
+        self.logger.info(
+            "Starting centering loop for target marker ID=%s | max_iterations=%d",
+            str(self.target_marker_id) if self.target_marker_id is not None else "AUTO",
+            resolved_max_iterations,
+        )
+
+        for iteration in range(resolved_max_iterations):
             frame = self.camera.capture_frame()
             if frame is None:
                 self.logger.error("Failed to capture frame")
                 return False
-            
+
             marker_infos = self.get_markers_from_frame(frame)
             if not marker_infos:
                 self.logger.warning("No markers in frame")
                 return False
-            
-            # With a full set of markers, center by homography; otherwise use the marker
-            # closest to the image center as fallback.
-            if len(marker_infos) >= 4:
-                corr_x, corr_y = self.calculate_homography_centering_correction(frame, marker_infos)
-            else:
-                target = self.detector.find_closest_to_center(frame, marker_infos)
-                if target is None:
-                    return False
-                corr_x, corr_y = self.calculate_centering_correction(frame, target)
-            
-            error_mm = math.hypot(corr_x, corr_y)
-            
-            self.logger.info(f"Iteration {iteration}: X offset={corr_x:.2f}mm, Y offset={corr_y:.2f}mm")
 
-            if error_mm + self.MIN_IMPROVEMENT_MM < best_error_mm:
-                best_error_mm = error_mm
+            target = self._select_target_marker(frame, marker_infos)
+            if target is None:
+                self.logger.warning("No target marker available for centering")
+                return False
+
+            error_x_px, error_y_px = self.calculate_centering_error_pixels(frame, target)
+            corr_x, corr_y = self.pixel_error_to_robot_step(error_x_px, error_y_px)
+            error_px = math.hypot(error_x_px, error_y_px)
+
+            self.logger.info(
+                "Iter %d/%d | marker=%d | centroid=(%.1f, %.1f) | erro_px=(%.2f, %.2f) | norma_px=%.2f | passo_mm=(%.2f, %.2f)",
+                iteration,
+                resolved_max_iterations - 1,
+                int(target.marker_id),
+                float(target.centroid[0]),
+                float(target.centroid[1]),
+                error_x_px,
+                error_y_px,
+                error_px,
+                corr_x,
+                corr_y,
+            )
+
+            if error_px + self.MIN_IMPROVEMENT_MM < best_error_px:
+                best_error_px = error_px
                 no_improvement_iters = 0
             else:
                 no_improvement_iters += 1
 
             current_pose = self.robot_arm.get_cartesian_pose()
             if current_pose is not None:
-                drift_xy = math.hypot(float(current_pose.x) - start_x, float(current_pose.y) - start_y)
+                drift_xy = math.hypot(
+                    float(current_pose.x) - start_x,
+                    float(current_pose.y) - start_y,
+                )
                 if drift_xy > self.MAX_XY_DRIFT_MM:
                     self.logger.warning(
                         "Centering aborted: XY drift %.2fmm exceeded limit %.2fmm",
@@ -458,45 +547,32 @@ class AutoAlignment:
                 self.logger.warning(
                     "Centering aborted: no improvement for %d iterations (best_error=%.2fmm)",
                     no_improvement_iters,
-                    best_error_mm,
+                    best_error_px,
                 )
                 return False
-            
-            # Check convergence
-            if abs(corr_x) < self.CENTRALIZE_TOLERANCE and abs(corr_y) < self.CENTRALIZE_TOLERANCE:
-                self.logger.info("Centering successful")
+
+            if error_px < 20.0:
+                self.logger.info(
+                    "Centering successful for marker %d | final_error=%.2f mm",
+                    int(target.marker_id),
+                    error_px,
+                )
+                self.last_error_px = error_px
                 return True
 
-            # Apply progressive damping based on iteration count and no-improvement streak
-            # With reduced xy_gain (0.08), damping helps prevent residual oscillations
-            if no_improvement_iters >= 4:
-                damping = 0.5  # Aggressive damping after 4 iterations without improvement
-            elif no_improvement_iters >= 2:
-                damping = 0.7  # Moderate damping after 2 iterations without improvement
-            elif no_improvement_iters >= 1:
-                damping = 0.85  # Light damping after 1 iteration without improvement
-            else:
-                damping = 1.0  # No damping on first few iterations with improvement
-            
-            corr_x *= damping
-            corr_y *= damping
-            if damping < 1.0:
-                self.logger.info(
-                    "Applying centering damping: factor=%.2f, no_impr_iters=%d, corr=(%.2f, %.2f)",
-                    damping,
-                    no_improvement_iters,
-                    corr_x,
-                    corr_y,
-                )
-            
-            # Apply correction
-            if not self.apply_correction(corr_x, corr_y, 0.0):
+            moved = self.apply_correction(corr_x, corr_y, 0.0)
+            if not moved:
+                self.logger.warning("Failed to apply correction at iteration %d", iteration)
                 return False
-            
+
+            self.last_error_px = error_px
             time.sleep(self.ITERATION_DELAY)
-            iteration += 1
-        
-        self.logger.warning("Centering loop reached max iterations")
+
+        self.logger.warning(
+            "Centering loop reached max iterations | best_error=%.2f mm | last_error=%.2f mm",
+            best_error_px,
+            self.last_error_px if self.last_error_px is not None else -1.0,
+        )
         return False
     
     def run_depth_loop(self, target_distance_mm: float = None, 
@@ -623,3 +699,51 @@ class AutoAlignment:
         if pose is not None:
             return (pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz)
         return None
+    
+
+    def calculate_centering_error_pixels(
+        self,
+        frame: np.ndarray,
+        marker_info: MarkerInfo,
+    ) -> tuple[float, float]:
+        """
+        Calcula o erro entre o centro da imagem e o centro do marcador, em pixels.
+        Retorna (error_x_px, error_y_px).
+        """
+        frame_h, frame_w = frame.shape[:2]
+        image_cx = frame_w / 2.0
+        image_cy = frame_h / 2.0
+
+        marker_cx = float(marker_info.centroid[0])
+        marker_cy = float(marker_info.centroid[1])
+
+        error_x_px = image_cx - marker_cx
+        error_y_px = image_cy - marker_cy
+
+        return error_x_px, error_y_px
+    
+    def pixel_error_to_robot_step(
+        self,
+        error_x_px: float,
+        error_y_px: float,
+    ) -> tuple[float, float]:
+        """
+        Converte erro em pixel para passo do robô em mm.
+        Ganhos pequenos para evitar overshoot.
+        """
+        gain_x = 0.03
+        gain_y = 0.03
+
+        step_x = error_x_px * gain_x
+        step_y = error_y_px * gain_y
+
+        # step_x = error_x_px * gain_x
+        # step_y = 0.0
+
+        # step_x = 0.0
+        # step_y = error_y_px * gain_y
+
+        step_x = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, step_x))
+        step_y = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, step_y))
+
+        return step_x, step_y

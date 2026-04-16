@@ -71,8 +71,12 @@ class MarkerDetector:
                 Returns (None, None) if no markers detected.
         """
         corners, ids, rejected = self.detector.detectMarkers(image)
+        print(f"ids from detect_markers: {ids}")
         if ids is not None and len(ids) > 0:
-            return ids, corners
+            for i in len(ids):
+                if ids[i]== 1:
+                    return ids[i], corners[0][i]
+            # return ids, corners
 
         for idx, fallback_detector in enumerate(self.fallback_detectors, start=1):
             corners, ids, rejected = fallback_detector.detectMarkers(image)
@@ -80,13 +84,15 @@ class MarkerDetector:
                 self.logger.info("Markers detected using fallback dictionary #%s", idx)
                 return ids, corners
         
-        if ids is None or len(ids) == 0:
-            if not log_missing:
-                return None, None
-            self.logger.warning("No markers detected")
-            return None, None
+        # if ids is None or len(ids) == 0:
+        #     if not log_missing:
+        #         return None, None
+        #     self.logger.warning("No markers detected")
+        #     return None, None
         
-        return ids, corners
+        # print(f'corners from detect_markers: {corners}')
+        
+        # return ids, corners
     
     def refine_corners(self, image: np.ndarray, corners: List[np.ndarray]) -> List[np.ndarray]:
         """
@@ -241,3 +247,43 @@ class MarkerDetector:
         closest_idx = np.argmin(distances)
         
         return marker_infos[closest_idx]
+    
+    def rectangle_from_aruco_detection(self, image: np.ndarray,
+                                         ) -> tuple[float, float, list] | tuple[None, None, None]:
+        """
+            Detects the ArUco marker closest to the image top left and extracts its geometric properties.
+
+            This method processes the input image to identify ArUco markers. It filters for the
+            marker nearest to the top left image point and calculates its pixel dimensions and corner
+            coordinates.
+
+            Args:
+                image (np.ndarray): The input image array (typically from OpenCV) containing the ArUco marker.
+
+            Returns:
+                tuple[float, float, list] | tuple[None, None, None]: A tuple containing:
+                    - width (float): The Euclidean distance between the top-left and top-right corners in pixels.
+                    - height (float): The Euclidean distance between the top-right and bottom-right corners in pixels.
+                    - corners (list): A list of four (x, y) coordinates representing the marker's vertices
+                      [top_left, top_right, bottom_right, bottom_left].
+
+                    Returns (None, None, None) if no marker is detected or selected.
+        """
+        ids, corners = self.detect_markers(image)
+
+        print(f'corners from detect_markers: {corners}')
+
+        if ids is not None and len(corners) > 0:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+
+            for corner in corners:
+                cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
+
+        
+        top_left, top_right, bottom_right, bottom_left = corners[0]
+        rec_width = np.linalg.norm(top_left - top_right)
+        rec_height = np.linalg.norm(bottom_right - top_right)
+
+        return rec_width, rec_height, [top_left, top_right, bottom_right, bottom_left]
+

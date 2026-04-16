@@ -108,6 +108,15 @@ def main():
         detector = MarkerDetector()
         auto_align = AutoAlignment(robot, camera, detector, transform)
 
+        # ===== TESTE ISOLADO DE CENTRALIZAÇÃO EM 1 ARUCO =====
+        auto_align.set_target_marker_id(1)  # troque 1 pelo ID que você quer testar
+
+        ok = auto_align.run_centering_loop(max_iterations=50)
+
+        logging.info("Resultado do alinhamento de 1 marcador: %s", ok)
+        return
+        # =====================================================
+
         # --- Controller operacional ---
         controller = MarkerTouchController(
             robot_arm=robot,

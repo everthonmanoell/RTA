@@ -1,0 +1,38 @@
+{
+  "test_id": "test_20260410_083620",
+  "device_model": "motorola edge 50 fusion",
+  "start_time": "2026-04-10T08:36:20.402070",
+  "end_time": "2026-04-10T08:36:22.680429",
+  "total_duration_sec": 2.2783591747283936,
+  "total_steps": 5,
+  "error_touches": 0,
+  "final_result": "error",
+  "touch_events": [],
+  "state_transitions": [
+    {
+      "from_state": "idle",
+      "to_state": "connect_robot",
+      "duration_sec": 1.8572633266448975,
+      "timestamp": 1775820982.259333
+    },
+    {
+      "from_state": "connect_robot",
+      "to_state": "motor_on",
+      "duration_sec": 0.12343287467956543,
+      "timestamp": 1775820982.3827658
+    },
+    {
+      "from_state": "motor_on",
+      "to_state": "error",
+      "duration_sec": 0.24657797813415527,
+      "timestamp": 1775820982.6293437
+    }
+  ],
+  "swipe_events": [],
+  "statistics": {
+    "total_area_touched_px": 0,
+    "avg_touch_precision_px": null,
+    "num_touches": 0,
+    "num_state_transitions": 3
+  }
+}

@@ -144,7 +144,7 @@ REFERENCE_DEPTH_MM = 300.0
 # Ajustar conforme a orientação de sua câmera nomotor
 COORDINATE_MAPPING = {
     "image_x_to_robot_axis": "X",  # ou "Y"
-    "image_y_to_robot_axis": "Z",  # ou "Y"
+    "image_y_to_robot_axis": "Y",  # ou "Y"
     # Significado:
     # - image_x_to_robot_axis = "X" → movimento horizontal da imagem = movimento em X do robô
     # - image_y_to_robot_axis = "Z" → movimento vertical da imagem = movimento em Z do robô

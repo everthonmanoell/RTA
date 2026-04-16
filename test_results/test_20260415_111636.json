@@ -1,0 +1,50 @@
+{
+  "test_id": "test_20260415_111636",
+  "device_model": "motorola edge 50 fusion",
+  "start_time": "2026-04-15T11:16:36.911399",
+  "end_time": "2026-04-15T11:17:24.260287",
+  "total_duration_sec": 47.34888815879822,
+  "total_steps": 6,
+  "error_touches": 0,
+  "final_result": "stopped_at_align_with_markers",
+  "touch_events": [],
+  "state_transitions": [
+    {
+      "from_state": "idle",
+      "to_state": "connect_robot",
+      "duration_sec": 1.8432412147521973,
+      "timestamp": 1776262598.7546399
+    },
+    {
+      "from_state": "connect_robot",
+      "to_state": "motor_on",
+      "duration_sec": 1.227238416671753,
+      "timestamp": 1776262599.9818783
+    },
+    {
+      "from_state": "motor_on",
+      "to_state": "move_to_roi",
+      "duration_sec": 0.8881289958953857,
+      "timestamp": 1776262600.8700073
+    },
+    {
+      "from_state": "move_to_roi",
+      "to_state": "camera_on",
+      "duration_sec": 19.938940286636353,
+      "timestamp": 1776262620.8089476
+    },
+    {
+      "from_state": "camera_on",
+      "to_state": "detect_markers",
+      "duration_sec": 0.07523679733276367,
+      "timestamp": 1776262620.8841844
+    }
+  ],
+  "swipe_events": [],
+  "statistics": {
+    "total_area_touched_px": 0,
+    "avg_touch_precision_px": null,
+    "num_touches": 0,
+    "num_state_transitions": 5
+  }
+}
