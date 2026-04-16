@@ -9,10 +9,12 @@ preprocessing, and caching.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import cv2
 import numpy as np
+
+import config
 
 
 class RobotCamera:
@@ -108,6 +110,7 @@ class RobotCamera:
             self.logger.error(f"Failed to save image: {filepath}")
         
         return frame
+
     
     def get_frame_shape(self) -> Optional[tuple]:
         """
@@ -153,7 +156,55 @@ class RobotCamera:
                 except Exception:
                     pass
             self.logger.info("Camera released")
+
+    def display_image(self, image_np: np.ndarray, window_name: str = "Image"):
+        """
+        Display an image in an OpenCV window.
+        
+        Args:
+            image (np.ndarray): Image to display (BGR format).
+            window_name (str): Name of the display window.
+        """
+        try:
+            cv2.imshow(window_name, image_np)
+            cv2.waitKey(0)
+            cv2.destroyWindow(window_name)
+        except Exception as exc:
+            self.logger.debug("Image display unavailable: %s", exc)
+        
+    def image_with_middle_point(self, image_np: np.ndarray) -> dict[str, object]:
+        """
+        Draw a red point in the middle of the image for debugging.
+        
+        Args:
+            image_np (np.ndarray): Input image (BGR format).
+        returns:
+            dict: Dictionary containing the modified image and center coordinates.
+        """
+        height, width = image_np.shape[:2]
+        center_x, center_y = width // 2, height // 2
+        cv2.circle(image_np, (center_x, center_y), radius=10, color=(0, 0, 255), thickness=-1)
+        return dict(image_np=image_np, center=(center_x, center_y))
+
+    def save_frame_with_timestamp(self, frame: np.ndarray,  prefix: str = "capture", filename = str ) -> Optional[np.ndarray]:
+        """
+        Save frame with a timestamped filename.
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{prefix}_{timestamp}.jpg"
+        filepath = self.output_dir / filename
+        success = cv2.imwrite(str(filepath), frame)
+        if success:
+            self.logger.info(f"Image saved: {filepath}")
+            return frame
+        else:
+            self.logger.error(f"Failed to save image: {filepath}")
+            return None
+        
     
+                
+    
+
     def __del__(self):
         """Ensure camera is released on object destruction."""
         self.release()

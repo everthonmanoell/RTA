@@ -27,6 +27,43 @@ from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 
 
+def annotate_aruco_centroids(frame, detector: MarkerDetector):
+    """Detecta ArUco no frame e desenha o centróide de cada marcador."""
+    if frame is None:
+        return None, [], []
+
+    ids, corners = detector.detect_markers(frame, log_missing=False)
+    annotated = frame.copy()
+
+    if ids is None or corners is None:
+        return annotated, [], []
+
+    refined_corners = detector.refine_corners(frame, corners)
+    marker_infos = []
+
+    for idx, marker_id in enumerate(ids):
+        marker_info = detector.get_marker_info(int(marker_id[0]), refined_corners[idx])
+        marker_infos.append(marker_info)
+
+        marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(annotated, [marker_corners], isClosed=True, color=(0, 255, 0), thickness=2)
+
+        centroid_x, centroid_y = map(int, marker_info.centroid)
+        cv2.circle(annotated, (centroid_x, centroid_y), 6, (0, 0, 255), -1)
+        cv2.putText(
+            annotated,
+            f"ID {marker_info.marker_id}",
+            (centroid_x + 8, centroid_y - 8),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA,
+        )
+
+    return annotated, ids, marker_infos
+
+
 def _configure_tool_from_config(robot: Denso) -> bool:
     tool_cfg = getattr(config, "TOOL_CONFIG", {})
     if not isinstance(tool_cfg, dict):
@@ -243,6 +280,158 @@ def main() -> int:
     model.turn_motor_on_action = MethodType(_turn_motor_on_action_with_tool, model)
 
     device, camera, detector, auto_align, controller = _build_operational_stack(robot)
+
+    # ===== TESTE ISOLADO DE CENTRALIZAÇÃO EM 1 ARUCO =====
+    logging.info("Conectando robô para teste isolado de centralização...")
+
+    if not robot.connect():
+        logging.error("Falha ao conectar com o robô.")
+        return 1
+
+    if not robot.motor_on():
+        logging.error("Falha ao ligar o motor do robô.")
+        robot.disconnect()
+        return 1
+
+    if not _configure_tool_from_config(robot):
+        logging.error("Falha ao configurar a tool.")
+        robot.disconnect()
+        return 1
+
+    # Opcional, mas recomendado: ir para ROI antes de procurar marcador
+    try:
+        if hasattr(robot, "move_to_roi"):
+            moved = bool(robot.move_to_roi())
+            if not moved:
+                logging.warning("move_to_roi() retornou False. Aplicando move_safe().")
+                robot.move_safe(preserve_orientation=True)
+        else:
+            robot.move_safe(preserve_orientation=True)
+    except Exception as exc:
+        logging.warning("Falha ao mover para ROI/safe pose: %s", exc)
+
+
+    logging.info("Teste manual de movimento cartesiano...")
+
+    pose0 = robot.get_cartesian_pose()
+    if pose0 is None:
+        logging.error("Não foi possível ler pose inicial do robô.")
+        robot.disconnect()
+        return 1
+
+    logging.info(
+        "Pose inicial: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+        float(pose0.x), float(pose0.y), float(pose0.z),
+        float(pose0.rx), float(pose0.ry), float(pose0.rz),
+    )
+
+    test_pose = Pose(
+        x=float(pose0.x) - 10.0,
+        y=float(pose0.y),
+        z=float(pose0.z),
+        rx=float(pose0.rx),
+        ry=float(pose0.ry),
+        rz=float(pose0.rz),
+        fig=int(getattr(pose0, "fig", 5)),
+    )
+
+    ok_move = robot.move_cartesian(test_pose)
+    logging.info("Resultado do move cartesiano manual: %s", ok_move)
+
+    time.sleep(0.5)
+
+    pose1 = robot.get_cartesian_pose()
+    if pose1 is not None:
+        logging.info(
+            "Pose após teste manual: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+            float(pose1.x), float(pose1.y), float(pose1.z),
+            float(pose1.rx), float(pose1.ry), float(pose1.rz),
+        )
+
+#TODO doing
+## ======== Pedro pediu para fazer =========================================================
+    aruco_widht_real_mm = 15
+    aruco_hight_real_mm = 15
+
+
+    frame = camera.capture_frame()
+
+    width_aruco_pixel, height_aruco_pixel, vertices = detector.rectangle_from_aruco_detection(frame)
+
+    width_pixels_scale = width_aruco_pixel / aruco_widht_real_mm
+    height_pixels_scale = height_aruco_pixel / aruco_hight_real_mm
+
+
+    height, width = frame.shape[:2]
+    image_centroid_x, image_centroid_y = width // 2, height // 2
+    
+    aruco_frame, aruco_ids, aruco_markers = annotate_aruco_centroids(frame, detector)
+    aruco_centroid_x, aruco_centroid_y = map(int, aruco_markers[0].centroid)
+
+    cv2.putText(
+        aruco_frame,
+        f"Image Centroid",
+        (image_centroid_x + 8, image_centroid_y - 8),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (255, 0, 0),
+        2,
+        cv2.LINE_AA,
+    )
+
+    cv2.putText(
+        aruco_frame,
+        f"ArUco Centroid",
+        (aruco_centroid_x + 8, aruco_centroid_y - 8),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (0, 255, 255),
+        2,
+    )
+
+    error_x = aruco_centroid_x - image_centroid_x
+    error_y = aruco_centroid_y - image_centroid_y
+
+    error_x_mm = error_x / width_pixels_scale
+    error_y_mm = error_y / height_pixels_scale
+
+    print(f"Error in pixels: x={error_x:.2f}, y={error_y:.2f}")
+
+    cv2.putText(
+        aruco_frame,
+        f"Error: ({error_x}, {error_y})",
+        (10, height - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        (0, 255, 255),
+        2,
+    )
+
+    aruco_frame_with_middle = camera.image_with_middle_point(aruco_frame)
+    if aruco_frame is not None:
+        logging.info("ArUco detectados no teste manual: %s", [int(marker[0]) for marker in aruco_ids])
+        camera.display_image(aruco_frame_with_middle["image_np"], window_name="ArUco Centroids and middle point image")
+
+### =========================================================================
+
+    # auto_align.set_target_marker_id(1)
+
+    # ok = auto_align.run_centering_loop(max_iterations=50)
+    # logging.info("Resultado do alinhamento de 1 marcador: %s", ok)
+
+    try:
+        camera.release()
+    except Exception:
+        pass
+
+    try:
+        robot.disconnect()
+    except Exception:
+        pass
+    
+    return 0
+    # return 0 if ok else 1
+    # =====================================================
 
     auto_cfg = getattr(config, "AUTO_ALIGNMENT_CONFIG", {})
     if isinstance(auto_cfg, dict):

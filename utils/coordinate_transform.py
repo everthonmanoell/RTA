@@ -147,43 +147,36 @@ class CoordinateTransform:
         estimated_depth = reference_depth_mm * np.sqrt(reference_area_px / marker_area_px)
         return estimated_depth
     
-    def apply_robot_transform(self, camera_frame_x: float, camera_frame_y: float, 
-                             camera_frame_z: float, 
-                             current_robot_x: float, current_robot_y: float, 
-                             current_robot_z: float) -> Tuple[float, float, float]:
-        """
-        Apply complete transformation from camera frame to new robot position.
-        
-        Args:
-            camera_frame_x (float): X offset in camera frame (mm).
-            camera_frame_y (float): Y offset in camera frame (mm).
-            camera_frame_z (float): Z offset in camera frame (mm).
-            current_robot_x (float): Current robot X position.
-            current_robot_y (float): Current robot Y position.
-            current_robot_z (float): Current robot Z position.
-            
-        Returns:
-            Tuple[float, float, float]: New (robot_x, robot_y, robot_z).
-        """
+    def apply_robot_transform(
+        self,
+        camera_frame_x: float,
+        camera_frame_y: float,
+        camera_frame_z: float,
+        current_robot_x: float,
+        current_robot_y: float,
+        current_robot_z: float,
+    ):
         new_x = current_robot_x
         new_y = current_robot_y
         new_z = current_robot_z
-        
-        # Map image axes to robot axes based on configuration
+
+        # eixo horizontal da imagem
         if self.robot_config.image_x_to_robot_axis == "X":
-            new_x = current_robot_x - camera_frame_x
+            new_x = current_robot_x + camera_frame_x
         elif self.robot_config.image_x_to_robot_axis == "Y":
             new_y = current_robot_y + camera_frame_x
-        
-        if self.robot_config.image_y_to_robot_axis == "Z":
-            new_z = current_robot_z + camera_frame_y
-        elif self.robot_config.image_y_to_robot_axis == "Y":
+
+        # eixo vertical da imagem
+        if self.robot_config.image_y_to_robot_axis == "Y":
             new_y = current_robot_y + camera_frame_y
-        
-        # Apply Z depth if provided
-        if camera_frame_z != 0:
-            new_x = current_robot_x + camera_frame_z
-        
+        elif self.robot_config.image_y_to_robot_axis == "X":
+            new_x = current_robot_x + camera_frame_y
+        elif self.robot_config.image_y_to_robot_axis == "Z":
+            new_z = current_robot_z + camera_frame_y
+
+        if camera_frame_z != 0.0:
+            new_z = current_robot_z + camera_frame_z
+
         return new_x, new_y, new_z
     
     def calibrate_from_reference(self, reference_marker_width_mm: float,
