@@ -904,3 +904,6 @@ class MarkerTouchController:
         except Exception as e:
             self.logger.error(f"[FIDUCIAL] Erro em touch_marker_listen_while_moving: {e}")
             return False, None
+        
+    
+    

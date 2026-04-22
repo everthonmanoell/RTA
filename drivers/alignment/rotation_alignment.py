@@ -145,3 +145,44 @@ class RotationAlignment:
         
         self.logger.warning("RZ alignment reached max iterations")
         return False
+
+    #### adding new methods to align the robot with the center of the marker ###
+    #TODO verify if this works
+    def adjust_robot_to_marker_center(
+    self,
+    error_diff: tuple[float, float],
+    ) -> bool:
+        current_pose = self.robot_arm.get_cartesian_pose()
+        if current_pose is None:
+            self.logger.error("Failed to get robot pose for center alignment")
+            return False
+
+        error_x = error_diff[0]  # erro visual em X
+        error_y = error_diff[1]  # erro visual em Y
+
+        gain_x = 0.01 if abs(error_y) <= 5 else 0.05
+        gain_y = 0.01 if abs(error_x) <= 5 else 0.05
+
+        # MAPEAMENTO DESCOBERTO EMPIRICAMENTE:
+        # robot.x -> image_y
+        # robot.y -> image_x
+        adjustment_x = gain_x * error_y
+        adjustment_y = gain_y * error_x
+
+        current_pose.x += adjustment_x
+        current_pose.y += adjustment_y
+
+        self.logger.info(
+            f"Ajuste aplicado: dx={adjustment_x:.2f} mm, dy={adjustment_y:.2f} mm | "
+            f"erro_x={error_x:.2f} mm, erro_y={error_y:.2f} mm"
+        )
+
+        success = self.robot_arm.move_cartesian(current_pose)
+        if not success:
+            self.logger.error("Failed to move robot for center alignment")
+            return False
+
+        return True
+    
+    # def auto_adjust_robot_to_marker_center(self, marker_infos: List[MarkerInfo]) -> bool:
+        
