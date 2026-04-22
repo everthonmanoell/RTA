@@ -158,6 +158,13 @@ COORDINATE_SCALE = {
 }
 
 # ============================================================================
+# CALIBRAÇÃO DE GANHOS E TOLERÂNCIAS
+# ============================================================================
+TRANSLATION_GAIN = 0.1  # Quanto da correção aplicar por iteração (ajustar para estabilidade)
+ALIGMENT_TOLERANCE_MM = 2.0  # Tolerância de alinhamento final (ajustar conforme precisão desejada)
+
+
+# ============================================================================
 # PARÂMETROS DE ALINHAMENTO XYZ (AutoAlignment)
 # ============================================================================
 

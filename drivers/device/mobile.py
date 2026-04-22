@@ -122,7 +122,7 @@ class GetEvent:
 
 def start_getevent_process() -> subprocess.Popen:
     return subprocess.Popen(
-        ["adb", "shell", "getevent"],
+        adb_cmd("shell", "getevent"),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -157,13 +157,69 @@ def iter_getevent_lines(proc: subprocess.Popen) -> Iterator[str]:
             yield line
 
 
-def detect_touchscreen_device() -> str:
-    """
-    Detecta automaticamente o device touchscreen, ex: 'event9'.
-    """
+def adb_available() -> bool:
+    try:
+        proc = subprocess.run(["adb", "version"], capture_output=True, text=True, timeout=5)
+        return proc.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+def adb_device_connected() -> bool:
+    try:
+        proc = subprocess.run(["adb", "get-state"], capture_output=True, text=True, timeout=5)
+        return proc.returncode == 0 and "device" in proc.stdout.strip().lower()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    
+def list_adb_devices() -> list[str]:
     try:
         output = subprocess.check_output(
-            ["adb", "shell", "getevent", "-pl"],
+            ["adb", "devices"],
+            text=True,
+            stderr=subprocess.STDOUT,
+            timeout=5,
+        )
+    except Exception as e:
+        raise AssertionError(f"Erro ao executar adb devices: {e}")
+
+    devices = []
+    for line in output.splitlines():
+        line = line.strip()
+        if not line or line.startswith("List of devices attached"):
+            continue
+
+        parts = line.split()
+        if len(parts) >= 2 and parts[1] == "device":
+            devices.append(parts[0])
+
+    return devices
+
+ADB_SERIAL: Optional[str] = None
+
+
+def get_preferred_adb_serial() -> str:
+    devices = list_adb_devices()
+    if not devices:
+        raise AssertionError("Nenhum dispositivo Android conectado via ADB")
+
+    # Prefere conexão USB em vez da conexão wireless adb-..._tcp
+    for serial in devices:
+        if not serial.startswith("adb-"):
+            return serial
+
+    return devices[0]
+
+
+def adb_cmd(*args: str) -> list[str]:
+    serial = ADB_SERIAL or get_preferred_adb_serial()
+    return ["adb", "-s", serial, *args]
+
+
+def detect_touchscreen_device() -> str:
+    try:
+        output = subprocess.check_output(
+            adb_cmd("shell", "getevent", "-pl"),
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=5,
@@ -178,14 +234,12 @@ def detect_touchscreen_device() -> str:
             if line.startswith("add device"):
                 current_device = line.split("/dev/input/")[-1] if "/dev/input/" in line else ""
                 has_touch_axis = False
-
             elif "ABS_MT_POSITION_X" in line or ("ABS_X" in line and "ABS" in line):
                 has_touch_axis = True
-
             elif "INPUT_PROP_DIRECT" in line and has_touch_axis and current_device:
                 return current_device
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
         pass
 
     return "event9"
@@ -193,46 +247,58 @@ def detect_touchscreen_device() -> str:
 
 def get_screen_size() -> tuple[int, int]:
     """
-    Obtém a resolução física da tela via:
-        adb shell wm size
-
-    Exemplo:
-        Physical size: 1080x2400
+    Tenta obter a resolução da tela por múltiplas estratégias:
+    1) adb shell wm size
+    2) adb shell dumpsys window
+    3) adb shell dumpsys display
     """
-    try:
-        output = subprocess.check_output(
-            ["adb", "shell", "wm", "size"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            timeout=5,
-        ).strip()
+    commands = [
+    adb_cmd("shell", "wm", "size"),
+    adb_cmd("shell", "dumpsys", "window"),
+    adb_cmd("shell", "dumpsys", "display"),
+    ]
 
-        for line in output.splitlines():
-            if "Physical size:" in line:
-                size_str = line.split("Physical size:")[-1].strip()
-                width_str, height_str = size_str.split("x")
-                return int(width_str), int(height_str)
+    for cmd in commands:
+        try:
+            output = subprocess.check_output(
+                cmd,
+                text=True,
+                stderr=subprocess.DEVNULL,
+                timeout=5,
+            ).strip()
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError):
-        pass
+            for line in output.splitlines():
+                line = line.strip()
+
+                # Caso clássico: Physical size: 1080x2400
+                if "Physical size:" in line:
+                    size_str = line.split("Physical size:")[-1].strip()
+                    if "x" in size_str:
+                        width_str, height_str = size_str.split("x")
+                        return int(width_str), int(height_str)
+
+                # Procura padrões como 1080x2400 em outras saídas
+                import re
+                match = re.search(r"\b(\d{3,5})x(\d{3,5})\b", line)
+                if match:
+                    w = int(match.group(1))
+                    h = int(match.group(2))
+                    if w > 0 and h > 0:
+                        return (w, h)
+
+        except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError, FileNotFoundError):
+            pass
 
     return (0, 0)
 
 
 def get_touch_axis_ranges(device_name: Optional[str] = None) -> tuple[tuple[int, int], tuple[int, int]]:
-    """
-    Retorna os ranges brutos do touchscreen:
-        ((min_x, max_x), (min_y, max_y))
-
-    Exemplo:
-        ((0, 4095), (0, 4095))
-    """
     if device_name is None:
         device_name = detect_touchscreen_device()
 
     try:
         output = subprocess.check_output(
-            ["adb", "shell", "getevent", "-pl"],
+            adb_cmd("shell", "getevent", "-pl"),
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=5,
@@ -255,7 +321,6 @@ def get_touch_axis_ranges(device_name: Optional[str] = None) -> tuple[tuple[int,
                 if "min" in parts and "max" in parts:
                     min_x = int(parts[parts.index("min") + 1])
                     max_x = int(parts[parts.index("max") + 1])
-
             elif "ABS_MT_POSITION_Y" in line:
                 parts = line.replace(",", "").split()
                 if "min" in parts and "max" in parts:
@@ -265,7 +330,7 @@ def get_touch_axis_ranges(device_name: Optional[str] = None) -> tuple[tuple[int,
         if None not in (min_x, max_x, min_y, max_y):
             return ((min_x, max_x), (min_y, max_y))
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError):
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, ValueError, FileNotFoundError):
         pass
 
     return ((0, 0), (0, 0))
@@ -278,9 +343,6 @@ def map_raw_touch_to_screen(
     y_range: tuple[int, int],
     screen_size: tuple[int, int],
 ) -> tuple[int, int] | None:
-    """
-    Converte coordenadas brutas do touchscreen para pixels reais da tela.
-    """
     min_x, max_x = x_range
     min_y, max_y = y_range
     screen_w, screen_h = screen_size
@@ -298,10 +360,6 @@ def map_raw_touch_to_screen(
 
 
 class MobileInputListener:
-    """
-    Listener de eventos crus do `adb shell getevent`.
-    """
-
     def __init__(self, device_filter: Optional[str] = None) -> None:
         if device_filter is None:
             device_filter = detect_touchscreen_device()
@@ -317,6 +375,9 @@ class MobileInputListener:
         if self._proc is not None:
             try:
                 self._proc.terminate()
+                self._proc.wait(timeout=2)
+            except Exception:
+                pass
             finally:
                 self._proc = None
 
@@ -343,10 +404,6 @@ class MobileInputListener:
 
 
 class TouchTracker:
-    """
-    Converte stream de GetEvent em TouchPoint.
-    """
-
     def __init__(self) -> None:
         self._x: int = 0
         self._y: int = 0
@@ -362,35 +419,27 @@ class TouchTracker:
         if evt.is_axis_x and evt.valor_decimal is not None:
             self._x = evt.valor_decimal
             self._dirty = True
-
         elif evt.is_axis_y and evt.valor_decimal is not None:
             self._y = evt.valor_decimal
             self._dirty = True
-
         elif evt.is_pressure and evt.valor_decimal is not None:
             self._pressure = evt.valor_decimal
             self._dirty = True
-
         elif evt.is_touch_major and evt.valor_decimal is not None:
             self._touch_major = evt.valor_decimal
-
         elif evt.is_touch_minor and evt.valor_decimal is not None:
             self._touch_minor = evt.valor_decimal
-
         elif evt.is_tracking_id:
             signed = evt.valor_signed
             if signed is not None:
                 self._tracking_id = signed
                 self._dirty = True
-
         elif evt.is_touch_down:
             self._finger_down = True
             self._dirty = True
-
         elif evt.is_touch_up:
             self._finger_down = False
             self._dirty = True
-
         elif evt.is_syn_report and self._dirty:
             self._dirty = False
 
@@ -475,7 +524,7 @@ class TouchRecording:
         return json.dumps(self.to_dict(), indent=indent)
 
     def save(self, path: str) -> None:
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(self.to_json())
 
 
@@ -539,7 +588,7 @@ def _listen_for_rta_result(
     timeout: float,
 ) -> None:
     proc = subprocess.Popen(
-        ["adb", "logcat", "-s", "RTA_RESULT:I", "-v", "raw"],
+        adb_cmd("logcat", "-s", "RTA_RESULT:I", "-v", "raw"),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -571,11 +620,14 @@ def _listen_for_rta_result(
                     continue
     finally:
         proc.terminate()
-        proc.wait()
+        try:
+            proc.wait(timeout=2)
+        except Exception:
+            pass
 
 
 def wait_for_rta_result(timeout: float = 120.0) -> Optional[RTAResult]:
-    subprocess.run(["adb", "logcat", "-c"], capture_output=True)
+    subprocess.run(adb_cmd("logcat", "-c"), capture_output=True)
 
     result_holder: list[RTAResult] = []
     stop = threading.Event()
@@ -586,14 +638,14 @@ def wait_for_rta_result(timeout: float = 120.0) -> Optional[RTAResult]:
 def get_device_model() -> str:
     try:
         brand = subprocess.check_output(
-            ["adb", "shell", "getprop", "ro.product.brand"],
+            adb_cmd("shell", "getprop", "ro.product.brand"),
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=5,
         ).strip()
 
         model = subprocess.check_output(
-            ["adb", "shell", "getprop", "ro.product.model"],
+            adb_cmd("shell", "getprop", "ro.product.model"),
             text=True,
             stderr=subprocess.DEVNULL,
             timeout=5,
@@ -604,7 +656,7 @@ def get_device_model() -> str:
 
         return f"{brand} {model}" if brand else model
 
-    except (subprocess.TimeoutExpired, subprocess.CalledProcessError):
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
 
 
@@ -634,7 +686,7 @@ class RTATestResult:
 
     def save(self, path: str) -> None:
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(self.to_json())
 
     def summary(self) -> str:
@@ -671,7 +723,7 @@ def run_rta_test(
     print(f"[RTA Test] Device model: {device_model}")
     print(f"[RTA Test] Device type: {device_type}")
 
-    subprocess.run(["adb", "logcat", "-c"], capture_output=True)
+    subprocess.run(adb_cmd("logcat", "-c"), capture_output=True)
 
     result_holder: list[RTAResult] = []
     stop_event = threading.Event()
@@ -683,11 +735,11 @@ def run_rta_test(
     logcat_thread.start()
 
     subprocess.run(
-        [
-            "adb", "shell", "am", "start", "-n",
-            "com.example.rta/.MainActivity",
-            "--es", "device_type", device_type,
-        ],
+        adb_cmd(
+        "shell", "am", "start", "-n",
+        "com.example.rta/.MainActivity",
+        "--es", "device_type", device_type,
+        ),
         capture_output=True,
     )
     print("[RTA Test] App launched. Recording touches...")
@@ -737,15 +789,6 @@ def run_rta_test(
 
 
 class Mobile:
-    """
-    Adapter usado pela FSM.
-
-    Responsabilidades:
-    - ouvir toque real via adb getevent
-    - converter coordenada bruta para pixel da tela
-    - devolver (x, y) em pixels
-    """
-
     def __init__(self):
         self.device_name = detect_touchscreen_device()
         self.screen_size = get_screen_size()
@@ -768,142 +811,370 @@ class Mobile:
                 return None
 
             point = tracker.feed(evt)
-
             if point and point.action == TouchAction.DOWN:
-                touch_px = map_raw_touch_to_screen(
+                return map_raw_touch_to_screen(
                     raw_x=point.x,
                     raw_y=point.y,
                     x_range=self.x_range,
                     y_range=self.y_range,
                     screen_size=self.screen_size,
                 )
-
-                if touch_px is None:
-                    return None
-
-                return touch_px
 
         return None
 
     def wait_for_touch_with_pressure(
         self, timeout: float = 3, max_pressure_threshold: int = 3000
     ) -> Optional[dict]:
-        """
-        Espera por toque e retorna dados incluindo pressão e posição.
+        recording = record_touch(self.listener, timeout=timeout, stop_on_up=True)
+        if recording.total_points == 0:
+            return None
 
-        Retorna:
-            {
-                "position": (x, y),
-                "pressure": int,
-                "duration_sec": float,
-                "timestamp": float,
-                "excessive_pressure": bool
-            }
-            ou None se timeout
-        """
-        tracker = TouchTracker()
-        start = time.time()
+        last_non_up = next((p for p in reversed(recording.points) if p.action != TouchAction.UP), None)
+        if last_non_up is None:
+            return None
 
-        for evt in self.listener.iter_events():
-            if time.time() - start > timeout:
-                return None
+        touch_px = map_raw_touch_to_screen(
+            raw_x=last_non_up.x,
+            raw_y=last_non_up.y,
+            x_range=self.x_range,
+            y_range=self.y_range,
+            screen_size=self.screen_size,
+        )
+        if touch_px is None:
+            return None
 
-            point = tracker.feed(evt)
-
-            if point and point.action == TouchAction.UP:
-                touch_px = map_raw_touch_to_screen(
-                    raw_x=point.x,
-                    raw_y=point.y,
-                    x_range=self.x_range,
-                    y_range=self.y_range,
-                    screen_size=self.screen_size,
-                )
-
-                if touch_px is None:
-                    return None
-
-                avg_pressure = tracker.avg_pressure
-                excessive = avg_pressure > max_pressure_threshold
-
-                return {
-                    "position": touch_px,
-                    "pressure": int(avg_pressure),
-                    "duration_sec": tracker.duration,
-                    "timestamp": time.time(),
-                    "excessive_pressure": excessive,
-                }
-
-        return None
+        avg_pressure = recording.avg_pressure
+        return {
+            "position": touch_px,
+            "pressure": int(avg_pressure),
+            "duration_sec": recording.duration,
+            "timestamp": time.time(),
+            "excessive_pressure": avg_pressure > max_pressure_threshold,
+            "total_points": recording.total_points,
+        }
 
     def monitor_swipe_for_signal_loss(self, timeout: float = 10.0) -> tuple[bool, str]:
-        """
-        Monitora uma sequência de swipe para detectar perda de sinal ou pressão excessiva.
+        recording = record_touch(self.listener, timeout=timeout, stop_on_up=True)
+        if recording.total_points == 0:
+            return False, "no_touch"
 
-        Retorna:
-            (signal_ok: bool, reason: str)
-            - signal_ok=True: swipe completado sem problemas
-            - signal_ok=False, reason="signal_loss": dispositivo parou de responder
-            - signal_ok=False, reason="excessive_pressure": pressão muito forte
-        """
-        tracker = TouchTracker()
-        start = time.time()
-        last_event_time = start
-        signal_loss_threshold = 0.5  # segundos sem evento
+        if any(p.pressure > 3000 for p in recording.points if p.action != TouchAction.UP):
+            return False, "excessive_pressure"
 
-        try:
-            for evt in self.listener.iter_events():
-                elapsed = time.time() - start
+        if recording.total_points < 2:
+            return False, "insufficient_points"
 
-                if elapsed > timeout:
-                    return True, "completed"
+        if not recording.up_points:
+            return False, "signal_loss"
 
-                # Verifica se perdeu sinal (nenhum evento por muito tempo)
-                current_time = time.time()
-                if current_time - last_event_time > signal_loss_threshold:
-                    # Há um toque ativo mas nenhum evento por signal_loss_threshold segundos
-                    if tracker.total_points > 0 and not tracker.points[-1].action == TouchAction.UP:
-                        return False, "signal_loss"
-
-                last_event_time = current_time
-                point = tracker.feed(evt)
-
-                # Detecta pressão excessiva
-                if point and point.pressure > 3000:
-                    return False, "excessive_pressure"
-
-                # Se toque terminou naturalmente, swipe completou
-                if point and point.action == TouchAction.UP:
-                    return True, "completed"
-
-        except Exception as e:
-            return False, f"error:{str(e)}"
-
-        return True, "timeout_ok"
+        return True, "completed"
 
     def stop(self) -> None:
         self.listener.stop()
 
 
-def main() -> None:
-    import sys
+@dataclass
+class ValidationStepResult:
+    name: str
+    ok: bool
+    details: dict = field(default_factory=dict)
+    error: Optional[str] = None
+    duration_s: float = 0.0
 
-    device_type = sys.argv[1] if len(sys.argv) > 1 else "flat"
-    print(f"=== RTA Full Test (device_type={device_type}) ===\n")
+    def to_dict(self) -> dict:
+        return {
+            "name": self.name,
+            "ok": self.ok,
+            "details": self.details,
+            "error": self.error,
+            "duration_s": round(self.duration_s, 3),
+        }
 
+
+@dataclass
+class ValidationReport:
+    validation_id: str
+    timestamp: str
+    device_type: str
+    output_json: str
+    steps: list[ValidationStepResult] = field(default_factory=list)
+
+    @property
+    def passed(self) -> int:
+        return sum(1 for step in self.steps if step.ok)
+
+    @property
+    def failed(self) -> int:
+        return sum(1 for step in self.steps if not step.ok)
+
+    def to_dict(self) -> dict:
+        return {
+            "validation_id": self.validation_id,
+            "timestamp": self.timestamp,
+            "device_type": self.device_type,
+            "output_json": self.output_json,
+            "summary": {
+                "total_steps": len(self.steps),
+                "passed": self.passed,
+                "failed": self.failed,
+            },
+            "steps": [step.to_dict() for step in self.steps],
+        }
+
+    def save(self) -> None:
+        os.makedirs(os.path.dirname(self.output_json) or ".", exist_ok=True)
+        with open(self.output_json, "w", encoding="utf-8") as f:
+            json.dump(self.to_dict(), f, indent=2, ensure_ascii=False)
+
+
+def _run_step(name: str, fn: Callable[[], dict]) -> ValidationStepResult:
+    print(f"\n[STEP] {name}")
+    start = time.time()
+    try:
+        details = fn() or {}
+        result = ValidationStepResult(
+            name=name,
+            ok=True,
+            details=details,
+            duration_s=time.time() - start,
+        )
+        print(f"[ OK ] {name}")
+        if details:
+            print(json.dumps(details, indent=2, ensure_ascii=False))
+        return result
+    except Exception as exc:
+        result = ValidationStepResult(
+            name=name,
+            ok=False,
+            error=f"{type(exc).__name__}: {exc}",
+            duration_s=time.time() - start,
+        )
+        print(f"[FAIL] {name}")
+        print(result.error)
+        return result
+
+
+def _assert(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
+def _sample_touch_events() -> list[GetEvent]:
+    lines = [
+        "/dev/input/event9: 0003 0039 0000002a",
+        "/dev/input/event9: 0003 0035 00000100",
+        "/dev/input/event9: 0003 0036 00000200",
+        "/dev/input/event9: 0003 003a 00000064",
+        "/dev/input/event9: 0001 014a 00000001",
+        "/dev/input/event9: 0000 0000 00000000",
+        "/dev/input/event9: 0003 0035 00000120",
+        "/dev/input/event9: 0003 0036 00000220",
+        "/dev/input/event9: 0003 003a 0000006e",
+        "/dev/input/event9: 0000 0000 00000000",
+        "/dev/input/event9: 0001 014a 00000000",
+        "/dev/input/event9: 0003 0039 ffffffff",
+        "/dev/input/event9: 0000 0000 00000000",
+    ]
+    events = [parse_getevent_line(line) for line in lines]
+    return [evt for evt in events if evt is not None]
+
+
+def validate_parse_getevent() -> dict:
+    evt = parse_getevent_line("/dev/input/event9: 0003 0035 000001f4")
+    _assert(evt is not None, "parse_getevent_line retornou None")
+    _assert(evt.device == "/dev/input/event9", "device incorreto")
+    _assert(evt.is_axis_x, "evento deveria ser axis x")
+    _assert(evt.valor_decimal == 500, "valor_decimal deveria ser 500")
+    return {"parsed_event": evt.to_dict() if hasattr(evt, 'to_dict') else {
+        "device": evt.device,
+        "tipo": evt.tipo,
+        "codigo": evt.codigo,
+        "valor": evt.valor,
+        "valor_decimal": evt.valor_decimal,
+    }}
+
+
+def validate_map_raw_touch_to_screen() -> dict:
+    px = map_raw_touch_to_screen(2048, 2048, (0, 4095), (0, 4095), (1080, 2400))
+    _assert(px is not None, "map_raw_touch_to_screen retornou None")
+    _assert(abs(px[0] - 539) <= 1, f"x inesperado: {px[0]}")
+    _assert(abs(px[1] - 1199) <= 1, f"y inesperado: {px[1]}")
+    return {"mapped_pixel": px}
+
+
+def validate_touch_tracker() -> dict:
+    tracker = TouchTracker()
+    points = []
+    for evt in _sample_touch_events():
+        point = tracker.feed(evt)
+        if point:
+            points.append(point)
+
+    _assert(len(points) == 3, f"esperado 3 TouchPoints, veio {len(points)}")
+    _assert(points[0].action == TouchAction.DOWN, "primeiro ponto deveria ser DOWN")
+    _assert(points[1].action == TouchAction.MOVE, "segundo ponto deveria ser MOVE")
+    _assert(points[2].action == TouchAction.UP, "terceiro ponto deveria ser UP")
+    return {
+        "actions": [p.action.value for p in points],
+        "points": [p.to_dict() for p in points],
+    }
+
+
+def validate_touch_recording() -> dict:
+    tracker = TouchTracker()
+    recording = TouchRecording()
+    for evt in _sample_touch_events():
+        point = tracker.feed(evt)
+        if point:
+            recording.points.append(point)
+
+    _assert(recording.total_points == 3, "total_points incorreto")
+    _assert(len(recording.down_points) == 1, "down_points incorreto")
+    _assert(len(recording.move_points) == 1, "move_points incorreto")
+    _assert(len(recording.up_points) == 1, "up_points incorreto")
+    _assert(recording.avg_pressure > 0, "avg_pressure deveria ser > 0")
+    return recording.to_dict()
+
+
+def validate_rta_result() -> dict:
+    result = RTAResult(status="success", hits=9, total=10, errors=1, reason="ok", device_type="flat")
+    _assert(result.is_success is True, "is_success deveria ser True")
+    _assert(abs(result.accuracy - 90.0) < 0.001, "accuracy incorreta")
+    return result.to_dict()
+
+
+def validate_adb_environment() -> dict:
+    _assert(adb_available(), "ADB não está disponível no PATH")
+
+    devices = list_adb_devices()
+    _assert(devices, "Nenhum dispositivo Android conectado via ADB")
+
+    device_name = detect_touchscreen_device()
+    screen_size = get_screen_size()
+    x_range, y_range = get_touch_axis_ranges(device_name)
+    model = get_device_model()
+
+    _assert(screen_size != (0, 0), "Não foi possível obter screen size")
+    _assert(x_range != (0, 0) and y_range != (0, 0), "Não foi possível obter os ranges do touch")
+
+    return {
+        "connected_devices": devices,
+        "device_name": device_name,
+        "screen_size": screen_size,
+        "x_range": x_range,
+        "y_range": y_range,
+        "device_model": model,
+    }
+
+
+def validate_live_touch_feedback(timeout: float = 8.0) -> dict:
+    mobile = Mobile()
+    try:
+        print(f"Toque na tela uma vez em até {timeout:.0f}s para validar wait_for_touch_feedback()...")
+        touch = mobile.wait_for_touch_feedback(timeout=timeout)
+        _assert(touch is not None, "Nenhum toque detectado")
+        return {"touch_feedback_px": touch}
+    finally:
+        mobile.stop()
+
+
+def validate_live_touch_with_pressure(timeout: float = 10.0) -> dict:
+    mobile = Mobile()
+    try:
+        print(f"Faça um toque completo (down/up) em até {timeout:.0f}s para validar pressão...")
+        data = mobile.wait_for_touch_with_pressure(timeout=timeout)
+        _assert(data is not None, "Nenhum toque completo detectado")
+        return data
+    finally:
+        mobile.stop()
+
+
+def validate_live_swipe(timeout: float = 12.0) -> dict:
+    mobile = Mobile()
+    try:
+        print(f"Faça um swipe completo em até {timeout:.0f}s para validar monitor_swipe_for_signal_loss()...")
+        ok, reason = mobile.monitor_swipe_for_signal_loss(timeout=timeout)
+        _assert(ok, f"Swipe inválido: {reason}")
+        return {"signal_ok": ok, "reason": reason}
+    finally:
+        mobile.stop()
+
+
+def validate_run_rta_test_smoke(device_type: str, timeout: float = 20.0) -> dict:
+    _assert(adb_available(), "ADB não está disponível")
+    devices = list_adb_devices()
+    _assert(devices, "Nenhum device conectado")
     result = run_rta_test(
         output_dir="test_results",
         device_type=device_type,
-        timeout=120,
+        timeout=timeout,
+        test_id="smoke_test",
+    )
+    return result.to_dict()
+
+
+def build_validation_report(device_type: str, output_dir: str = "validation_results") -> ValidationReport:
+    now = datetime.now()
+    validation_id = f"validation_{now.strftime('%Y%m%d_%H%M%S')}"
+    output_json = os.path.join(output_dir, f"{validation_id}.json")
+    return ValidationReport(
+        validation_id=validation_id,
+        timestamp=now.isoformat(),
+        device_type=device_type,
+        output_json=output_json,
     )
 
-    print(f"\n{'=' * 50}")
-    print(result.summary())
-    if result.app_result:
-        print(f"Status: {result.app_result.status}")
-        print(f"Accuracy: {result.app_result.accuracy:.1f}%")
-    print(f"Device model: {result.device_model}")
-    print(f"Touch points recorded: {result.touch_recording.total_points}")
-    print(f"File: test_results/{result.test_id}.json")
+
+def main() -> None:
+    import sys
+    global ADB_SERIAL
+
+    device_type = sys.argv[1] if len(sys.argv) > 1 else "flat"
+    mode = sys.argv[2] if len(sys.argv) > 2 else "pipeline"
+
+    try:
+        ADB_SERIAL = get_preferred_adb_serial()
+    except Exception:
+        ADB_SERIAL = None
+
+    report = build_validation_report(device_type=device_type)
+
+    print("=" * 70)
+    print(f"RTA Validation Pipeline | mode={mode} | device_type={device_type}")
+    print("=" * 70)
+
+    # Testes sintéticos: não dependem de device real.
+    report.steps.append(_run_step("parse_getevent_line", validate_parse_getevent))
+    report.steps.append(_run_step("map_raw_touch_to_screen", validate_map_raw_touch_to_screen))
+    report.steps.append(_run_step("TouchTracker.feed", validate_touch_tracker))
+    report.steps.append(_run_step("TouchRecording.metrics", validate_touch_recording))
+    report.steps.append(_run_step("RTAResult.accuracy", validate_rta_result))
+
+    # Testes com ADB/device real.
+    report.steps.append(_run_step("ADB environment", validate_adb_environment))
+
+    if mode in {"pipeline", "live"} and report.steps[-1].ok:
+        report.steps.append(_run_step("Mobile.wait_for_touch_feedback", lambda: validate_live_touch_feedback(8.0)))
+        report.steps.append(_run_step("Mobile.wait_for_touch_with_pressure", lambda: validate_live_touch_with_pressure(10.0)))
+        report.steps.append(_run_step("Mobile.monitor_swipe_for_signal_loss", lambda: validate_live_swipe(12.0)))
+
+    if mode == "full" and report.steps[-1].ok:
+        report.steps.append(_run_step("run_rta_test smoke", lambda: validate_run_rta_test_smoke(device_type, 20.0)))
+
+    report.save()
+
+    print("\n" + "=" * 70)
+    print("VALIDATION SUMMARY")
+    print("=" * 70)
+    print(f"Passed: {report.passed}")
+    print(f"Failed: {report.failed}")
+    print(f"JSON: {report.output_json}")
+
+    for step in report.steps:
+        status = "OK" if step.ok else "FAIL"
+        print(f"- [{status}] {step.name} ({step.duration_s:.2f}s)")
+        if step.error:
+            print(f"    error: {step.error}")
 
 
 if __name__ == "__main__":

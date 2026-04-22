@@ -25,6 +25,7 @@ from utils.coordinate_transform import (
 )
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
+from drivers.alignment.rotation_alignment import RotationAlignment
 
 
 def annotate_aruco_centroids(frame, detector: MarkerDetector):
@@ -350,67 +351,259 @@ def main() -> int:
 
 #TODO doing
 ## ======== Pedro pediu para fazer =========================================================
-    aruco_widht_real_mm = 15
-    aruco_hight_real_mm = 15
+
+    aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
+    aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
+
+    rotation_aligment = RotationAlignment(robot, camera, detector)
+
+    ALIGNMENT_TOLERANCE = 2.0
+    ID_TARGET = 1
+
+    max_interations = 400
+    interation = 0
+
+    while interation < max_interations:
+        interation += 1
+        frame = camera.capture_frame()
+        if frame is None:
+            continue
+
+        id_found, corners = detector.detect_single_marker_by_id(frame, ID_TARGET)
+
+        if id_found is None:
+            continue
+
+        marker_info = detector.get_marker_info(ID_TARGET, corners)
+
+        width_aruco_pixel = marker_info.width_px
+        height_aruco_pixel = marker_info.height_px
+
+        if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
+            continue
+
+        scale_x = aruco_widht_real_mm / width_aruco_pixel
+        scale_y = aruco_hight_real_mm / height_aruco_pixel
+
+        center_x_img, center_y_img = camera.center_point(frame)
+        center_aruco_x, center_aruco_y = marker_info.centroid
+
+        error_px_x = center_aruco_x - center_x_img
+        error_px_y = center_aruco_y - center_y_img
+
+        # teste novo: sem inverter X
+        error_mm_x = error_px_x * scale_x
+        error_mm_y = error_px_y * scale_y
+
+        logging.info("Erro de alinhamento: x=%.2f mm, y=%.2f mm", error_mm_x, error_mm_y)
+
+        if abs(error_mm_x) < ALIGNMENT_TOLERANCE and abs(error_mm_y) < ALIGNMENT_TOLERANCE:
+            logging.info("Alinhamento dentro da tolerância. Parando.")
+            break
+
+        if abs(error_mm_x) >= ALIGNMENT_TOLERANCE:
+            rotation_aligment.adjust_robot_to_marker_center((error_mm_x, 0.0))
+        elif abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
+            rotation_aligment.adjust_robot_to_marker_center((0.0, error_mm_y))
+
+        time.sleep(0.3)
 
 
-    frame = camera.capture_frame()
 
-    width_aruco_pixel, height_aruco_pixel, vertices = detector.rectangle_from_aruco_detection(frame)
+#===========================================
+# TESTE PARA SABER QUAL MOVIMENTO AFETA QUAL EIXO
 
-    width_pixels_scale = width_aruco_pixel / aruco_widht_real_mm
-    height_pixels_scale = height_aruco_pixel / aruco_hight_real_mm
+    # aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
+    # aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
+
+    # rotation_aligment = RotationAlignment(robot, camera, detector)
+
+    # ID_TARGET = 1
+    # STEP_MM = 5.0
 
 
-    height, width = frame.shape[:2]
-    image_centroid_x, image_centroid_y = width // 2, height // 2
+    # def detect_marker_state():
+    #     while True:
+    #         frame = camera.capture_frame()
+    #         if frame is None:
+    #             continue
+
+    #         id_found, corners = detector.detect_single_marker_by_id(frame, ID_TARGET)
+    #         if id_found is None:
+    #             continue
+
+    #         marker_info = detector.get_marker_info(ID_TARGET, corners)
+
+    #         width_aruco_pixel = marker_info.width_px
+    #         height_aruco_pixel = marker_info.height_px
+    #         if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
+    #             continue
+
+    #         scale_x = aruco_widht_real_mm / width_aruco_pixel
+    #         scale_y = aruco_hight_real_mm / height_aruco_pixel
+
+    #         center_x_img, center_y_img = camera.center_point(frame)
+    #         center_aruco_x, center_aruco_y = marker_info.centroid
+
+    #         error_px_x = center_aruco_x - center_x_img
+    #         error_px_y = center_aruco_y - center_y_img
+
+    #         error_mm_x = error_px_x * scale_x
+    #         error_mm_y = error_px_y * scale_y
+
+    #         return {
+    #             "centroid": (float(center_aruco_x), float(center_aruco_y)),
+    #             "error_px": (float(error_px_x), float(error_px_y)),
+    #             "error_mm": (float(error_mm_x), float(error_mm_y)),
+    #         }
+
+
+    # def move_axis_mm(axis: str, delta_mm: float) -> bool:
+    #     pose = robot.get_cartesian_pose()
+    #     if pose is None:
+    #         logging.error("Falha ao obter pose do robô")
+    #         return False
+
+    #     if axis == "x":
+    #         pose.x += delta_mm
+    #     elif axis == "y":
+    #         pose.y += delta_mm
+    #     else:
+    #         logging.error("Eixo inválido: %s", axis)
+    #         return False
+
+    #     ok = robot.move_cartesian(pose)
+    #     logging.info("Move %s %+0.2f mm -> %s", axis.upper(), delta_mm, ok)
+    #     return ok
+
+
+    # def run_axis_test(axis: str):
+    #     logging.info("========== TESTE DO EIXO %s ==========", axis.upper())
+
+    #     state_before = detect_marker_state()
+    #     cx0, cy0 = state_before["centroid"]
+    #     err_px0_x, err_px0_y = state_before["error_px"]
+    #     err_mm0_x, err_mm0_y = state_before["error_mm"]
+
+    #     logging.info(
+    #         "ANTES | centroid=(%.2f, %.2f) | erro_px=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
+    #         cx0, cy0, err_px0_x, err_px0_y, err_mm0_x, err_mm0_y
+    #     )
+
+    #     if not move_axis_mm(axis, STEP_MM):
+    #         logging.error("Falha ao mover eixo %s", axis.upper())
+    #         return
+
+    #     time.sleep(0.5)
+
+    #     state_after = detect_marker_state()
+    #     cx1, cy1 = state_after["centroid"]
+    #     err_px1_x, err_px1_y = state_after["error_px"]
+    #     err_mm1_x, err_mm1_y = state_after["error_mm"]
+
+    #     logging.info(
+    #         "DEPOIS | centroid=(%.2f, %.2f) | erro_px=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
+    #         cx1, cy1, err_px1_x, err_px1_y, err_mm1_x, err_mm1_y
+    #     )
+
+    #     delta_centroid_x = cx1 - cx0
+    #     delta_centroid_y = cy1 - cy0
+
+    #     logging.info(
+    #         "DELTA IMAGEM após mover robot.%s %+0.2f mm -> dcentroid=(%.2f px, %.2f px)",
+    #         axis, STEP_MM, delta_centroid_x, delta_centroid_y
+    #     )
+
+    #     if abs(delta_centroid_x) > abs(delta_centroid_y):
+    #         logging.info(
+    #             "RESULTADO: robot.%s afeta principalmente IMAGE_X",
+    #             axis
+    #         )
+    #     else:
+    #         logging.info(
+    #             "RESULTADO: robot.%s afeta principalmente IMAGE_Y",
+    #             axis
+    #         )
+
+    #     # volta para posição original
+    #     move_axis_mm(axis, -STEP_MM)
+    #     time.sleep(0.5)
+
+    #     state_back = detect_marker_state()
+    #     cxb, cyb = state_back["centroid"]
+
+    #     logging.info(
+    #         "VOLTA | centroid=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
+    #         cxb, cyb, state_back["error_mm"][0], state_back["error_mm"][1]
+    #     )
+
+
+    # run_axis_test("x")
+    # run_axis_test("y")
+
+
+#===========================================
+
+
+
+        
+    # frame = camera.capture_frame()
+
+    # width_aruco_pixel, height_aruco_pixel, vertices = detector.rectangle_from_aruco_detection(frame)
+
+    # width_pixels_scale = width_aruco_pixel / aruco_widht_real_mm
+    # height_pixels_scale = height_aruco_pixel / aruco_hight_real_mm
+
+
+    # height, width = frame.shape[:2]
+    # image_centroid_x, image_centroid_y = width // 2, height // 2
     
-    aruco_frame, aruco_ids, aruco_markers = annotate_aruco_centroids(frame, detector)
-    aruco_centroid_x, aruco_centroid_y = map(int, aruco_markers[0].centroid)
+    # aruco_frame, aruco_ids, aruco_markers = annotate_aruco_centroids(frame, detector)
+    # aruco_centroid_x, aruco_centroid_y = map(int, aruco_markers[0].centroid)
 
-    cv2.putText(
-        aruco_frame,
-        f"Image Centroid",
-        (image_centroid_x + 8, image_centroid_y - 8),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (255, 0, 0),
-        2,
-        cv2.LINE_AA,
-    )
+    # cv2.putText(
+    #     aruco_frame,
+    #     f"Image Centroid",
+    #     (image_centroid_x + 8, image_centroid_y - 8),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (255, 0, 0),
+    #     2,
+    #     cv2.LINE_AA,
+    # )
 
-    cv2.putText(
-        aruco_frame,
-        f"ArUco Centroid",
-        (aruco_centroid_x + 8, aruco_centroid_y - 8),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (0, 255, 255),
-        2,
-    )
+    # cv2.putText(
+    #     aruco_frame,
+    #     f"ArUco Centroid",
+    #     (aruco_centroid_x + 8, aruco_centroid_y - 8),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (0, 255, 255),
+    #     2,
+    # )
 
-    error_x = aruco_centroid_x - image_centroid_x
-    error_y = aruco_centroid_y - image_centroid_y
+    # error_x = aruco_centroid_x - image_centroid_x
+    # error_y = aruco_centroid_y - image_centroid_y
 
-    error_x_mm = error_x / width_pixels_scale
-    error_y_mm = error_y / height_pixels_scale
+    # error_x_mm = error_x / width_pixels_scale
+    # error_y_mm = error_y / height_pixels_scale
 
-    print(f"Error in pixels: x={error_x:.2f}, y={error_y:.2f}")
+    # print(f"Error in pixels: x={error_x:.2f}, y={error_y:.2f}")
 
-    cv2.putText(
-        aruco_frame,
-        f"Error: ({error_x}, {error_y})",
-        (10, height - 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.6,
-        (0, 255, 255),
-        2,
-    )
+    # cv2.putText(
+    #     aruco_frame,
+    #     f"Error: ({error_x}, {error_y})",
+    #     (10, height - 10),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     0.6,
+    #     (0, 255, 255),
+    #     2,
+    # )
 
-    aruco_frame_with_middle = camera.image_with_middle_point(aruco_frame)
-    if aruco_frame is not None:
-        logging.info("ArUco detectados no teste manual: %s", [int(marker[0]) for marker in aruco_ids])
-        camera.display_image(aruco_frame_with_middle["image_np"], window_name="ArUco Centroids and middle point image")
+    # aruco_frame_with_middle = camera.image_with_middle_point(aruco_frame)
+    # if aruco_frame is not None:
+    #     logging.info("ArUco detectados no teste manual: %s", [int(marker[0]) for marker in aruco_ids])
+    #     camera.display_image(aruco_frame_with_middle["image_np"], window_name="ArUco Centroids and middle point image")
 
 ### =========================================================================
 
