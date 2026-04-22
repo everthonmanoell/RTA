@@ -42,7 +42,7 @@ def annotate_aruco_centroids(frame, detector: MarkerDetector):
     marker_infos = []
 
     for idx, marker_id in enumerate(ids):
-        marker_info = detector.get_marker_info(int(marker_id[0]), refined_corners[idx])
+        marker_info = detector.get_marker_info(int(marker_id[0]), corners[idx])
         marker_infos.append(marker_info)
 
         marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
@@ -179,7 +179,7 @@ def _build_marker_detector() -> MarkerDetector:
 
     logging.info("Detector dictionaries (prioridade): %s", ", ".join(resolved_names))
     return MarkerDetector(
-        marker_dict=resolved_dicts[0],
+        marker_dict=None,
         fallback_dicts=resolved_dicts[1:],
     )
 

@@ -42,8 +42,9 @@ class MarkerDetector:
             fallback_dicts: Optional additional dictionaries to try when
                 detection fails in the primary dictionary.
         """
+        marker_dict = None
         if marker_dict is None:
-            marker_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+            marker_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
 
         self.detector = cv2.aruco.ArucoDetector(marker_dict)
         self.fallback_detectors = [
@@ -70,29 +71,44 @@ class MarkerDetector:
                 - marker_corners: List of corner arrays (N x 4x2)
                 Returns (None, None) if no markers detected.
         """
-        corners, ids, rejected = self.detector.detectMarkers(image)
-        print(f"ids from detect_markers: {ids}")
-        if ids is not None and len(ids) > 0:
-            for i in len(ids):
-                if ids[i]== 1:
-                    return ids[i], corners[0][i]
-            # return ids, corners
+        # 1. Tentativa no detector principal
+        corners, ids, _ = self.detector.detectMarkers(image)
+        
+        # 2. Se falhar, tenta nos fallbacks
+        if ids is None or len(ids) == 0:
+            for idx, fallback_detector in enumerate(self.fallback_detectors, start=1):
+                corners, ids, _ = fallback_detector.detectMarkers(image)
+                if ids is not None and len(ids) > 0:
+                    self.logger.info("Markers detected using fallback dictionary #%s", idx)
+                    break
+        
+        if ids is None or len(ids) == 0:
+            if log_missing:
+                self.logger.warning("No markers detected")
+            return None, None
 
-        for idx, fallback_detector in enumerate(self.fallback_detectors, start=1):
-            corners, ids, rejected = fallback_detector.detectMarkers(image)
-            if ids is not None and len(ids) > 0:
-                self.logger.info("Markers detected using fallback dictionary #%s", idx)
-                return ids, corners
+        return ids, corners
+    
+    def detect_single_marker_by_id(
+        self, 
+        image: np.ndarray, 
+        target_id: int
+    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """
+        Busca um marcador específico pelo ID em toda a imagem.
+        """
+        ids, corners = self.detect_markers(image)
+
+        if ids is not None:
+            ids_flat = ids.flatten()
+            indices = np.where(ids_flat == target_id)[0]
+            
+            if len(indices) > 0:
+                idx = indices[0]
+                # Retorna o ID e os cantos específicos daquele marcador
+                return ids[idx], corners[idx]
         
-        # if ids is None or len(ids) == 0:
-        #     if not log_missing:
-        #         return None, None
-        #     self.logger.warning("No markers detected")
-        #     return None, None
-        
-        # print(f'corners from detect_markers: {corners}')
-        
-        # return ids, corners
+        return None, None
     
     def refine_corners(self, image: np.ndarray, corners: List[np.ndarray]) -> List[np.ndarray]:
         """
@@ -160,6 +176,10 @@ class MarkerDetector:
         Returns:
             MarkerInfo: Complete marker information object.
         """
+    
+        if corners.ndim == 3:
+            corners = corners[0]
+
         centroid = self.calculate_centroid(corners)
         area = cv2.contourArea(corners)
         perimeter = self.calculate_perimeter(corners)
@@ -273,12 +293,12 @@ class MarkerDetector:
 
         print(f'corners from detect_markers: {corners}')
 
-        if ids is not None and len(corners) > 0:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+        # if ids is not None and len(corners) > 0:
+        #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        #     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
 
-            for corner in corners:
-                cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
+            # for corner in corners:
+            #     cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
 
         
         top_left, top_right, bottom_right, bottom_left = corners[0]
