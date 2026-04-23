@@ -44,8 +44,11 @@ class Denso(AbstractRobot):
     ROI_Z = 226.68
     ROI_RX = 179.25
     ROI_RY = -1.60
-    ROI_RZ = 179.38
-    DEFAULT_FIG = 5
+    ROI_RZ = -179.38
+    DEFAULT_FIG = 1
+
+
+    joint_pose_roi = [1.184635, 34.15339, 103.8132, -178.8901, -43.63271, -180.2519]
 
     def __init__(self, workspace_name: str, control_name: str, options: str):
         self.denso_robot = DensoRobot(workspace_name, control_name, options)
@@ -165,34 +168,35 @@ class Denso(AbstractRobot):
             bool
         """
         try:
-            current_pose = self.get_cartesian_pose()
-            fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
+            self.move_to_roi()
+            # current_pose = self.get_cartesian_pose()
+            # fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
 
-            if preserve_orientation:
-                if current_pose is None:
-                    return False
+            # if preserve_orientation:
+            #     if current_pose is None:
+            #         return False
 
-                safe_pose = Pose(
-                    x=self.SAFE_X,
-                    y=self.SAFE_Y,
-                    z=self.SAFE_Z,
-                    rx=current_pose.rx,
-                    ry=current_pose.ry,
-                    rz=current_pose.rz,
-                    fig=fig,
-                )
-            else:
-                safe_pose = Pose(
-                    x=self.SAFE_X,
-                    y=self.SAFE_Y,
-                    z=self.SAFE_Z,
-                    rx=self.SAFE_RX,
-                    ry=self.SAFE_RY,
-                    rz=self.SAFE_RZ,
-                    fig=fig,
-                )
+            #     safe_pose = Pose(
+            #         x=self.SAFE_X,
+            #         y=self.SAFE_Y,
+            #         z=self.SAFE_Z,
+            #         rx=current_pose.rx,
+            #         ry=current_pose.ry,
+            #         rz=current_pose.rz,
+            #         fig=fig,
+            #     )
+            # else:
+            #     safe_pose = Pose(
+            #         x=self.SAFE_X,
+            #         y=self.SAFE_Y,
+            #         z=self.SAFE_Z,
+            #         rx=self.SAFE_RX,
+            #         ry=self.SAFE_RY,
+            #         rz=self.SAFE_RZ,
+            #         fig=fig,
+            #     )
 
-            return self.move_cartesian(safe_pose)
+            # return self.move_cartesian(safe_pose)
 
         except Exception as e:
             self._logger.error("Falha em move_safe: %s", e)
@@ -206,19 +210,20 @@ class Denso(AbstractRobot):
             bool
         """
         try:
-            current_pose = self.get_cartesian_pose()
-            fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
+            # current_pose = self.get_cartesian_pose()
+            # fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
 
-            roi_pose = Pose(
-                x=self.ROI_X,
-                y=self.ROI_Y,
-                z=self.ROI_Z,
-                rx=self.ROI_RX,
-                ry=self.ROI_RY,
-                rz=self.ROI_RZ,
-                fig=fig,
-            )
-            return self.move_cartesian(roi_pose)
+            # roi_pose = Pose(
+            #     x=self.ROI_X,
+            #     y=self.ROI_Y,
+            #     z=self.ROI_Z,
+            #     rx=self.ROI_RX,
+            #     ry=self.ROI_RY,
+            #     rz=self.ROI_RZ,
+            #     fig=fig,
+            # )
+            # return self.move_cartesian(roi_pose)
+            return self.move_joints(Joint(*self.joint_pose_roi))
         except Exception as e:
             self._logger.error("Falha em move_to_roi: %s", e)
             return False
