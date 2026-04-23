@@ -223,6 +223,7 @@ def _build_operational_stack(robot: Denso):
     return device, camera, detector, auto_align, controller
 
 
+
 def main() -> int:
     args = parse_args()
 
@@ -348,10 +349,132 @@ def main() -> int:
             float(pose1.x), float(pose1.y), float(pose1.z),
             float(pose1.rx), float(pose1.ry), float(pose1.rz),
         )
+    def _safe_cleanup():
+        try:
+            camera.release()
+        except Exception:
+            pass
 
-#TODO doing
-## ======== Pedro pediu para fazer =========================================================
+        try:
+            robot.disconnect()
+        except Exception:
+            pass
+        
+        return 0
 
+#TODO THIS WORKS
+# ## ======== Pedro pediu para fazer =========================================================
+
+    # aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
+    # aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
+
+    # rotation_aligment = RotationAlignment(robot, camera, detector)
+
+    # ALIGNMENT_TOLERANCE = 1.0
+    # ID_TARGET = 1
+
+    # Z_TOUCH = config.Z_TOUCH
+    # Z_LIMIT = config.Z_LIMIT
+    # TOUCH_FINGER_OFFSET_X = config.TOUCH_FINGER_OFFSET_X
+
+    # max_interations = 400
+    # interation = 0
+    
+    # while interation < max_interations:
+    #     interation += 1
+    #     frame = camera.capture_frame()
+    #     if frame is None:
+    #         continue
+
+    #     id_found, corners = detector.detect_single_marker_by_id(frame, ID_TARGET)
+
+    #     if id_found is None:
+    #         continue
+
+    #     marker_info = detector.get_marker_info(ID_TARGET, corners)
+
+    #     width_aruco_pixel = marker_info.width_px
+    #     height_aruco_pixel = marker_info.height_px
+
+    #     if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
+    #         continue
+
+    #     scale_x = aruco_widht_real_mm / width_aruco_pixel
+    #     scale_y = aruco_hight_real_mm / height_aruco_pixel
+
+    #     center_x_img, center_y_img = camera.center_point(frame)
+    #     center_aruco_x, center_aruco_y = marker_info.centroid
+
+    #     error_px_x = center_aruco_x - center_x_img
+    #     error_px_y = center_aruco_y - center_y_img
+
+    #     # teste novo: sem inverter X
+    #     error_mm_x = error_px_x * scale_x
+    #     error_mm_y = error_px_y * scale_y
+
+    #     logging.info("Erro de alinhamento: x=%.2f mm, y=%.2f mm", error_mm_x, error_mm_y)
+
+    #     if abs(error_mm_x) < ALIGNMENT_TOLERANCE and abs(error_mm_y) < ALIGNMENT_TOLERANCE:
+    #         logging.info("Alinhamento dentro da tolerância. Parando.")
+    #         break
+
+    #     if abs(error_mm_x) >= ALIGNMENT_TOLERANCE:
+    #         rotation_aligment.adjust_robot_to_marker_center((error_mm_x, error_mm_y))
+    #     # elif abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
+    #     #     rotation_aligment.adjust_robot_to_marker_center((0.0, error_mm_y))
+
+    #     time.sleep(0.3)
+
+    # current_position = robot.get_cartesian_pose()
+    # if current_position is not None:
+    #     logging.info(
+    #         "Pose final após alinhamento: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+    #         float(current_position.x), float(current_position.y), float(current_position.z),
+    #         float(current_position.rx), float(current_position.ry), float(current_position.rz),
+    #     )
+    #     current_position.x += TOUCH_FINGER_OFFSET_X
+    #     robot.move_cartesian(current_position)
+
+    #     step = 1.0
+    #     try:
+    #         while(True):
+    #             current_position = robot.get_cartesian_pose()
+    #             if current_position is None:
+    #                 logging.error("Falha ao obter pose atual do robô durante descida para toque.")
+    #                 robot.move_to_roi()
+    #                 break
+
+    #             if current_position.z <= Z_LIMIT:
+    #                 logging.warning("Limite de segurança Z atingido (%.2f mm). Parando descida.", current_position.z)
+    #                 break
+    #             else:
+    #                 logging.info("Descendo para toque: passo %d, pose atual z=%.2f mm", step, current_position.z)
+    #                 if current_position.z > Z_TOUCH:
+    #                     if current_position.z > 60.0:
+    #                         current_position.z -= 10.0
+    #                     else:
+    #                         current_position.z -= 1.0
+    #                     robot.move_cartesian(current_position)
+
+    #                     if current_position.z <= Z_TOUCH:
+    #                         logging.info("Pose de toque atingida (%.2f mm).", current_position.z)
+    #                         robot.move_to_roi()
+    #                         break
+                    
+    #                 step += 1
+    #                 time.sleep(0.5)
+    #         robot.move_to_roi()
+    #     finally:
+    #         logging.info("Alinhamento e toque finalizados. Realizando limpeza segura.")
+    #         return _safe_cleanup()
+        
+    # else:
+    #     logging.warning("Não foi possível ler pose final do robô após alinhamento.")
+
+
+
+## ======================== COM METÓDOS ENCAPSULADOS =========================================================
+    #TODO VERIFY IF IT WORKS
     aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
     aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
 
@@ -360,42 +483,21 @@ def main() -> int:
     ALIGNMENT_TOLERANCE = 1.0
     ID_TARGET = 1
 
+    Z_TOUCH = config.Z_TOUCH
+    Z_LIMIT = config.Z_LIMIT
+    TOUCH_FINGER_OFFSET_X = config.TOUCH_FINGER_OFFSET_X
+
     max_interations = 400
     interation = 0
-
+    
     while interation < max_interations:
         interation += 1
-        frame = camera.capture_frame()
-        if frame is None:
+
+        diff_error = rotation_aligment.error_diff_between_single_marker_and_image_center_on_mm(ID_TARGET)
+        if diff_error is None:
             continue
+        error_mm_x, error_mm_y = diff_error
 
-        id_found, corners = detector.detect_single_marker_by_id(frame, ID_TARGET)
-
-        if id_found is None:
-            continue
-
-        marker_info = detector.get_marker_info(ID_TARGET, corners)
-
-        width_aruco_pixel = marker_info.width_px
-        height_aruco_pixel = marker_info.height_px
-
-        if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
-            continue
-
-        scale_x = aruco_widht_real_mm / width_aruco_pixel
-        scale_y = aruco_hight_real_mm / height_aruco_pixel
-
-        center_x_img, center_y_img = camera.center_point(frame)
-        center_aruco_x, center_aruco_y = marker_info.centroid
-
-        error_px_x = center_aruco_x - center_x_img
-        error_px_y = center_aruco_y - center_y_img
-
-        # teste novo: sem inverter X
-        error_mm_x = error_px_x * scale_x
-        error_mm_y = error_px_y * scale_y
-
-        logging.info("Erro de alinhamento: x=%.2f mm, y=%.2f mm", error_mm_x, error_mm_y)
 
         if abs(error_mm_x) < ALIGNMENT_TOLERANCE and abs(error_mm_y) < ALIGNMENT_TOLERANCE:
             logging.info("Alinhamento dentro da tolerância. Parando.")
@@ -408,7 +510,52 @@ def main() -> int:
 
         time.sleep(0.3)
 
+    current_position = robot.get_cartesian_pose()
+    if current_position is not None:
+        logging.info(
+            "Pose final após alinhamento: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+            float(current_position.x), float(current_position.y), float(current_position.z),
+            float(current_position.rx), float(current_position.ry), float(current_position.rz),
+        )
+        current_position.x += TOUCH_FINGER_OFFSET_X
+        current_position.z = Z_TOUCH + 10.0
+        robot.move_cartesian(current_position)
 
+        step = 1.0
+        try:
+            while(True):
+                current_position = robot.get_cartesian_pose()
+                if current_position is None:
+                    logging.error("Falha ao obter pose atual do robô durante descida para toque.")
+                    robot.move_to_roi()
+                    break
+
+                if current_position.z <= Z_LIMIT:
+                    logging.warning("Limite de segurança Z atingido (%.2f mm). Parando descida.", current_position.z)
+                    break
+                else:
+                    logging.info("Descendo para toque: passo %d, pose atual z=%.2f mm", step, current_position.z)
+                    if current_position.z > Z_TOUCH:
+                        if current_position.z > 60.0:
+                            current_position.z -= 10.0
+                        else:
+                            current_position.z -= 1.0
+                        robot.move_cartesian(current_position)
+
+                        if current_position.z <= Z_TOUCH:
+                            logging.info("Pose de toque atingida (%.2f mm).", current_position.z)
+                            robot.move_to_roi()
+                            break
+                    
+                    step += 1
+                    time.sleep(0.5)
+            robot.move_to_roi()
+        finally:
+            logging.info("Alinhamento e toque finalizados. Realizando limpeza segura.")
+            return _safe_cleanup()
+        
+    else:
+        logging.warning("Não foi possível ler pose final do robô após alinhamento.")
 
 #===========================================
 # TESTE PARA SABER QUAL MOVIMENTO AFETA QUAL EIXO
@@ -611,18 +758,7 @@ def main() -> int:
 
     # ok = auto_align.run_centering_loop(max_iterations=50)
     # logging.info("Resultado do alinhamento de 1 marcador: %s", ok)
-
-    try:
-        camera.release()
-    except Exception:
-        pass
-
-    try:
-        robot.disconnect()
-    except Exception:
-        pass
     
-    return 0
     # return 0 if ok else 1
     # =====================================================
 

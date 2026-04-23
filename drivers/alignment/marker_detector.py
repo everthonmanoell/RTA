@@ -110,6 +110,7 @@ class MarkerDetector:
         
         return None, None
     
+    
     def refine_corners(self, image: np.ndarray, corners: List[np.ndarray]) -> List[np.ndarray]:
         """
         Refine marker corners to sub-pixel accuracy.
