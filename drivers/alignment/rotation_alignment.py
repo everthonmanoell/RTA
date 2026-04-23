@@ -224,8 +224,10 @@ class RotationAlignment:
         error_x = error_diff[0]  # erro visual em X
         error_y = error_diff[1]  # erro visual em Y
 
-        gain_x = 0.01 if abs(error_y) <= 2 else 0.10
-        gain_y = 0.01 if abs(error_x) <= 2 else 0.10
+        min_step_mm = 0.4
+
+        gain_x = min_step_mm if abs(error_y) <= 2 else 0.10
+        gain_y = min_step_mm if abs(error_x) <= 2 else 0.10
 
         adjustment_x = gain_x * error_y
         adjustment_y = gain_y * error_x
