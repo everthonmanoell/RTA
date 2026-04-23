@@ -357,7 +357,7 @@ def main() -> int:
 
     rotation_aligment = RotationAlignment(robot, camera, detector)
 
-    ALIGNMENT_TOLERANCE = 2.0
+    ALIGNMENT_TOLERANCE = 1.0
     ID_TARGET = 1
 
     max_interations = 400
@@ -402,9 +402,9 @@ def main() -> int:
             break
 
         if abs(error_mm_x) >= ALIGNMENT_TOLERANCE:
-            rotation_aligment.adjust_robot_to_marker_center((error_mm_x, 0.0))
-        elif abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
-            rotation_aligment.adjust_robot_to_marker_center((0.0, error_mm_y))
+            rotation_aligment.adjust_robot_to_marker_center((error_mm_x, error_mm_y))
+        # elif abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
+        #     rotation_aligment.adjust_robot_to_marker_center((0.0, error_mm_y))
 
         time.sleep(0.3)
 
