@@ -8,6 +8,7 @@ Ensures the robot is perpendicular to the marker plane for accurate touching.
 import logging
 import time
 from typing import List, Optional, Tuple
+import config
 
 import numpy as np
 
@@ -24,15 +25,23 @@ class RotationAlignment:
     """
     
     # Control parameters
-    ALIGNMENT_TOLERANCE = 2.0
+    
     RZ_GAIN = 0.5
-    MAX_ITERATIONS = 10
+
+    MAX_ITERATIONS = 400
+    interaction = 0
+
     ITERATION_DELAY = 0.5
     MAX_ROTATION_STEP = 5.0
+    
+    
+    
     
     # Marker configuration
     MARKERS_PER_SIDE = 2
     MARKERS_TOTAL = 4
+
+    detector = MarkerDetector()
     
     def __init__(self, robot_arm, camera: RobotCamera,
                  detector: Optional[MarkerDetector] = None):
@@ -40,6 +49,12 @@ class RotationAlignment:
         self.camera = camera
         self.detector = detector or MarkerDetector()
         self.logger = logging.getLogger(__name__)
+        self.aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
+        self.aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
+        self.aligment_tolerance = config.ALIGMENT_TOLERANCE_MM
+        self.touch_finger_offset_x = config.TOUCH_FINGER_OFFSET_X
+        self.z_touch = config.Z_TOUCH
+        self.z_limit = config.Z_LIMIT
     
     def get_frame_with_markers(self, required_count: int = 4) -> Tuple[Optional[np.ndarray], Optional[List[MarkerInfo]]]:
         frame = self.camera.capture_frame()
@@ -145,6 +160,55 @@ class RotationAlignment:
         
         self.logger.warning("RZ alignment reached max iterations")
         return False
+    
+
+
+    #todo doing
+    def error_diff_between_single_marker_and_image_center_on_mm(
+    self,
+    id_target: int
+    ) -> Optional[Tuple[float, float]]:
+        frame = self.camera.capture_frame()
+        if frame is None:
+            self.logger.error("Failed to capture frame for error calculation")
+            return None
+
+        id_found, corners = self.detector.detect_single_marker_by_id(frame, id_target)
+        if id_found is None or corners is None:
+            self.logger.warning(f"Marker ID {id_target} not found for error calculation")
+            return None
+
+        marker_info = self.detector.get_marker_info(id_target, corners)
+
+        width_aruco_pixel = marker_info.width_px
+        height_aruco_pixel = marker_info.height_px
+
+        if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
+            self.logger.warning(
+                "Invalid marker dimensions for error calculation: width=%.2f, height=%.2f",
+                width_aruco_pixel, height_aruco_pixel
+            )
+            return None
+
+        scale_x = self.aruco_widht_real_mm / width_aruco_pixel
+        scale_y = self.aruco_hight_real_mm / height_aruco_pixel
+
+        center_x_img, center_y_img = self.camera.center_point(frame)
+        center_aruco_x, center_aruco_y = marker_info.centroid
+
+        error_px_x = center_aruco_x - center_x_img
+        error_px_y = center_aruco_y - center_y_img
+
+        error_mm_x = error_px_x * scale_x
+        error_mm_y = error_px_y * scale_y
+
+        self.logger.info(
+            "Erro de alinhamento: x=%.2f mm, y=%.2f mm",
+            error_mm_x,
+            error_mm_y,
+        )
+
+        return (error_mm_x, error_mm_y)
 
     #### adding new methods to align the robot with the center of the marker ###
     #TODO verify if this works
@@ -180,6 +244,8 @@ class RotationAlignment:
             return False
 
         return True
+    
+    
     
     # def auto_adjust_robot_to_marker_center(self, marker_infos: List[MarkerInfo]) -> bool:
         
