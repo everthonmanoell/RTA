@@ -38,8 +38,8 @@ CACHE_MAX_AGE_SECONDS = float(os.getenv("RTA_MARKER_PARAMS_CACHE_MAX_AGE_SECONDS
 
 # Parâmetros padrão (fallback final se tudo falhar)
 DEFAULT_PARAMS = {
-    "MARKER_REAL_WIDTH_MM": 100.0,
-    "MARKER_REAL_HEIGHT_MM": 100.0,
+    "MARKER_REAL_WIDTH_MM": 0.0,
+    "MARKER_REAL_HEIGHT_MM": 0.0,
     "MARKER_X_DISTANCE_MM": 500.0,
     "MARKER_MARGIN_PX": 30.0,
     "tag_size_px": 0.0,
@@ -110,10 +110,13 @@ def _parse_and_validate_payload(raw_json: dict) -> Optional[dict]:
 
     # Fallback opcional: se não tem tamanho real, derivar de tag_size_px + DPI
     if (width_mm <= 0 or height_mm <= 0) and tag_size_px > 0:
+        ARUCO_FILL_RATIO = 0.782 # Fator de correção (Borda preta vs. ImageView)
         if width_mm <= 0 and xdpi > 0:
-            width_mm = tag_size_px / xdpi * 25.4
+            total_width = tag_size_px / xdpi * 25.4
+            width_mm = total_width * ARUCO_FILL_RATIO
         if height_mm <= 0 and ydpi > 0:
-            height_mm = tag_size_px / ydpi * 25.4
+            total_height = tag_size_px / ydpi * 25.4
+            height_mm = total_height * ARUCO_FILL_RATIO
 
     parsed = {
         "MARKER_REAL_WIDTH_MM": width_mm,

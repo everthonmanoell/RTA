@@ -223,6 +223,7 @@ class Denso(AbstractRobot):
             #     fig=fig,
             # )
             # return self.move_cartesian(roi_pose)
+            self.set_arm_speed(50, 50, 50)
             return self.move_joints(Joint(*self.joint_pose_roi))
         except Exception as e:
             self._logger.error("Falha em move_to_roi: %s", e)

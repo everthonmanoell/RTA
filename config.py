@@ -51,8 +51,14 @@ _adb_device_type = "foldable" if DEVICE_TYPE == "foldable" else "flat"
 
 # CAMADA 1: Tenta ADB first (mais rápido e confiável)
 try:
+    # 1. FORÇA O HEALTH CHECK E A AUTO-CURA ANTES DE TUDO
+    from drivers.device.mobile import list_adb_devices
+    list_adb_devices() # Se o ADB estiver travado, ele reinicia o daemon aqui mesmo em 2 segundos!
+    
+    # 2. Agora sim, busca as métricas com o cabo já desengasgado
     from utils.adb_device_metrics import get_device_metrics_via_adb
     _marker_params = get_device_metrics_via_adb(device_type=_adb_device_type)
+    
     if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
         print("[config.py] DisplayMetrics via ADB: OK")
     else:
@@ -111,11 +117,11 @@ if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
     print(f"[config.py] Screen: {SCREEN_WIDTH_PX:.0f}x{SCREEN_HEIGHT_PX:.0f} @ {DEVICE_DENSITY_DPI} DPI, tag_size_px={MARKER_TAG_SIZE_PX:.1f}, margin_px={MARKER_MARGIN_PX:.1f}, model={DEVICE_MODEL}")
 else:
     print("[config.py] Nenhuma fonte válida de DisplayMetrics. Usando DEFAULTS.")
-    MARKER_REAL_WIDTH_MM = 100.0
-    MARKER_REAL_HEIGHT_MM = 100.0
+    MARKER_REAL_WIDTH_MM = 15.0
+    MARKER_REAL_HEIGHT_MM = 15.0
     MARKER_X_DISTANCE_MM = 500.0
     MARKER_MARGIN_PX = 30.0
-    MARKER_TAG_SIZE_PX = 0.0
+    MARKER_TAG_SIZE_PX = 300.0
     DEVICE_DENSITY = 0.0
     DEVICE_DENSITY_DPI = 0.0
     DEVICE_XDPI = 0.0

@@ -5,8 +5,10 @@ This module handles ArUco marker detection, refinement, and geometric calculatio
 It's designed to work with the robot-mounted camera for visual feedback control.
 """
 
+import argparse
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 from typing import List, Optional, Sequence, Tuple
 
 import cv2
@@ -307,4 +309,379 @@ class MarkerDetector:
         rec_height = np.linalg.norm(bottom_right - top_right)
 
         return rec_width, rec_height, [top_left, top_right, bottom_right, bottom_left]
+
+
+## TODO doing the detector aruco and util area
+    def get_aruco_union_rectangle(self, marker_infos: List[MarkerInfo]) -> Optional[Tuple[int, int, int, int]]:
+        """Return the bounding rectangle that encloses all detected markers."""
+        if not marker_infos:
+            return None
+
+        all_corners = np.vstack([np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
+        x_min = int(np.floor(np.min(all_corners[:, 0])))
+        y_min = int(np.floor(np.min(all_corners[:, 1])))
+        x_max = int(np.ceil(np.max(all_corners[:, 0])))
+        y_max = int(np.ceil(np.max(all_corners[:, 1])))
+        return x_min, y_min, x_max, y_max
+
+    def get_aruco_screen_offsets(
+        self,
+        image: np.ndarray,
+        union_rect: Tuple[int, int, int, int],
+    ) -> dict:
+        """Return the pixel offsets from the marker union rectangle to the image borders."""
+        height, width = image.shape[:2]
+        x_min, y_min, x_max, y_max = union_rect
+        return {
+            "left": float(max(0, x_min)),
+            "top": float(max(0, y_min)),
+            "right": float(max(0, width - x_max)),
+            "bottom": float(max(0, height - y_max)),
+            "image_width": float(width),
+            "image_height": float(height),
+        }
+
+    def get_useful_screen_rectangle(
+        self,
+        image: np.ndarray,
+        marker_infos: List[MarkerInfo],
+    ) -> Optional[Tuple[int, int, int, int]]:
+        """Estimate the useful screen rectangle from the bright screen area in the image."""
+        quad = self.get_useful_screen_quad(image, marker_infos)
+        if quad is None:
+            return None
+        return self.useful_quad_to_bbox(quad)
+
+    def get_useful_screen_quad(self, image: np.ndarray, marker_infos: List[MarkerInfo]) -> Optional[np.ndarray]:
+        """Detect the main bright screen region inside the marker cluster."""
+        if image is None or len(marker_infos) < 4:
+            return None
+
+        all_corners = np.vstack([np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
+        x_min = max(0, int(np.floor(np.min(all_corners[:, 0])) - 120))
+        y_min = max(0, int(np.floor(np.min(all_corners[:, 1])) - 120))
+        x_max = min(image.shape[1], int(np.ceil(np.max(all_corners[:, 0])) + 120))
+        y_max = min(image.shape[0], int(np.ceil(np.max(all_corners[:, 1])) + 120))
+
+        if x_max <= x_min or y_max <= y_min:
+            return None
+
+        roi = image[y_min:y_max, x_min:x_max]
+        if roi.size == 0:
+            return None
+        
+        # cv2.imshow("ROI", roi)
+
+        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+        kernel = np.ones((7, 7), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            return None
+
+        largest = max(contours, key=cv2.contourArea)
+        if cv2.contourArea(largest) <= 0:
+            return None
+
+        rect = cv2.minAreaRect(largest)
+        box = cv2.boxPoints(rect)
+        box[:, 0] += x_min
+        box[:, 1] += y_min
+        return box.astype(np.float32)
+
+    def estimate_useful_screen_quad(
+        self,
+        marker_infos: List[MarkerInfo],
+        screen_width_px: float,
+        screen_height_px: float,
+        margin_px: float,
+        tag_size_px: float,
+    ) -> Optional[np.ndarray]:
+        """Project the app's useful screen area into image coordinates.
+
+        The app places the four markers at known device-space locations.
+        We use those correspondences to build a homography from device-space
+        to image-space and then project the inner usable rectangle.
+        """
+        if len(marker_infos) < 4:
+            return None
+        if screen_width_px <= 0 or screen_height_px <= 0 or tag_size_px <= 0:
+            return None
+
+        marker_by_id = {marker.marker_id: marker for marker in marker_infos}
+        required_ids = (1, 2, 3, 4)
+        if any(marker_id not in marker_by_id for marker_id in required_ids):
+            return None
+
+        left = float(margin_px)
+        top = float(margin_px)
+        right = float(screen_width_px - margin_px - tag_size_px)
+        bottom = float(screen_height_px - margin_px - tag_size_px)
+
+        if right <= left or bottom <= top:
+            return None
+
+        device_pts = []
+        image_pts = []
+
+        layout_points = {
+            1: (left, top),
+            4: (right, top),
+            2: (right, bottom),
+            3: (left, bottom),
+        }
+
+        for marker_id, (device_x, device_y) in layout_points.items():
+            marker = marker_by_id[marker_id]
+            # Corners come in [top-left, top-right, bottom-right, bottom-left]
+            marker_device_pts = np.array(
+                [
+                    [device_x, device_y],
+                    [device_x + tag_size_px, device_y],
+                    [device_x + tag_size_px, device_y + tag_size_px],
+                    [device_x, device_y + tag_size_px],
+                ],
+                dtype=np.float32,
+            )
+            device_pts.append(marker_device_pts)
+            image_pts.append(np.asarray(marker.corners, dtype=np.float32))
+
+        src = np.vstack(device_pts).reshape((-1, 1, 2))
+        dst = np.vstack(image_pts).reshape((-1, 1, 2))
+
+        h_mat, status = cv2.findHomography(src, dst, method=0)
+        if h_mat is None or status is None:
+            return None
+
+        usable_device_quad = np.array(
+            [
+                [left + tag_size_px, top + tag_size_px],
+                [right, top + tag_size_px],
+                [right, bottom],
+                [left + tag_size_px, bottom],
+            ],
+            dtype=np.float32,
+        ).reshape((-1, 1, 2))
+
+        projected = cv2.perspectiveTransform(usable_device_quad, h_mat).reshape((-1, 2))
+        return projected
+
+    def useful_quad_to_bbox(self, useful_quad: np.ndarray) -> Tuple[int, int, int, int]:
+        x_min = int(np.floor(np.min(useful_quad[:, 0])))
+        y_min = int(np.floor(np.min(useful_quad[:, 1])))
+        x_max = int(np.ceil(np.max(useful_quad[:, 0])))
+        y_max = int(np.ceil(np.max(useful_quad[:, 1])))
+        return x_min, y_min, x_max, y_max
+
+    def get_rect_gap(self, outer_rect: Tuple[int, int, int, int], inner_rect: Tuple[int, int, int, int]) -> dict:
+        """Return the gap in pixels between two axis-aligned rectangles."""
+        outer_left, outer_top, outer_right, outer_bottom = outer_rect
+        inner_left, inner_top, inner_right, inner_bottom = inner_rect
+        return {
+            "left": float(max(0, inner_left - outer_left)),
+            "top": float(max(0, inner_top - outer_top)),
+            "right": float(max(0, outer_right - inner_right)),
+            "bottom": float(max(0, outer_bottom - inner_bottom)),
+        }
+
+    def get_safe_interaction_zone(
+        self, 
+        image: np.ndarray, 
+        marker_infos: List[MarkerInfo]
+    ) -> Optional[dict]:
+        """
+        Calcula a zona segura para movimentação (swipe) do robô.
+        A zona segura é o retângulo intermediário entre a borda externa
+        dos ArUcos e a borda da área útil da tela.
+        
+        Args:
+            image: Imagem da câmera.
+            marker_infos: Lista de marcadores detectados.
+            
+        Returns:
+            Dict com os retângulos originais e os 4 pontos de swipe seguro,
+            ou None se falhar.
+        """
+        if len(marker_infos) < 4:
+            self.logger.warning("Menos de 4 marcadores detectados. Impossível calcular zona segura.")
+            return None
+
+        # 1. Pega o retângulo que engloba os 4 ArUcos
+        union_rect = self.get_aruco_union_rectangle(marker_infos)
+        if union_rect is None:
+            return None
+
+        # 2. Pega o retângulo da área útil brilhante da tela
+        useful_rect = self.get_useful_screen_rectangle(image, marker_infos)
+        if useful_rect is None:
+            self.logger.warning("Área útil não detectada por brilho.")
+            return None
+
+        # Desempacota as coordenadas
+        x_min, y_min, x_max, y_max = union_rect
+        u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
+
+        # 3. Calcula o Retângulo Médio (Gap entre ArUco e Borda da Tela)
+        mid_x_min = (x_min + u_x_min) / 2.0
+        mid_y_min = (y_min + u_y_min) / 2.0
+        mid_x_max = (x_max + u_x_max) / 2.0
+        mid_y_max = (y_max + u_y_max) / 2.0
+
+        # 4. Empacota os pontos na sua sequência alvo: 1 -> 4 -> 2 -> 3
+        return {
+            "aruco_rect": union_rect,      
+            "screen_rect": useful_rect,    
+            "safe_swipe_points": {         
+                "pt_1": (mid_x_min, mid_y_max), # Perto do ID 1 (Inferior Esq)
+                "pt_4": (mid_x_min, mid_y_min), # Perto do ID 4 (Superior Esq)
+                "pt_2": (mid_x_max, mid_y_min), # Perto do ID 2 (Superior Dir)
+                "pt_3": (mid_x_max, mid_y_max)  # Perto do ID 3 (Inferior Dir)
+            }
+        }
+
+
+def _draw_rect(image: np.ndarray, rect: Tuple[int, int, int, int], color: Tuple[int, int, int], thickness: int) -> np.ndarray:
+    annotated = image.copy()
+    x_min, y_min, x_max, y_max = rect
+    cv2.rectangle(annotated, (x_min, y_min), (x_max, y_max), color, thickness)
+    return annotated
+
+
+def _draw_union_rectangle(image: np.ndarray, union_rect: Tuple[int, int, int, int]) -> np.ndarray:
+    return _draw_rect(image, union_rect, (0, 255, 255), 3)
+
+
+def _draw_quad(image: np.ndarray, quad: np.ndarray, color: Tuple[int, int, int], thickness: int) -> np.ndarray:
+    annotated = image.copy()
+    polygon = np.round(quad).astype(np.int32).reshape((-1, 1, 2))
+    cv2.polylines(annotated, [polygon], isClosed=True, color=color, thickness=thickness)
+    return annotated
+    
+
+#TODO MAIN    
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Debug ArUco union rectangle detection")
+    parser.add_argument(
+        "--image",
+        default=str(Path(__file__).resolve().parents[2] / "tags" / "tag1.png"),
+        help="Path to the image to analyze",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Optional path to save the annotated image",
+    )
+    parser.add_argument("--screen-width", type=float, default=0.0, help="Device screen width in pixels")
+    parser.add_argument("--screen-height", type=float, default=0.0, help="Device screen height in pixels")
+    parser.add_argument("--margin-px", type=float, default=0.0, help="Marker margin in pixels")
+    parser.add_argument("--tag-size-px", type=float, default=0.0, help="Marker tag size in pixels")
+    args = parser.parse_args()
+
+    try:
+        import config as rta_config
+    except Exception:
+        rta_config = None
+
+    image_path = Path(args.image)
+    image = cv2.imread(str(image_path))
+    if image is None:
+        raise SystemExit(f"Nao foi possivel ler a imagem: {image_path}")
+
+    detector = MarkerDetector()
+    ids, corners = detector.detect_markers(image)
+    if ids is None or corners is None:
+        print("Nenhum ArUco detectado.")
+        raise SystemExit(1)
+
+    marker_infos = [
+        detector.get_marker_info(int(marker_id[0]), corners[idx])
+        for idx, marker_id in enumerate(ids)
+    ]
+    union_rect = detector.get_aruco_union_rectangle(marker_infos)
+    if union_rect is None:
+        print("Nao foi possivel calcular o retangulo unificado.")
+        raise SystemExit(1)
+
+    useful_rect = detector.get_useful_screen_rectangle(image, marker_infos)
+    if useful_rect is None:
+        print("Nao foi possivel detectar a area util clara da tela.")
+        raise SystemExit(1)
+
+    useful_quad = detector.get_useful_screen_quad(image, marker_infos)
+    if useful_quad is None:
+        print("Nao foi possivel calcular o quadrilatero da area util.")
+        raise SystemExit(1)
+
+    useful_rect = detector.useful_quad_to_bbox(useful_quad)
+
+    offsets = detector.get_aruco_screen_offsets(image, union_rect)
+    gap = detector.get_rect_gap(union_rect, useful_rect)
+    annotated = _draw_union_rectangle(image, union_rect)
+    annotated = _draw_quad(annotated, useful_quad, (255, 255, 0), 3)
+
+    # ==========================================
+    # SIMULAÇÃO DO TRAJETO DE SWIPE (OPENCV)
+    # ==========================================
+    # O useful_quad retorna 4 pontos. Se a ordem padrão for Top-Left, Top-Right, Bottom-Right, Bottom-Left:
+    pt_tl = useful_quad[0]
+    pt_tr = useful_quad[1]
+    pt_br = useful_quad[2]
+    pt_bl = useful_quad[3]
+
+    # Calcula o ponto médio superior e inferior
+    top_mid_x = (pt_tl[0] + pt_tr[0]) / 2
+    top_mid_y = (pt_tl[1] + pt_tr[1]) / 2
+    bottom_mid_x = (pt_bl[0] + pt_br[0]) / 2
+    bottom_mid_y = (pt_bl[1] + pt_br[1]) / 2
+
+    # Define o início e fim do Swipe (com uma pequena margem interna para não bater na borda)
+    start_swipe = (int(top_mid_x), int(top_mid_y + 40)) # +40 pixels para baixo
+    end_swipe = (int(bottom_mid_x), int(bottom_mid_y - 40)) # -40 pixels para cima
+
+    # Desenha uma seta laranja mostrando o trajeto
+    cv2.arrowedLine(annotated, start_swipe, end_swipe, (0, 165, 255), 4, tipLength=0.05)
+    cv2.putText(annotated, "Trajeto Swipe", (start_swipe[0] + 10, start_swipe[1]), 
+                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
+
+    for marker_info in marker_infos:
+        marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(annotated, [marker_corners], isClosed=True, color=(0, 255, 0), thickness=2)
+        centroid_x, centroid_y = map(int, marker_info.centroid)
+        cv2.circle(annotated, (centroid_x, centroid_y), 5, (0, 0, 255), -1)
+        cv2.putText(
+            annotated,
+            f"ID {marker_info.marker_id}",
+            (centroid_x + 6, centroid_y - 6),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+    x_min, y_min, x_max, y_max = union_rect
+    u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
+    print(f"Imagem: {image_path}")
+    print(f"Markers detectados: {len(marker_infos)}")
+    print(f"Retangulo unificado: x={x_min}, y={y_min}, w={x_max - x_min}, h={y_max - y_min}")
+    print(f"Area util estimada: x={u_x_min}, y={u_y_min}, w={u_x_max - u_x_min}, h={u_y_max - u_y_min}")
+    print(
+        "Offsets do retangulo unificado ate as bordas da imagem: "
+        f"left={offsets['left']:.1f}px, top={offsets['top']:.1f}px, "
+        f"right={offsets['right']:.1f}px, bottom={offsets['bottom']:.1f}px"
+    )
+    print(
+        "Gap entre o retangulo dos ArUcos e a area util: "
+        f"left={gap['left']:.1f}px, top={gap['top']:.1f}px, "
+        f"right={gap['right']:.1f}px, bottom={gap['bottom']:.1f}px"
+    )
+    print("Area util detectada pela regiao clara interna da tela.")
+
+    output_path = Path(args.output) if args.output else image_path.with_name(f"{image_path.stem}_aruco_rect{image_path.suffix}")
+    cv2.imwrite(str(output_path), annotated)
+    print(f"Imagem anotada salva em: {output_path}")
+
 
