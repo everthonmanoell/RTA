@@ -51,24 +51,25 @@ FALLBACK_METRICS_FOLDABLE = {
 
 def _run_adb_command(cmd: list[str]) -> str:
     """
-    Executa comando ADB silenciosamente e retorna stdout.
-    
-    Args:
-        cmd: Lista de argumentos para `adb` (ex: ["shell", "getprop", "ro.display.width"])
-    
-    Returns:
-        stdout limpo, ou string vazia se falhar.
+    Executa comando ADB e imprime o debug no terminal para diagnosticarmos o problema.
     """
     try:
+        # print(f"\n[DEBUG] Executando: adb {' '.join(cmd)}")
         result = subprocess.run(
             ["adb"] + cmd,
             capture_output=True,
             text=True,
             timeout=2.0,
         )
+        # print(f"[DEBUG] Retorno (código {result.returncode}):")
+        # if result.stdout:
+        #     print(f"   STDOUT: {result.stdout.strip()}")
+        # if result.stderr:
+        #     print(f"   STDERR: {result.stderr.strip()}")
+            
         return result.stdout.strip() if result.returncode == 0 else ""
     except Exception as exc:
-        logger.debug(f"ADB command failed: {exc}")
+        print(f"[DEBUG] Falha fatal ao tentar executar o ADB no Windows: {exc}")
         return ""
 
 
@@ -76,35 +77,21 @@ def _parse_display_metrics() -> Optional[dict]:
     """
     Extrai DisplayMetrics via `adb shell dumpsys display`.
     
-    Procura por linhas como:
-        mBaseDisplayInfo=DisplayInfo{... size 1080x2340 ... densityDpi 420}
+    Busca a resolução e os valores físicos reais de DPI (xdpi, ydpi) 
+    para garantir cálculos milimétricos precisos no robô.
     
     Returns:
-        Dict com screen_width_px, screen_height_px, density_dpi se conseguir parsear.
+        Dict com screen_width_px, screen_height_px, density_dpi, xdpi, ydpi.
         None se falhar.
     """
-    # Fonte primária: comandos leves e rápidos, menos sujeitos a timeout.
-    wm_size = _run_adb_command(["shell", "wm", "size"])
-    wm_density = _run_adb_command(["shell", "wm", "density"])
-
-    wm_match = re.search(r"(\d+)x(\d+)", wm_size)
-    wd_match = re.search(r"(\d+)", wm_density)
-    if wm_match and wd_match:
-        return {
-            "screen_width_px": float(wm_match.group(1)),
-            "screen_height_px": float(wm_match.group(2)),
-            "density_dpi": int(wd_match.group(1)),
-        }
-
-    # Fallback secundário: dumpsys display (mais completo, porém mais pesado).
+    # Lemos direto do dumpsys display, pois é o único lugar onde 
+    # o Android expõe os PPI físicos (xdpi e ydpi) com decimais.
     output = _run_adb_command(["shell", "dumpsys", "display"])
     if not output:
         return None
 
+    # 1. Extração da Resolução em Pixels
     # Cobrir múltiplos formatos comuns em diferentes versões de Android/OEM:
-    # - "size 1080x2340"
-    # - "real 1080 x 2400"
-    # - "logicalFrame=Rect(0, 0 - 1080, 2400)"
     size_patterns = [
         r"size\s*=?\s*(\d+)\s*x\s*(\d+)",
         r"real\s+(\d+)\s*x\s*(\d+)",
@@ -120,22 +107,37 @@ def _parse_display_metrics() -> Optional[dict]:
             height_px = float(match.group(2))
             break
 
-    # Densidade em formatos comuns:
-    # - "densityDpi 420"
-    # - "densityDpi=420"
-    # - "density 400 (397.565 x 393.29) dpi"
-    density_patterns = [
-        r"densityDpi\s*=?\s*(\d+)",
-        r"density\s+(\d+)\s*\(",
-        r"density\s*:?\s*(\d+)\s*dpi",
-    ]
+    # 2. Extração da Densidade Lógica e Física (PPI)
+    # Padrão alvo para pegar tudo exato: "density 400 (393.5 x 394.2) dpi"
+    physical_dpi_pattern = r"density\s+(\d+)\s*\(\s*([\d.]+)\s*x\s*([\d.]+)\s*\)\s*dpi"
+    match_physical = re.search(physical_dpi_pattern, output)
+    
     density_dpi: Optional[int] = None
-    for pattern in density_patterns:
-        match = re.search(pattern, output)
-        if match:
-            density_dpi = int(match.group(1))
-            break
+    xdpi: Optional[float] = None
+    ydpi: Optional[float] = None
 
+    if match_physical:
+        # Sucesso! Achamos os valores com precisão decimal
+        density_dpi = int(match_physical.group(1))
+        xdpi = float(match_physical.group(2))
+        ydpi = float(match_physical.group(3))
+    else:
+        # Fallback de segurança: se o celular/emulador não tiver o xdpi exposto,
+        # voltamos a usar o DPI lógico como aproximação.
+        fallback_patterns = [
+            r"densityDpi\s*=?\s*(\d+)",
+            r"density\s*:?\s*(\d+)\s*dpi",
+            r"density\s+(\d+)\s*\("
+        ]
+        for pattern in fallback_patterns:
+            match_fallback = re.search(pattern, output)
+            if match_fallback:
+                density_dpi = int(match_fallback.group(1))
+                xdpi = float(density_dpi)
+                ydpi = float(density_dpi)
+                break
+
+    # Se faltar algum dado vital, aborta para o plano de fallback seguro do script
     if width_px is None or height_px is None or density_dpi is None:
         return None
 
@@ -143,23 +145,9 @@ def _parse_display_metrics() -> Optional[dict]:
         "screen_width_px": width_px,
         "screen_height_px": height_px,
         "density_dpi": density_dpi,
+        "xdpi": xdpi,
+        "ydpi": ydpi,
     }
-
-
-def _get_dpi_values(density_dpi: int) -> tuple[float, float]:
-    """
-    Estima xdpi/ydpi a partir de density_dpi (simplificação).
-    
-    Na maioria dos devices, xdpi e ydpi são próximos. Usa density_dpi como proxy.
-    
-    Args:
-        density_dpi: Valor de densityDpi (ex: 420)
-    
-    Returns:
-        Tupla (xdpi, ydpi)
-    """
-    # Aproximação: assume isotropic (xdpi ≈ ydpi ≈ density_dpi)
-    return float(density_dpi), float(density_dpi)
 
 
 def _get_device_model() -> str:
@@ -205,23 +193,12 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
     """
     Pega DisplayMetrics do device via ADB e retorna dict compatível com
     os payloads do socket.
-    
-    Esta é a função principal de fallback que tenta:
-    1. ADB dumpsys display para pegar resolução + DPI
-    2. Se falhar, retorna defaults conhecidos por device_type
-    
-    Args:
-        device_type: "flat" ou "foldable" (usado no fallback)
-    
-    Returns:
-        Dict com:
-        - screen_width_px, screen_height_px
-        - density_dpi, xdpi, ydpi
-        - density (density_dpi / 160)
-        - tag_size_dp, margin_dp (valores padrão)
-        - Campos adicionais necessários para compatibilidade com config.py
     """
     metrics = _parse_display_metrics()
+    
+    # Fator de correção do ArUco (Área preta vs Borda branca)
+    # Baseado na calibração física com paquímetro (~15mm / ~19.16mm)
+    ARUCO_FILL_RATIO = 0.782
 
     if metrics is None:
         # ADB falhou; usar fallback por device_type
@@ -246,11 +223,14 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
         tag_size_px = tag_size_dp * density
         margin_px = margin_dp * density
         
-        marker_real_width_mm = tag_size_px / xdpi * 25.4 if xdpi > 0 else 0.0
-        marker_real_height_mm = tag_size_px / ydpi * 25.4 if ydpi > 0 else 0.0
+        total_width_mm = tag_size_px / xdpi * 25.4 if xdpi > 0 else 0.0
+        total_height_mm = tag_size_px / ydpi * 25.4 if ydpi > 0 else 0.0
+        
+        marker_real_width_mm = total_width_mm * ARUCO_FILL_RATIO
+        marker_real_height_mm = total_height_mm * ARUCO_FILL_RATIO
         marker_x_distance_mm = (width_px - 2 * margin_px - tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
         
-        result = {
+        return {
             "screen_width_px": width_px,
             "screen_height_px": height_px,
             "density_dpi": density_dpi,
@@ -274,13 +254,13 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
             "timestamp_ms": 0.0,
             "elapsed_realtime_ms": 0.0,
         }
-        return result
 
     # Parse bem-sucedido; derivar campos restantes
     width_px = metrics["screen_width_px"]
     height_px = metrics["screen_height_px"]
     density_dpi = metrics["density_dpi"]
-    xdpi, ydpi = _get_dpi_values(density_dpi)
+    xdpi = metrics["xdpi"]
+    ydpi = metrics["ydpi"]
     density = density_dpi / 160.0
 
     # Padrão para todos os devices (dp -> px)
@@ -289,9 +269,15 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
     tag_size_px = tag_size_dp * density
     margin_px = margin_dp * density
 
-    # Espera cálculos parecidos aos do app
-    marker_real_width_mm = tag_size_px / xdpi * 25.4 if xdpi > 0 else 0.0
-    marker_real_height_mm = tag_size_px / ydpi * 25.4 if ydpi > 0 else 0.0
+    # Tamanho total da imagem gerada pelo Android
+    total_width_mm = tag_size_px / xdpi * 25.4 if xdpi > 0 else 0.0
+    total_height_mm = tag_size_px / ydpi * 25.4 if ydpi > 0 else 0.0
+
+    # Aplicando o fator de correção para extrair apenas a área preta do ArUco
+    marker_real_width_mm = total_width_mm * ARUCO_FILL_RATIO
+    marker_real_height_mm = total_height_mm * ARUCO_FILL_RATIO
+    
+    # A distância X usa o total da imagem, pois a borda branca ocupa espaço físico na tela
     marker_x_distance_mm = (width_px - 2 * margin_px - tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
 
     result = {
@@ -309,7 +295,6 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
         "MARKER_REAL_HEIGHT_MM": marker_real_height_mm,
         "MARKER_X_DISTANCE_MM": marker_x_distance_mm,
         "device_model": _get_device_model(),
-        # Campos extras para compatibilidade
         "orientation": "portrait",
         "rotation": 0,
         "inset_left_px": 0.0,

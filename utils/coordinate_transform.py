@@ -217,3 +217,39 @@ class CoordinateTransform:
             current_robot_y=current_robot_y,
             current_robot_z=current_robot_z,
         )
+    
+    import numpy as np
+from aether_rdk.datatypes import Pose # Substitua se necessário
+
+def get_z_on_screen_plane(target_x: float, target_y: float, touch_poses: list[Pose]) -> float:
+    """
+    Calcula a coordenada Z (profundidade) exata para qualquer X e Y na tela,
+    baseado no plano inclinado formado pelos toques nos ArUcos.
+    
+    Args:
+        target_x: Coordenada X alvo no referencial do robô.
+        target_y: Coordenada Y alvo no referencial do robô.
+        touch_poses: Lista com as 4 Poses (x, y, z) adquiridas durante o toque de calibração.
+    """
+    if len(touch_poses) < 3:
+        raise ValueError("São necessários pelo menos 3 toques para definir um plano.")
+
+    # Monta a Matriz A [X, Y, 1] e o Vetor B [Z] baseados nos toques reais
+    A = []
+    B = []
+    for pose in touch_poses:
+        A.append([pose.x, pose.y, 1.0])
+        B.append(pose.z)
+    
+    A = np.array(A)
+    B = np.array(B)
+    
+    # Resolve o sistema linear (Mínimos Quadrados) para achar os coeficientes do plano
+    # Equação do plano: Z = a*X + b*Y + c
+    coeffs, _, _, _ = np.linalg.lstsq(A, B, rcond=None)
+    a, b, c = coeffs
+    
+    # Interpola o Z para as novas coordenadas do Swipe
+    z_interpolated = (a * target_x) + (b * target_y) + c
+    
+    return z_interpolated

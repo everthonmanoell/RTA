@@ -24,46 +24,47 @@ from utils.coordinate_transform import (
     CoordinateTransform,
     RobotFrameConfig,
 )
+from utils.coordinate_transform import get_z_on_screen_plane
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
 
 
-def annotate_aruco_centroids(frame, detector: MarkerDetector):
-    """Detecta ArUco no frame e desenha o centróide de cada marcador."""
-    if frame is None:
-        return None, [], []
+# def annotate_aruco_centroids(frame, detector: MarkerDetector):
+#     """Detecta ArUco no frame e desenha o centróide de cada marcador."""
+#     if frame is None:
+#         return None, [], []
 
-    ids, corners = detector.detect_markers(frame, log_missing=False)
-    annotated = frame.copy()
+#     ids, corners = detector.detect_markers(frame, log_missing=False)
+#     annotated = frame.copy()
 
-    if ids is None or corners is None:
-        return annotated, [], []
+#     if ids is None or corners is None:
+#         return annotated, [], []
 
-    refined_corners = detector.refine_corners(frame, corners)
-    marker_infos = []
+#     refined_corners = detector.refine_corners(frame, corners)
+#     marker_infos = []
 
-    for idx, marker_id in enumerate(ids):
-        marker_info = detector.get_marker_info(int(marker_id[0]), corners[idx])
-        marker_infos.append(marker_info)
+#     for idx, marker_id in enumerate(ids):
+#         marker_info = detector.get_marker_info(int(marker_id[0]), corners[idx])
+#         marker_infos.append(marker_info)
 
-        marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
-        cv2.polylines(annotated, [marker_corners], isClosed=True, color=(0, 255, 0), thickness=2)
+#         marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
+#         cv2.polylines(annotated, [marker_corners], isClosed=True, color=(0, 255, 0), thickness=2)
 
-        centroid_x, centroid_y = map(int, marker_info.centroid)
-        cv2.circle(annotated, (centroid_x, centroid_y), 6, (0, 0, 255), -1)
-        cv2.putText(
-            annotated,
-            f"ID {marker_info.marker_id}",
-            (centroid_x + 8, centroid_y - 8),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 0, 255),
-            2,
-            cv2.LINE_AA,
-        )
+#         centroid_x, centroid_y = map(int, marker_info.centroid)
+#         cv2.circle(annotated, (centroid_x, centroid_y), 6, (0, 0, 255), -1)
+#         cv2.putText(
+#             annotated,
+#             f"ID {marker_info.marker_id}",
+#             (centroid_x + 8, centroid_y - 8),
+#             cv2.FONT_HERSHEY_SIMPLEX,
+#             0.6,
+#             (0, 0, 255),
+#             2,
+#             cv2.LINE_AA,
+#         )
 
-    return annotated, ids, marker_infos
+#     return annotated, ids, marker_infos
 
 
 def _configure_tool_from_config(robot: Denso) -> bool:
@@ -138,52 +139,52 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _build_marker_detector() -> MarkerDetector:
-    configured_dict_name = str(getattr(config, "ARUCO_DICT", "DICT_6X6_250"))
-    dict_name_priority = [
-        configured_dict_name,
-        "DICT_APRILTAG_36h11",
-        "DICT_APRILTAG_16h5",
-        "DICT_APRILTAG_25h9",
-        "DICT_APRILTAG_36h10",
-        "DICT_6X6_250",
-        "DICT_5X5_250",
-        "DICT_4X4_250",
-    ]
+# def _build_marker_detector() -> MarkerDetector:
+#     configured_dict_name = str(getattr(config, "ARUCO_DICT", "DICT_6X6_250"))
+#     dict_name_priority = [
+#         configured_dict_name,
+#         "DICT_APRILTAG_36h11",
+#         "DICT_APRILTAG_16h5",
+#         "DICT_APRILTAG_25h9",
+#         "DICT_APRILTAG_36h10",
+#         "DICT_6X6_250",
+#         "DICT_5X5_250",
+#         "DICT_4X4_250",
+#     ]
 
-    resolved_dicts = []
-    resolved_names = []
-    seen_names = set()
+#     resolved_dicts = []
+#     resolved_names = []
+#     seen_names = set()
 
-    for dict_name in dict_name_priority:
-        if dict_name in seen_names:
-            continue
-        seen_names.add(dict_name)
+#     for dict_name in dict_name_priority:
+#         if dict_name in seen_names:
+#             continue
+#         seen_names.add(dict_name)
 
-        dict_id = getattr(cv2.aruco, dict_name, None)
-        if dict_id is None:
-            continue
+#         dict_id = getattr(cv2.aruco, dict_name, None)
+#         if dict_id is None:
+#             continue
 
-        try:
-            resolved_dicts.append(cv2.aruco.getPredefinedDictionary(dict_id))
-            resolved_names.append(dict_name)
-        except Exception:
-            continue
+#         try:
+#             resolved_dicts.append(cv2.aruco.getPredefinedDictionary(dict_id))
+#             resolved_names.append(dict_name)
+#         except Exception:
+#             continue
 
-    if not resolved_dicts:
-        fallback_name = "DICT_6X6_250"
-        fallback_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
-        logging.warning(
-            "Nenhum dicionário ArUco válido foi resolvido. Usando fallback: %s",
-            fallback_name,
-        )
-        return MarkerDetector(marker_dict=fallback_dict)
+#     if not resolved_dicts:
+#         fallback_name = "DICT_6X6_250"
+#         fallback_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
+#         logging.warning(
+#             "Nenhum dicionário ArUco válido foi resolvido. Usando fallback: %s",
+#             fallback_name,
+#         )
+#         return MarkerDetector(marker_dict=fallback_dict)
 
-    logging.info("Detector dictionaries (prioridade): %s", ", ".join(resolved_names))
-    return MarkerDetector(
-        marker_dict=None,
-        fallback_dicts=resolved_dicts[1:],
-    )
+#     logging.info("Detector dictionaries (prioridade): %s", ", ".join(resolved_names))
+#     return MarkerDetector(
+#         marker_dict=None,
+#         fallback_dicts=resolved_dicts[1:],
+#     )
 
 
 def _build_operational_stack(robot: Denso):
@@ -193,7 +194,8 @@ def _build_operational_stack(robot: Denso):
         output_dir=config.CAMERA_CONFIG["output_dir"],
         show_preview=False,
     )
-    detector = _build_marker_detector()
+    # detector = _build_marker_detector()
+    detector = MarkerDetector()
 
     camera_cal = CameraCalibration(
         focal_length_x=config.CAMERA_INTRINSICS["focal_length_x"],
@@ -221,7 +223,7 @@ def _build_operational_stack(robot: Denso):
         auto_align=auto_align,
     )
 
-    return device, camera, detector, auto_align, controller
+    return device, camera, detector, auto_align, controller, transform
 
 
 
@@ -282,7 +284,7 @@ def main() -> int:
 
     model.turn_motor_on_action = MethodType(_turn_motor_on_action_with_tool, model)
 
-    device, camera, detector, auto_align, controller = _build_operational_stack(robot)
+    device, camera, detector, auto_align, controller, transform = _build_operational_stack(robot)
 
     # ===== TESTE ISOLADO DE CENTRALIZAÇÃO EM 1 ARUCO =====
     logging.info("Conectando robô para teste isolado de centralização...")
@@ -340,7 +342,8 @@ def main() -> int:
     # logging.info("Resultado do move cartesiano manual: %s", ok_move)
 
     time.sleep(0.5)
-
+    #==========================================
+    #todo TEM QUE MORRER ESSE TRECHO
     pose1 = robot.get_cartesian_pose()
     if pose1 is not None:
         logging.info(
@@ -348,6 +351,8 @@ def main() -> int:
             float(pose1.x), float(pose1.y), float(pose1.z),
             float(pose1.rx), float(pose1.ry), float(pose1.rz),
         )
+    #===========================================
+
     def _safe_cleanup():
         try:
             camera.release()
@@ -387,6 +392,77 @@ def main() -> int:
     aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
     aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
 
+
+   # =====================================================================
+    # FASE 1: VISÃO GLOBAL (ROBÔ NO ROI)
+    # =====================================================================
+    logging.info("Capturando imagem a partir da ROI para calcular área de swipe...")
+    
+    # 1. Garante que o robô está na ROI e pega a pose atual
+    robot.move_to_roi()
+    current_roi_pose = robot.get_cartesian_pose()
+    
+    # Variáveis para armazenar o resultado do loop
+    detected_successfully = False
+    ids = None
+    corners = None
+    frame = None
+    height_px, width_px = 0, 0
+
+    # 2. Tenta tirar a foto e detectar até 10 vezes
+    max_tentativas = 10
+    for tentativa in range(max_tentativas):
+        # Tira a foto (verifique se o método no seu código é capture() ou capture_frame())
+        frame = camera.capture_frame() # ou camera.capture_frame_frame()
+        
+        if frame is None:
+            logging.warning(f"Tentativa {tentativa + 1}: Frame nulo retornado pela câmera.")
+            time.sleep(0.5)
+            continue
+
+        height_px, width_px = frame.shape[:2]
+
+        # 3. Detecta os marcadores
+        ids, corners = detector.detect_markers(frame, log_missing=False) # log_missing=False evita floodar o terminal
+        
+        if ids is not None and len(ids) >= 4:
+            logging.info(f"Sucesso! Os 4 marcadores foram detectados na tentativa {tentativa + 1}.")
+            detected_successfully = True
+            break  # Sai do loop imediatamente, pois já temos a foto boa!
+        else:
+            qtd_encontrada = len(ids) if ids is not None else 0
+            logging.warning(f"Tentativa {tentativa + 1}/{max_tentativas}: Encontrados apenas {qtd_encontrada} marcadores. Aguardando a tela do app abrir...")
+            time.sleep(0.5) # Espera meio segundo antes da próxima foto (dá tempo do app abrir e focar)
+
+    # Verifica se o loop terminou sem sucesso
+    if not detected_successfully:
+        logging.error("Erro Fatal: Não foi possível detectar os 4 marcadores na ROI após 10 tentativas.")
+        # Opcional: Salvar a última foto que a câmera viu para debugar por que falhou
+        # cv2.imwrite("debug_falha_roi.jpg", frame) 
+        return False
+        
+    # 4. Extrai as informações dos marcadores 
+    marker_infos = [
+        detector.get_marker_info(int(marker_id[0]), corners[idx])
+        for idx, marker_id in enumerate(ids)
+    ]
+
+    # 5. Pega as coordenadas da Zona Segura em PIXELS
+    safe_zone_data = detector.get_safe_interaction_zone(frame, marker_infos)
+    if safe_zone_data is None:
+        logging.error("Erro ao calcular a zona segura de swipe.")
+        return False
+    
+    
+
+    # =====================================================================
+    # FASE 3: CALIBRAÇÃO DO PLANO Z (TOQUE NOS ARUCOS)
+    # =====================================================================
+    logging.info("Iniciando rotina de toque nos ArUcos para mapear o Plano 3D (Z)...")
+    
+    homography_position = [] # Lista que guardará as 4 Poses de toque
+    
+    
     rotation_aligment = RotationAlignment(robot, camera, detector)
 
     ALIGNMENT_TOLERANCE = 1.0
@@ -401,7 +477,6 @@ def main() -> int:
 
     touch_detected_event = threading.Event()
     touch_feedback_holder = {"value": None}
-    homography_position = []
 
     try:
         for id in range(1, 5):
@@ -545,243 +620,91 @@ def main() -> int:
 
     finally:
         logging.info("Alinhamento e toque finalizados. Realizando limpeza segura.")
-        device.stop()
-        _safe_cleanup()
+        # device.stop()
+        # _safe_cleanup()
         
+    # .....................................................
+    
+    if len(homography_position) < 4:
+        logging.error("O robô falhou em tocar todos os 4 marcadores.")
+        return False
 
-    #================================ funciona =========================        
-    #     step = 1.0
-    #     try:
-    #         while(True):
-    #             current_position = robot.get_cartesian_pose()
-    #             if current_position is None:
-    #                 logging.error("Falha ao obter pose atual do robô durante descida para toque.")
-    #                 robot.move_to_roi()
-    #                 break
-
-    #             if current_position.z <= Z_LIMIT:
-    #                 logging.warning("Limite de segurança Z atingido (%.2f mm). Parando descida.", current_position.z)
-    #                 break
-    #             else:
-    #                 logging.info("Descendo para toque: passo %d, pose atual z=%.2f mm", step, current_position.z)
-    #                 if current_position.z > Z_TOUCH:
-    #                     if current_position.z > 60.0:
-    #                         current_position.z -= 10.0
-    #                     else:
-    #                         current_position.z -= 1.0
-    #                     robot.move_cartesian(current_position)
-
-    #                     if current_position.z <= Z_TOUCH:
-    #                         logging.info("Pose de toque atingida (%.2f mm).", current_position.z)
-    #                         robot.move_to_roi()
-    #                         break
-                    
-    #                 step += 1
-    #                 time.sleep(0.5)
-    #         robot.move_to_roi()
-    #     finally:
-    #         logging.info("Alinhamento e toque finalizados. Realizando limpeza segura.")
-    #         return _safe_cleanup()
+    # =====================================================================
+    # FASE 4: HOMOGRAFIA CÂMERA->ROBÔ, CÁLCULO 3D E SWIPE!
+    # =====================================================================
+    logging.info("Calculando matriz de transformação (Pixels -> Robô)...")
+    
+    # 1. Pega os centros em PIXELS (da foto lá do alto) e os X,Y FÍSICOS (do toque)
+    pixel_pts = []
+    robot_pts = []
+    
+    for idx, target_id in enumerate([1, 2, 3, 4]):
+        # Acha a coordenada em pixels desse ID específico
+        m_info = next(m for m in marker_infos if m.marker_id == target_id)
+        pixel_pts.append(m_info.centroid)
         
-    # else:
-    #     logging.warning("Não foi possível ler pose final do robô após alinhamento.")
+        # Pega a pose de toque desse ID no robô
+        pose = homography_position[idx]
+        robot_pts.append([pose.x, pose.y])
 
+    # Converte para formato do OpenCV
+    pixel_pts = np.array(pixel_pts, dtype=np.float32)
+    robot_pts = np.array(robot_pts, dtype=np.float32)
+    
+    # 2. MÁGICA: Cria a matriz que traduz pixels diretamente para milímetros reais
+    H_cam_to_robot, _ = cv2.findHomography(pixel_pts, robot_pts)
+
+    # 3. Executa o Trajeto
+    trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
+    
+    logging.info("Preparando para executar o Swipe Perimetral...")
+
+    for pt_name in trajeto:
+            # Pega o Pixel do swipe lá da Fase 1
+            px, py = safe_zone_data["safe_swipe_points"][pt_name]
+            
+            # 4. Traduz esse Pixel para o X e Y da mesa do Robô
+            pt_px_array = np.array([[[px, py]]], dtype=np.float32)
+            pt_robot_array = cv2.perspectiveTransform(pt_px_array, H_cam_to_robot)
+            
+            
+            target_x = float(pt_robot_array[0][0][0])
+            target_y = float(pt_robot_array[0][0][1])
+            
+            # 5. Descobre a altura exata (Z) daquele ponto na tela inclinada
+            target_z = float(get_z_on_screen_plane(target_x, target_y, homography_position))
+            
+            # Cria a pose final que o robô deve assumir
+            swipe_pose = Pose(
+                x=target_x,
+                y=target_y,
+                z=target_z,
+                rx=float(current_roi_pose.rx), 
+                ry=float(current_roi_pose.ry),
+                rz=float(current_roi_pose.rz),
+                fig=int(current_roi_pose.fig) 
+            )
+            
+            logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f", pt_name, target_x, target_y, target_z)
+            
+            # Executa o movimento!
+            robot.move_cartesian(swipe_pose)
+        
+    logging.info("Swipe perimetral finalizado com sucesso!")
+    robot.move_to_roi() # Volta para a segurança no alto
+
+    device.stop()
+    _safe_cleanup()
     
 
-#===========================================
-# TESTE PARA SABER QUAL MOVIMENTO AFETA QUAL EIXO
-
-    # aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
-    # aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
-
-    # rotation_aligment = RotationAlignment(robot, camera, detector)
-
-    # ID_TARGET = 1
-    # STEP_MM = 5.0
-
-
-    # def detect_marker_state():
-    #     while True:
-    #         frame = camera.capture_frame()
-    #         if frame is None:
-    #             continue
-
-    #         id_found, corners = detector.detect_single_marker_by_id(frame, ID_TARGET)
-    #         if id_found is None:
-    #             continue
-
-    #         marker_info = detector.get_marker_info(ID_TARGET, corners)
-
-    #         width_aruco_pixel = marker_info.width_px
-    #         height_aruco_pixel = marker_info.height_px
-    #         if width_aruco_pixel <= 0 or height_aruco_pixel <= 0:
-    #             continue
-
-    #         scale_x = aruco_widht_real_mm / width_aruco_pixel
-    #         scale_y = aruco_hight_real_mm / height_aruco_pixel
-
-    #         center_x_img, center_y_img = camera.center_point(frame)
-    #         center_aruco_x, center_aruco_y = marker_info.centroid
-
-    #         error_px_x = center_aruco_x - center_x_img
-    #         error_px_y = center_aruco_y - center_y_img
-
-    #         error_mm_x = error_px_x * scale_x
-    #         error_mm_y = error_px_y * scale_y
-
-    #         return {
-    #             "centroid": (float(center_aruco_x), float(center_aruco_y)),
-    #             "error_px": (float(error_px_x), float(error_px_y)),
-    #             "error_mm": (float(error_mm_x), float(error_mm_y)),
-    #         }
-
-
-    # def move_axis_mm(axis: str, delta_mm: float) -> bool:
-    #     pose = robot.get_cartesian_pose()
-    #     if pose is None:
-    #         logging.error("Falha ao obter pose do robô")
-    #         return False
-
-    #     if axis == "x":
-    #         pose.x += delta_mm
-    #     elif axis == "y":
-    #         pose.y += delta_mm
-    #     else:
-    #         logging.error("Eixo inválido: %s", axis)
-    #         return False
-
-    #     ok = robot.move_cartesian(pose)
-    #     logging.info("Move %s %+0.2f mm -> %s", axis.upper(), delta_mm, ok)
-    #     return ok
-
-
-    # def run_axis_test(axis: str):
-    #     logging.info("========== TESTE DO EIXO %s ==========", axis.upper())
-
-    #     state_before = detect_marker_state()
-    #     cx0, cy0 = state_before["centroid"]
-    #     err_px0_x, err_px0_y = state_before["error_px"]
-    #     err_mm0_x, err_mm0_y = state_before["error_mm"]
-
-    #     logging.info(
-    #         "ANTES | centroid=(%.2f, %.2f) | erro_px=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
-    #         cx0, cy0, err_px0_x, err_px0_y, err_mm0_x, err_mm0_y
-    #     )
-
-    #     if not move_axis_mm(axis, STEP_MM):
-    #         logging.error("Falha ao mover eixo %s", axis.upper())
-    #         return
-
-    #     time.sleep(0.5)
-
-    #     state_after = detect_marker_state()
-    #     cx1, cy1 = state_after["centroid"]
-    #     err_px1_x, err_px1_y = state_after["error_px"]
-    #     err_mm1_x, err_mm1_y = state_after["error_mm"]
-
-    #     logging.info(
-    #         "DEPOIS | centroid=(%.2f, %.2f) | erro_px=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
-    #         cx1, cy1, err_px1_x, err_px1_y, err_mm1_x, err_mm1_y
-    #     )
-
-    #     delta_centroid_x = cx1 - cx0
-    #     delta_centroid_y = cy1 - cy0
-
-    #     logging.info(
-    #         "DELTA IMAGEM após mover robot.%s %+0.2f mm -> dcentroid=(%.2f px, %.2f px)",
-    #         axis, STEP_MM, delta_centroid_x, delta_centroid_y
-    #     )
-
-    #     if abs(delta_centroid_x) > abs(delta_centroid_y):
-    #         logging.info(
-    #             "RESULTADO: robot.%s afeta principalmente IMAGE_X",
-    #             axis
-    #         )
-    #     else:
-    #         logging.info(
-    #             "RESULTADO: robot.%s afeta principalmente IMAGE_Y",
-    #             axis
-    #         )
-
-    #     # volta para posição original
-    #     move_axis_mm(axis, -STEP_MM)
-    #     time.sleep(0.5)
-
-    #     state_back = detect_marker_state()
-    #     cxb, cyb = state_back["centroid"]
-
-    #     logging.info(
-    #         "VOLTA | centroid=(%.2f, %.2f) | erro_mm=(%.2f, %.2f)",
-    #         cxb, cyb, state_back["error_mm"][0], state_back["error_mm"][1]
-    #     )
-
-
-    # run_axis_test("x")
-    # run_axis_test("y")
-
-
-#===========================================
 
 
 
-        
-    # frame = camera.capture_frame()
-
-    # width_aruco_pixel, height_aruco_pixel, vertices = detector.rectangle_from_aruco_detection(frame)
-
-    # width_pixels_scale = width_aruco_pixel / aruco_widht_real_mm
-    # height_pixels_scale = height_aruco_pixel / aruco_hight_real_mm
 
 
-    # height, width = frame.shape[:2]
-    # image_centroid_x, image_centroid_y = width // 2, height // 2
-    
-    # aruco_frame, aruco_ids, aruco_markers = annotate_aruco_centroids(frame, detector)
-    # aruco_centroid_x, aruco_centroid_y = map(int, aruco_markers[0].centroid)
 
-    # cv2.putText(
-    #     aruco_frame,
-    #     f"Image Centroid",
-    #     (image_centroid_x + 8, image_centroid_y - 8),
-    #     cv2.FONT_HERSHEY_SIMPLEX,
-    #     0.6,
-    #     (255, 0, 0),
-    #     2,
-    #     cv2.LINE_AA,
-    # )
 
-    # cv2.putText(
-    #     aruco_frame,
-    #     f"ArUco Centroid",
-    #     (aruco_centroid_x + 8, aruco_centroid_y - 8),
-    #     cv2.FONT_HERSHEY_SIMPLEX,
-    #     0.6,
-    #     (0, 255, 255),
-    #     2,
-    # )
 
-    # error_x = aruco_centroid_x - image_centroid_x
-    # error_y = aruco_centroid_y - image_centroid_y
-
-    # error_x_mm = error_x / width_pixels_scale
-    # error_y_mm = error_y / height_pixels_scale
-
-    # print(f"Error in pixels: x={error_x:.2f}, y={error_y:.2f}")
-
-    # cv2.putText(
-    #     aruco_frame,
-    #     f"Error: ({error_x}, {error_y})",
-    #     (10, height - 10),
-    #     cv2.FONT_HERSHEY_SIMPLEX,
-    #     0.6,
-    #     (0, 255, 255),
-    #     2,
-    # )
-
-    # aruco_frame_with_middle = camera.image_with_middle_point(aruco_frame)
-    # if aruco_frame is not None:
-    #     logging.info("ArUco detectados no teste manual: %s", [int(marker[0]) for marker in aruco_ids])
-    #     camera.display_image(aruco_frame_with_middle["image_np"], window_name="ArUco Centroids and middle point image")
 
 ### =========================================================================
 
@@ -1326,11 +1249,11 @@ def main() -> int:
     #         return False
 
     # def camera_on_fn() -> bool:
-    #     return camera.capture_frame() is not None
+    #     return camera.capture_frame_frame() is not None
 
     # def _capture_markers_once(*, silent_no_markers: bool = True) -> list:
     #     """Captura um frame e retorna marcadores deduplicados por ID."""
-    #     frame = camera.capture_frame()
+    #     frame = camera.capture_frame_frame()
     #     if frame is None:
     #         return []
 
@@ -1405,7 +1328,7 @@ def main() -> int:
 
     #         time.sleep(0.08)
 
-    #         next_frame = camera.capture_frame()
+    #         next_frame = camera.capture_frame_frame()
     #         if next_frame is None:
     #             break
     #         current_frame = next_frame
@@ -1429,7 +1352,7 @@ def main() -> int:
     #     )
 
     #     for _ in range(detect_attempts):
-    #         frame = camera.capture_frame()
+    #         frame = camera.capture_frame_frame()
     #         if frame is None:
     #             continue
 
@@ -1878,7 +1801,7 @@ def main() -> int:
 
     # def reset_markers_fn() -> None:
     #     _apply_speed_profile("touch")
-    #     frame = camera.capture_frame()
+    #     frame = camera.capture_frame_frame()
     #     if frame is None:
     #         runtime["markers"] = []
     #         return
@@ -1965,7 +1888,7 @@ def main() -> int:
     #     robot.move_safe(preserve_orientation=True)
 
     # def read_final_marker_fn() -> str:
-    #     frame = camera.capture_frame()
+    #     frame = camera.capture_frame_frame()
     #     if frame is None:
     #         return model.RESULT_FAILURE
 
@@ -1982,7 +1905,7 @@ def main() -> int:
 
     # def return_to_start_fn() -> None:
     #     _apply_speed_profile("touch")
-    #     frame = camera.capture_frame()
+    #     frame = camera.capture_frame_frame()
     #     if frame is None:
     #         return
 

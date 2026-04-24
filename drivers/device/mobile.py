@@ -172,16 +172,35 @@ def adb_device_connected() -> bool:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
     
-def list_adb_devices() -> list[str]:
-    try:
-        output = subprocess.check_output(
-            ["adb", "devices"],
-            text=True,
-            stderr=subprocess.STDOUT,
-            timeout=5,
-        )
-    except Exception as e:
-        raise AssertionError(f"Erro ao executar adb devices: {e}")
+def list_adb_devices(retries: int = 3) -> list[str]:
+    """
+    Lista os dispositivos ADB conectados. 
+    Possui sistema de auto-cura: se o servidor ADB travar no Windows, 
+    ele reinicia o daemon automaticamente antes de falhar.
+    """
+    output = ""
+    for attempt in range(retries):
+        try:
+            output = subprocess.check_output(
+                ["adb", "devices"],
+                text=True,
+                stderr=subprocess.STDOUT,
+                timeout=5,
+            )
+            break  # Sucesso! Sai do loop de tentativas.
+            
+        except Exception as e:
+            if attempt < retries - 1:
+                print(f"[ADB] Falha de comunicação (tentativa {attempt+1}/{retries}). Reiniciando servidor ADB...")
+                # Tenta matar o processo travado do Windows
+                subprocess.run(["adb", "kill-server"], check=False)
+                time.sleep(1.0)
+                # Inicia o servidor novamente limpo
+                subprocess.run(["adb", "start-server"], check=False)
+                time.sleep(2.0)
+            else:
+                # Se falhar todas as vezes, aí sim aborta.
+                raise AssertionError(f"Erro fatal no ADB após {retries} tentativas: {e}")
 
     devices = []
     for line in output.splitlines():

@@ -268,14 +268,27 @@ class MainActivity : Activity() {
         val xdpi = resources.displayMetrics.xdpi
         val ydpi = resources.displayMetrics.ydpi
         val tagSizePx = markerTagSizeDp * density
-        markerRealWidthMm = tagSizePx / xdpi * 25.4f
-        markerRealHeightMm = tagSizePx / ydpi * 25.4f
+
+        // 1. Calcula o tamanho TOTAL do ImageView na tela (incluindo a margem branca)
+        val totalWidthMm = tagSizePx / xdpi * 25.4f
+        val totalHeightMm = tagSizePx / ydpi * 25.4f
+
+        // 2. Fator de correção: proporção da tinta preta em relação ao ImageView total
+        // (Baseado na medição física com paquímetro: ~15.0mm / 19.16mm)
+        val arucoFillRatio = 0.782f
+
+        // 3. Define o tamanho REAL que a câmera do robô vai enxergar para a Homografia
+        markerRealWidthMm = totalWidthMm * arucoFillRatio
+        markerRealHeightMm = totalHeightMm * arucoFillRatio
 
         // Espaçamento entre marcadores (horizontal): diferença entre left e right
         val snapshot = captureDisplaySnapshot()
         val marginPx = markerMarginDp * density
         val usableWidthPx = snapshot.widthPx.toFloat()
         val left = marginPx
+        
+        // IMPORTANTE: A distância X continua usando o tagSizePx total,
+        // pois a borda branca ocupa espaço físico na tela entre um marcador e outro.
         val right = usableWidthPx - marginPx - tagSizePx
         markerXDistanceMm = maxOf(0f, (right - left) / xdpi * 25.4f)
 
