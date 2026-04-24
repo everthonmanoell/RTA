@@ -39,13 +39,13 @@ class Denso(AbstractRobot):
     # ROI_RZ = 179.27
     # DEFAULT_FIG = 5
 
-    ROI_X = 226.39
-    ROI_Y = 7.47
-    ROI_Z = 226.68
+    ROI_X = 322.25
+    ROI_Y = 2.51
+    ROI_Z = 228.89
     ROI_RX = 179.25
-    ROI_RY = -1.60
-    ROI_RZ = -179.38
-    DEFAULT_FIG = 1
+    ROI_RY = -1.56
+    ROI_RZ = 179.35
+    DEFAULT_FIG = 9
 
 
     joint_pose_roi = [1.184635, 34.15339, 103.8132, -178.8901, -43.63271, -180.2519]
@@ -213,18 +213,19 @@ class Denso(AbstractRobot):
             # current_pose = self.get_cartesian_pose()
             # fig = current_pose.fig if current_pose is not None else self.DEFAULT_FIG
 
-            # roi_pose = Pose(
-            #     x=self.ROI_X,
-            #     y=self.ROI_Y,
-            #     z=self.ROI_Z,
-            #     rx=self.ROI_RX,
-            #     ry=self.ROI_RY,
-            #     rz=self.ROI_RZ,
-            #     fig=fig,
-            # )
+            roi_pose = Pose(
+                x=self.ROI_X,
+                y=self.ROI_Y,
+                z=self.ROI_Z,
+                rx=self.ROI_RX,
+                ry=self.ROI_RY,
+                rz=self.ROI_RZ,
+                fig=self.DEFAULT_FIG,
+            )
             # return self.move_cartesian(roi_pose)
             self.set_arm_speed(50, 50, 50)
-            return self.move_joints(Joint(*self.joint_pose_roi))
+            # return self.move_joints(Joint(*self.joint_pose_roi))
+            return self.move_cartesian(roi_pose)
         except Exception as e:
             self._logger.error("Falha em move_to_roi: %s", e)
             return False

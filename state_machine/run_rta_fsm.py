@@ -24,7 +24,7 @@ from utils.coordinate_transform import (
     CoordinateTransform,
     RobotFrameConfig,
 )
-from utils.coordinate_transform import get_z_on_screen_plane
+from utils.coordinate_transform import get_z_on_screen_plane, interpolate_robot_pose
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
@@ -78,22 +78,22 @@ def _configure_tool_from_config(robot: Denso) -> bool:
         return True
 
     tag = str(tool_cfg.get("tag", "pen_tool"))
-    offset = Offset3D(
-        x=float(tool_cfg.get("offset_x", 0.0)),
-        y=float(tool_cfg.get("offset_y", 0.0)),
-        z=float(tool_cfg.get("offset_z", 0.0)),
-        rx=float(tool_cfg.get("offset_rx", 0.0)),
-        ry=float(tool_cfg.get("offset_ry", 0.0)),
-        rz=float(tool_cfg.get("offset_rz", 0.0)),
-    )
+    # offset = Offset3D(
+    #     x=float(tool_cfg.get("offset_x", 0.0)),
+    #     y=float(tool_cfg.get("offset_y", 0.0)),
+    #     z=float(tool_cfg.get("offset_z", 0.0)),
+    #     rx=float(tool_cfg.get("offset_rx", 0.0)),
+    #     ry=float(tool_cfg.get("offset_ry", 0.0)),
+    #     rz=float(tool_cfg.get("offset_rz", 0.0)),
+    # )
 
-    if not robot.create_tool_reference(offset, tag):
-        logging.error("Falha ao criar referência de tool '%s'.", tag)
-        return False
+    # if not robot.create_tool_reference(offset, tag):
+    #     logging.error("Falha ao criar referência de tool '%s'.", tag)
+    #     return False
 
-    if not robot.set_current_tool_by_tag(tag):
-        logging.error("Falha ao selecionar tool '%s'.", tag)
-        return False
+    # if not robot.set_current_tool_by_tag(tag):
+    #     logging.error("Falha ao selecionar tool '%s'.", tag)
+    #     return False
 
     logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
     return True
@@ -461,6 +461,7 @@ def main() -> int:
     logging.info("Iniciando rotina de toque nos ArUcos para mapear o Plano 3D (Z)...")
     
     homography_position = [] # Lista que guardará as 4 Poses de toque
+    touch_poses_dict = {}
     
     
     rotation_aligment = RotationAlignment(robot, camera, detector)
@@ -558,7 +559,8 @@ def main() -> int:
                             "Toque detectado pelo celular em %s. Parando descida do robô.",
                             touch_feedback_holder["value"]
                         )
-                        homography_position.append(current_position)
+                        # homography_position.append(current_position)
+                        touch_poses_dict[id] = current_position
                         logging.info(
                             "Pose registrada para homografia: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(current_position.y), float(current_position.z),
@@ -574,7 +576,8 @@ def main() -> int:
                             "Faixa de toque atingida com o Z_TOUCH: %.2f mm. Parando o robô.",
                             float(current_position.z)
                         )
-                        homography_position.append(current_position)
+                        # homography_position.append(current_position)
+                        touch_poses_dict[id] = current_position
                         logging.info(
                             "Pose registrada para homografia: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(current_position.y), float(current_position.z),
@@ -625,70 +628,43 @@ def main() -> int:
         
     # .....................................................
     
-    if len(homography_position) < 4:
-        logging.error("O robô falhou em tocar todos os 4 marcadores.")
-        return False
+    # if len(homography_position) < 4:
+    #     logging.error("O robô falhou em tocar todos os 4 marcadores.")
+    #     return False
 
+# =====================================================================
+    # FASE 4: INTERPOLAÇÃO BILINEAR (SWIPE)
     # =====================================================================
-    # FASE 4: HOMOGRAFIA CÂMERA->ROBÔ, CÁLCULO 3D E SWIPE!
-    # =====================================================================
-    logging.info("Calculando matriz de transformação (Pixels -> Robô)...")
+    logging.info("Calculando Interpolação Bilinear 3D e preparando Swipe...")
     
-    # 1. Pega os centros em PIXELS (da foto lá do alto) e os X,Y FÍSICOS (do toque)
-    pixel_pts = []
-    robot_pts = []
-    
-    for idx, target_id in enumerate([1, 2, 3, 4]):
-        # Acha a coordenada em pixels desse ID específico
-        m_info = next(m for m in marker_infos if m.marker_id == target_id)
-        pixel_pts.append(m_info.centroid)
-        
-        # Pega a pose de toque desse ID no robô
-        pose = homography_position[idx]
-        robot_pts.append([pose.x, pose.y])
-
-    # Converte para formato do OpenCV
-    pixel_pts = np.array(pixel_pts, dtype=np.float32)
-    robot_pts = np.array(robot_pts, dtype=np.float32)
-    
-    # 2. MÁGICA: Cria a matriz que traduz pixels diretamente para milímetros reais
-    H_cam_to_robot, _ = cv2.findHomography(pixel_pts, robot_pts)
-
-    # 3. Executa o Trajeto
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
-    
-    logging.info("Preparando para executar o Swipe Perimetral...")
+    union_rect_px = safe_zone_data["aruco_rect"] # x_min, y_min, x_max, y_max da foto
 
     for pt_name in trajeto:
-            # Pega o Pixel do swipe lá da Fase 1
-            px, py = safe_zone_data["safe_swipe_points"][pt_name]
-            
-            # 4. Traduz esse Pixel para o X e Y da mesa do Robô
-            pt_px_array = np.array([[[px, py]]], dtype=np.float32)
-            pt_robot_array = cv2.perspectiveTransform(pt_px_array, H_cam_to_robot)
-            
-            
-            target_x = float(pt_robot_array[0][0][0])
-            target_y = float(pt_robot_array[0][0][1])
-            
-            # 5. Descobre a altura exata (Z) daquele ponto na tela inclinada
-            target_z = float(get_z_on_screen_plane(target_x, target_y, homography_position))
-            
-            # Cria a pose final que o robô deve assumir
-            swipe_pose = Pose(
-                x=target_x,
-                y=target_y,
-                z=target_z,
-                rx=float(current_roi_pose.rx), 
-                ry=float(current_roi_pose.ry),
-                rz=float(current_roi_pose.rz),
-                fig=int(current_roi_pose.fig) 
-            )
-            
-            logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f", pt_name, target_x, target_y, target_z)
-            
-            # Executa o movimento!
-            robot.move_cartesian(swipe_pose)
+        # 1. Pega o Pixel alvo daquele ponto
+        px, py = safe_zone_data["safe_swipe_points"][pt_name]
+        
+        # 2. MÁGICA: Mapeia X, Y e Z ao mesmo tempo usando interpolação elástica!
+        target_x, target_y, target_z = interpolate_robot_pose(
+            target_px=px, 
+            target_py=py, 
+            union_rect_px=union_rect_px, 
+            touch_poses_dict=touch_poses_dict
+        )
+        
+        # 3. Cria a pose final com cast de float para o aether_rdk não reclamar
+        swipe_pose = Pose(
+            x=target_x,
+            y=target_y,
+            z=target_z,
+            rx=float(current_roi_pose.rx),
+            ry=float(current_roi_pose.ry),
+            rz=float(current_roi_pose.rz),
+            fig=int(current_roi_pose.fig)
+        )
+        
+        logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f", pt_name, target_x, target_y, target_z)
+        robot.move_cartesian(swipe_pose)
         
     logging.info("Swipe perimetral finalizado com sucesso!")
     robot.move_to_roi() # Volta para a segurança no alto

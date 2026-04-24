@@ -253,3 +253,39 @@ def get_z_on_screen_plane(target_x: float, target_y: float, touch_poses: list[Po
     z_interpolated = (a * target_x) + (b * target_y) + c
     
     return z_interpolated
+
+def interpolate_robot_pose(target_px, target_py, union_rect_px, touch_poses_dict):
+    """
+    Usa Interpolação Bilinear para mapear um pixel diretamente para X, Y e Z do robô.
+    
+    Args:
+        target_px, target_py: O pixel exato (X, Y) que queremos alcançar.
+        union_rect_px: A tupla (x_min, y_min, x_max, y_max) dos ArUcos na imagem.
+        touch_poses_dict: Dicionário com as Poses do robô mapeadas por ID do ArUco.
+    """
+    x_min, y_min, x_max, y_max = union_rect_px
+    
+    # 1. Descobre a "porcentagem" (0.0 a 1.0) do alvo dentro do retângulo da imagem
+    u = (target_px - x_min) / (x_max - x_min)
+    v = (target_py - y_min) / (y_max - y_min)
+    
+    # 2. Pega as poses dos 4 cantos usando a sua disposição de IDs
+    # TL=4, TR=2, BL=1, BR=3
+    pose_tl = touch_poses_dict[4]
+    pose_tr = touch_poses_dict[2]
+    pose_bl = touch_poses_dict[1]
+    pose_br = touch_poses_dict[3]
+    
+    # 3. Função interna para aplicar a fórmula bilinear para qualquer eixo
+    def bilinear(val_tl, val_tr, val_bl, val_br):
+        return (1 - u) * (1 - v) * val_tl + \
+               u * (1 - v) * val_tr + \
+               (1 - u) * v * val_bl + \
+               u * v * val_br
+
+    # 4. Calcula X, Y e Z físicos instantaneamente!
+    robot_x = bilinear(pose_tl.x, pose_tr.x, pose_bl.x, pose_br.x)
+    robot_y = bilinear(pose_tl.y, pose_tr.y, pose_bl.y, pose_br.y)
+    robot_z = bilinear(pose_tl.z, pose_tr.z, pose_bl.z, pose_br.z)
+    
+    return float(robot_x), float(robot_y), float(robot_z)
