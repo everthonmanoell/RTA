@@ -239,7 +239,7 @@ class RotationAlignment:
             f"Ajuste aplicado: dx={adjustment_x:.2f} mm, dy={adjustment_y:.2f} mm | "
             f"erro_x={error_x:.2f} mm, erro_y={error_y:.2f} mm"
         )
-        self.robot_arm.set_arm_speed(50, 23, 23)
+        # self.robot_arm.set_arm_speed(10, 5, 5)
         success = self.robot_arm.move_cartesian(current_pose)
         if not success:
             self.logger.error("Failed to move robot for center alignment")
