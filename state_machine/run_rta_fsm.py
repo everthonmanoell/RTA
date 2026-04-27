@@ -67,36 +67,36 @@ from drivers.alignment.rotation_alignment import RotationAlignment
 #     return annotated, ids, marker_infos
 
 
-def _configure_tool_from_config(robot: Denso) -> bool:
-    tool_cfg = getattr(config, "TOOL_CONFIG", {})
-    if not isinstance(tool_cfg, dict):
-        logging.error("TOOL_CONFIG inválido: esperado dict.")
-        return False
+# def _configure_tool_from_config(robot: Denso) -> bool:
+#     tool_cfg = getattr(config, "TOOL_CONFIG", {})
+#     if not isinstance(tool_cfg, dict):
+#         logging.error("TOOL_CONFIG inválido: esperado dict.")
+#         return False
 
-    if not tool_cfg.get("enabled", False):
-        logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
-        return True
+#     if not tool_cfg.get("enabled", False):
+#         logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
+#         return True
 
-    tag = str(tool_cfg.get("tag", "pen_tool"))
-    offset = Offset3D(
-        x=float(tool_cfg.get("offset_x", 0.0)),
-        y=float(tool_cfg.get("offset_y", 0.0)),
-        z=float(tool_cfg.get("offset_z", 0.0)),
-        rx=float(tool_cfg.get("offset_rx", 0.0)),
-        ry=float(tool_cfg.get("offset_ry", 0.0)),
-        rz=float(tool_cfg.get("offset_rz", 0.0)),
-    )
+#     tag = str(tool_cfg.get("tag", "pen_tool"))
+#     offset = Offset3D(
+#         x=float(tool_cfg.get("offset_x", 0.0)),
+#         y=float(tool_cfg.get("offset_y", 0.0)),
+#         z=float(tool_cfg.get("offset_z", 0.0)),
+#         rx=float(tool_cfg.get("offset_rx", 0.0)),
+#         ry=float(tool_cfg.get("offset_ry", 0.0)),
+#         rz=float(tool_cfg.get("offset_rz", 0.0)),
+#     )
 
-    if not robot.create_tool_reference(offset, tag):
-        logging.error("Falha ao criar referência de tool '%s'.", tag)
-        return False
+#     if not robot.create_tool_reference(offset, tag):
+#         logging.error("Falha ao criar referência de tool '%s'.", tag)
+#         return False
 
-    if not robot.set_current_tool_by_tag(tag):
-        logging.error("Falha ao selecionar tool '%s'.", tag)
-        return False
+#     if not robot.set_current_tool_by_tag(tag):
+#         logging.error("Falha ao selecionar tool '%s'.", tag)
+#         return False
 
-    logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
-    return True
+#     logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
+#     return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -275,16 +275,18 @@ def main() -> int:
         try:
             self.motor_on_flag = bool(self.denso_robot.motor_on())
             if self.motor_on_flag:
-                if _configure_tool_from_config(robot):
+                # if _configure_tool_from_config(robot):
+                #     self.motor_on_attempt = 0
+                # else:
+                #     self.motor_on_flag = False
                     self.motor_on_attempt = 0
-                else:
-                    self.motor_on_flag = False
         except Exception:
             self.motor_on_flag = False
 
     model.turn_motor_on_action = MethodType(_turn_motor_on_action_with_tool, model)
 
     device, camera, detector, auto_align, controller, transform = _build_operational_stack(robot)
+
 
     # ===== TESTE ISOLADO DE CENTRALIZAÇÃO EM 1 ARUCO =====
     logging.info("Conectando robô para teste isolado de centralização...")
@@ -298,11 +300,14 @@ def main() -> int:
         robot.disconnect()
         return 1
 
-    if not _configure_tool_from_config(robot):
-        logging.error("Falha ao configurar a tool.")
-        robot.disconnect()
-        return 1
+    # if not _configure_tool_from_config(robot):
+    #     logging.error("Falha ao configurar a tool.")
+    #     robot.disconnect()
+    #     return 1
 
+
+    robot.set_arm_speed(10, 5, 5)  # Velocidade segura para alinhamento inicial
+    
     # Opcional, mas recomendado: ir para ROI antes de procurar marcador
     try:
         if hasattr(robot, "move_to_roi"):
@@ -340,6 +345,8 @@ def main() -> int:
 
     # # ok_move = robot.move_cartesian(test_pose)
     # logging.info("Resultado do move cartesiano manual: %s", ok_move)
+
+    
 
     time.sleep(0.5)
     #==========================================
