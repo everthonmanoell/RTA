@@ -24,7 +24,7 @@ from utils.coordinate_transform import (
     CoordinateTransform,
     RobotFrameConfig,
 )
-from utils.coordinate_transform import get_z_on_screen_plane
+from utils.coordinate_transform import get_z_on_screen_plane, get_z_with_scipy_mesh, interpolate_robot_pose
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
@@ -379,16 +379,27 @@ def main() -> int:
             logging.error("Pose de toque é None. Não é possível mover para posição de toque.")
             return False
 
-        pose.z += 10
-        logging.info(
-            "Movendo para posição de toque registrada (com offset): x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
-            float(pose.x), float(pose.y), float(pose.z),
-            float(pose.rx), float(pose.ry), float(pose.rz),
+        # MÁGICA: Cria uma cópia da pose isolada na memória!
+        # Isso garante que a pose salva na lista de homografia continue intacta.
+        safe_pose = Pose(
+            x=float(pose.x),
+            y=float(pose.y),
+            z=float(pose.z) + 10.0, # O +10 acontece apenas na cópia
+            rx=float(pose.rx),
+            ry=float(pose.ry),
+            rz=float(pose.rz),
+            fig=int(getattr(pose, "fig", 1))
         )
 
-        success = robot.move_cartesian(pose)
+        logging.info(
+            "Movendo para posição de recuo (com offset): x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+            safe_pose.x, safe_pose.y, safe_pose.z,
+            safe_pose.rx, safe_pose.ry, safe_pose.rz,
+        )
+
+        success = robot.move_cartesian(safe_pose)
         if not success:
-            logging.error("Falha ao mover para posição de toque.")
+            logging.error("Falha ao mover para posição de recuo.")
         return success
 
 
@@ -565,6 +576,7 @@ def main() -> int:
                             "Toque detectado pelo celular em %s. Parando descida do robô.",
                             touch_feedback_holder["value"]
                         )
+                        current_position = robot.get_cartesian_pose() # Leitura extra para garantir que temos a pose mais recente no momento do toque
                         homography_position.append(current_position)
                         logging.info(
                             "Pose registrada para homografia: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
@@ -608,10 +620,12 @@ def main() -> int:
                     )
 
                     # 4) descida controlada até o Z_TOUCH
-                    if current_position.z > 60.0:
+                    if current_position.z > Z_TOUCH + 20.0:
                         current_position.z -= 5.0
+                    elif current_position.z > Z_TOUCH + 5.0:
+                        current_position.z -= 0.2
                     else:
-                        current_position.z -= 1.0
+                        current_position.z -= 0.1
 
                     ok = robot.move_cartesian(current_position)
                     logging.info("Resultado do move_cartesian na descida: %s", ok)
@@ -633,78 +647,100 @@ def main() -> int:
     # .....................................................
     
     if len(homography_position) < 4:
-        logging.error("O robô falhou em tocar todos os 4 marcadores.")
-        return False
+            logging.error("O robô falhou em tocar todos os 4 marcadores.")
+            return False
 
+# =====================================================================
+    # FASE 4: SWIPE NA ZONA SEGURA (CORREÇÃO DE ESCALA E ÁREA ÚTIL)
     # =====================================================================
-    # FASE 4: HOMOGRAFIA CÂMERA->ROBÔ, CÁLCULO 3D E SWIPE!
-    # =====================================================================
-    logging.info("Calculando matriz de transformação (Pixels -> Robô)...")
+    logging.info("Calculando X,Y via Bilinear e Z via Bilinear na Zona Segura...")
     
-    # 1. Pega os centros em PIXELS (da foto lá do alto) e os X,Y FÍSICOS (do toque)
-    pixel_pts = []
-    robot_pts = []
-    
+    # 1. Dicionário das poses físicas de toque
+    touch_poses_dict = {}
     for idx, target_id in enumerate([1, 2, 3, 4]):
-        # Acha a coordenada em pixels desse ID específico
-        m_info = next(m for m in marker_infos if m.marker_id == target_id)
-        pixel_pts.append(m_info.centroid)
-        
-        # Pega a pose de toque desse ID no robô
-        pose = homography_position[idx]
-        robot_pts.append([pose.x, pose.y])
+        touch_poses_dict[target_id] = homography_position[idx]
 
-    # Converte para formato do OpenCV
-    pixel_pts = np.array(pixel_pts, dtype=np.float32)
-    robot_pts = np.array(robot_pts, dtype=np.float32)
-    
-    # 2. MÁGICA: Cria a matriz que traduz pixels diretamente para milímetros reais
-    H_cam_to_robot, _ = cv2.findHomography(pixel_pts, robot_pts)
+    # 2. O GRANDE SEGREDO DA ESCALA (A CORREÇÃO):
+    # Como o robô tocou nos CENTROS dos ArUcos, a nossa referência do tamanho da tela 
+    # tem que ser o limite dos centros, não a borda externa!
+    c_x_min = min(m.centroid[0] for m in marker_infos)
+    c_y_min = min(m.centroid[1] for m in marker_infos)
+    c_x_max = max(m.centroid[0] for m in marker_infos)
+    c_y_max = max(m.centroid[1] for m in marker_infos)
+    centroid_rect_px = (c_x_min, c_y_min, c_x_max, c_y_max)
 
-    # 3. Executa o Trajeto
+    # =========================================================================
+    # RECALCULANDO OS PONTOS DE SWIPE PERFEITOS (O VERDADEIRO GAP BRANCO)
+    # Tira a média entre o Centro do ArUco e a Borda da Tela Cinza
+    # =========================================================================
+    u_x_min, u_y_min, u_x_max, u_y_max = safe_zone_data["screen_rect"]
+
+    gap_x_min = (c_x_min + u_x_min) / 2.0
+    gap_x_max = (c_x_max + u_x_max) / 2.0
+    gap_y_min = (c_y_min + u_y_min) / 2.0
+    gap_y_max = (c_y_max + u_y_max) / 2.0
+
+    perfect_swipe_points = {
+        "pt_1": (gap_x_min, gap_y_max), # Inferior Esquerdo
+        "pt_4": (gap_x_min, gap_y_min), # Superior Esquerdo
+        "pt_2": (gap_x_max, gap_y_min), # Superior Direito
+        "pt_3": (gap_x_max, gap_y_max)  # Inferior Direito
+    }
+
+    # 3. Congela a orientação exata do momento em que o Z foi medido! (Anti-Pêndulo)
+    pose_referencia = touch_poses_dict[1]
+    safe_rx = float(pose_referencia.rx)
+    safe_ry = float(pose_referencia.ry)
+    safe_rz = float(pose_referencia.rz)
+    safe_fig = int(getattr(pose_referencia, "fig", 1))
+
+    # 4. Trajeto perimetral
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
-    
-    logging.info("Preparando para executar o Swipe Perimetral...")
+    logging.info("Preparando para executar o Swipe na Zona Segura...")
+
+    from utils.coordinate_transform import interpolate_robot_pose
 
     for pt_name in trajeto:
-            # Pega o Pixel do swipe lá da Fase 1
-            px, py = safe_zone_data["safe_swipe_points"][pt_name]
-            
-            # 4. Traduz esse Pixel para o X e Y da mesa do Robô
-            pt_px_array = np.array([[[px, py]]], dtype=np.float32)
-            pt_robot_array = cv2.perspectiveTransform(pt_px_array, H_cam_to_robot)
-            
-            
-            target_x = float(pt_robot_array[0][0][0])
-            target_y = float(pt_robot_array[0][0][1])
-            
-            # 5. Descobre a altura exata (Z) daquele ponto na tela inclinada
-            target_z = float(get_z_on_screen_plane(target_x, target_y, homography_position))
-            
-            # Cria a pose final que o robô deve assumir
-            swipe_pose = Pose(
-                x=target_x,
-                y=target_y,
-                z=target_z,
-                rx=float(current_roi_pose.rx), 
-                ry=float(current_roi_pose.ry),
-                rz=float(current_roi_pose.rz),
-                fig=int(current_roi_pose.fig) 
-            )
-            
-            logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f", pt_name, target_x, target_y, target_z)
-            
-            # Executa o movimento!
-            robot.move_cartesian(swipe_pose)
+        # Pega o novo pixel calculado cirurgicamente para a área branca
+        px, py = perfect_swipe_points[pt_name]
+        
+        # PASSO ÚNICO: A Matemática Elástica resolve X, Y e Z de uma vez só!
+        # Ela consegue extrapolar para a área branca sem retornar NaN.
+        target_x, target_y, target_z = interpolate_robot_pose(
+            target_px=px, 
+            target_py=py, 
+            union_rect_px=centroid_rect_px,  # Mantemos os centros como escala 
+            touch_poses_dict=touch_poses_dict,
+            marker_infos=marker_infos
+        )
+        
+        # =================================================================
+        # AJUSTE FINO DO Z (FINE-TUNING DE PRESSÃO DO SWIPE)
+        # Valores NEGATIVOS (-0.5) fazem o robô apertar mais forte.
+        # =================================================================
+        Z_SWIPE_OFFSET = -0.5  # Modifique este valor em milímetros se precisar
+        target_z_afinado = target_z + Z_SWIPE_OFFSET
+        
+        # PASSO C: Constrói a Pose blindando contra o Gimbal Lock e o Pêndulo
+        swipe_pose = Pose(
+            x=target_x,
+            y=target_y,
+            z=target_z - 0.1,
+            rx=safe_rx,
+            ry=safe_ry,
+            rz=safe_rz,
+            fig=safe_fig
+        )
+        
+        logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f (Z_Afinado: %.2f)", 
+                     pt_name, target_x, target_y, target_z, target_z_afinado)
+        robot.move_cartesian(swipe_pose)
         
     logging.info("Swipe perimetral finalizado com sucesso!")
-    robot.move_to_roi() # Volta para a segurança no alto
+    robot.move_to_roi() 
 
     device.stop()
     _safe_cleanup()
-    
-
-
 
 
 

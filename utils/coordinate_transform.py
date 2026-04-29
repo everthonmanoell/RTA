@@ -8,9 +8,9 @@ detected) to 3D robot space (where actions are executed).
 import logging
 from dataclasses import dataclass
 from typing import Optional, Tuple
-
 import numpy as np
-
+from scipy.interpolate import griddata
+from aether_rdk.datatypes import Pose
 
 @dataclass
 class CameraCalibration:
@@ -253,3 +253,109 @@ def get_z_on_screen_plane(target_x: float, target_y: float, touch_poses: list[Po
     z_interpolated = (a * target_x) + (b * target_y) + c
     
     return z_interpolated
+
+
+
+def get_z_with_scipy_mesh(target_x: float, target_y: float, touch_poses_dict: dict) -> float:
+    """
+    Usa a malha da SciPy para prever a altura Z de qualquer ponto X,Y da tela.
+    Adapta a matemática (Linear ou Cúbica) dependendo de quantos marcadores você tocou.
+    
+    Args:
+        target_x: Coordenada X alvo no robô.
+        target_y: Coordenada Y alvo no robô.
+        touch_poses_dict: Dicionário contendo as poses mapeadas (pode ter 4, 8, 9... pontos).
+    """
+    # 1. Extrai os dados do seu dicionário para os arrays da SciPy
+    pontos_xy = []
+    valores_z = []
+    
+    for pose in touch_poses_dict.values():
+        pontos_xy.append([pose.x, pose.y])
+        valores_z.append(pose.z)
+        
+    pontos_xy = np.array(pontos_xy)
+    valores_z = np.array(valores_z)
+    
+    # 2. Decide a matemática inteligentemente
+    num_pontos = len(pontos_xy)
+    if num_pontos < 3:
+        raise ValueError(f"Impossível criar superfície com apenas {num_pontos} pontos.")
+    
+    # Se tem 4 pontos (ou 3), usa linear (plano). Se tem mais de 4, ativa as curvas 3D (cubic)
+    metodo_principal = 'cubic' if num_pontos > 4 else 'linear'
+    
+    # 3. Faz o cálculo da malha
+    z_calculado = griddata(
+        points=pontos_xy, 
+        values=valores_z, 
+        xi=(target_x, target_y), 
+        method=metodo_principal
+    )
+    
+    # 4. SISTEMA SALVA-VIDAS (Anti-Crash do Robô)
+    # Se o ponto X,Y estiver ligeiramente para fora da área dos ArUcos (extrapolação),
+    # o griddata retorna NaN. Para o robô não afundar ou quebrar o script,
+    # fazemos um fallback buscando o ponto medido fisicamente "mais próximo".
+    # if np.isnan(z_calculado):
+    #     import logging
+    #     logging.getLogger(__name__).debug("Ponto fora da malha. Usando fallback de aproximação.")
+    #     z_calculado = griddata(
+    #         points=pontos_xy, 
+    #         values=valores_z, 
+    #         xi=(target_x, target_y), 
+    #         method='nearest' # Pega a altura do marcador mais próximo
+    #     )
+    print(f"Z calculado para X={target_x}, Y={target_y} é Z={z_calculado} usando método '{metodo_principal}'")
+    return float(z_calculado)
+
+
+def interpolate_robot_pose(target_px, target_py, union_rect_px, touch_poses_dict, marker_infos):
+    x_min, y_min, x_max, y_max = union_rect_px
+    
+    # Proteção matemática para evitar divisão por zero
+    dx = (x_max - x_min) if (x_max - x_min) != 0 else 1.0
+    dy = (y_max - y_min) if (y_max - y_min) != 0 else 1.0
+    
+    # Descobre a proporção (0.0 a 1.0 ou extrapolação) do alvo dentro da imagem
+    u = (target_px - x_min) / dx
+    v = (target_py - y_min) / dy
+    
+    # Acha o centro da tela (em pixels) para dividir a imagem em 4 quadrantes
+    c_x = (x_min + x_max) / 2.0
+    c_y = (y_min + y_max) / 2.0
+    
+    pose_tl = pose_tr = pose_bl = pose_br = None
+    
+    # =========================================================================
+    # MAPEAMENTO DINÂMICO: Esquece os IDs! Associa a pose física baseando-se 
+    # visualmente em que canto da foto o marcador apareceu.
+    # =========================================================================
+    for m in marker_infos:
+        px, py = m.centroid
+        pose = touch_poses_dict[m.marker_id]
+        
+        if px < c_x and py < c_y:
+            pose_tl = pose
+        elif px >= c_x and py < c_y:
+            pose_tr = pose
+        elif px < c_x and py >= c_y:
+            pose_bl = pose
+        elif px >= c_x and py >= c_y:
+            pose_br = pose
+            
+    if not all([pose_tl, pose_tr, pose_bl, pose_br]):
+        raise ValueError("Falha ao mapear os cantos. Os ArUcos não formam um retângulo nítido.")
+        
+    def bilinear(val_tl, val_tr, val_bl, val_br):
+        return (1 - u) * (1 - v) * val_tl + \
+               u * (1 - v) * val_tr + \
+               (1 - u) * v * val_bl + \
+               u * v * val_br
+
+    # Mapeia X, Y e Z da mesa física instantaneamente usando o tecido matemático desvirado!
+    robot_x = bilinear(pose_tl.x, pose_tr.x, pose_bl.x, pose_br.x)
+    robot_y = bilinear(pose_tl.y, pose_tr.y, pose_bl.y, pose_br.y)
+    robot_z = bilinear(pose_tl.z, pose_tr.z, pose_bl.z, pose_br.z)
+    
+    return float(robot_x), float(robot_y), float(robot_z)

@@ -41,7 +41,7 @@ class Denso(AbstractRobot):
 
     ROI_X = 331.07
     ROI_Y = 0.62
-    ROI_Z = 379.56
+    ROI_Z = 421.36
     ROI_RX = 179.62
     ROI_RY = -3.12
     ROI_RZ = 179.97
