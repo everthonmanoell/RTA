@@ -7,6 +7,7 @@ import threading
 from pathlib import Path
 from types import MethodType
 
+
 import cv2
 import numpy as np
 from aether_rdk.datatypes import Offset3D, Pose
@@ -16,7 +17,7 @@ from rta_model import RtaModel
 import config
 from drivers.alignment.auto_alignment import AutoAlignment
 from drivers.alignment.marker_detector import MarkerDetector
-from drivers.device.mobile import Mobile, TouchTracker
+from drivers.device.mobile import Mobile, TouchTracker, toggle_android_setting
 from drivers.robot.denso_aether import Denso
 from drivers.vision.robot_camera import RobotCamera
 from utils.coordinate_transform import (
@@ -263,6 +264,12 @@ def main() -> int:
         control_name=args.control,
         options=args.options,
     )
+
+    def __turn_on_or_turn_off_debugger_touch(self, enable: bool):
+        toggle_android_setting(setting_name="show_touches", enable=enable)
+        toggle_android_setting(setting_name="pointer_location", enable=enable)
+
+    __turn_on_or_turn_off_debugger_touch(enable=False)
 
     def _turn_motor_on_action_with_tool(self):
         """Liga motor e configura tool automaticamente ao entrar em operação."""
@@ -699,6 +706,8 @@ def main() -> int:
     logging.info("Preparando para executar o Swipe na Zona Segura...")
 
     from utils.coordinate_transform import interpolate_robot_pose
+
+    __turn_on_or_turn_off_debugger_touch(enable=True)
 
     for pt_name in trajeto:
         # Pega o novo pixel calculado cirurgicamente para a área branca
