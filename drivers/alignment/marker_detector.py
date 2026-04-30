@@ -560,7 +560,7 @@ class MarkerDetector:
             self.logger.warning("Não foi possível extrair informações do marcador para avaliação de alinhamento.")
             return False
         
-        if marker_info.get("marker_id") == marker_success_id:
+        if marker_info.marker_id == marker_success_id:
             self.logger.info("Marcador de sucesso detectado. Alinhamento aprovado.")
             return True
         else:

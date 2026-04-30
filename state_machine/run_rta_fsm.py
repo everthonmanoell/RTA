@@ -732,7 +732,7 @@ def main() -> int:
         px_start, py_start = perfect_swipe_points[pt_start_name]
         px_end, py_end = perfect_swipe_points[pt_end_name]
         
-        logging.info(f"Traçando reta perfeitamente alinhada de {pt_start_name} para {pt_end_name}...")
+        logging.info(f"Traçando reta alinhada de {pt_start_name} para {pt_end_name}...")
         
         # Cria as "migalhas de pão" para forçar o robô a andar em linha reta
         for step in range(PASSOS_POR_RETA + 1):
@@ -781,14 +781,14 @@ def main() -> int:
             # Move para o micro-ponto (O robô vai seguir isso como se fosse um trilho)
             robot.move_cartesian(swipe_pose)
             
-        logging.info("Swipe perimetral finalizado com sucesso!")
-        robot.move_to_roi()
+    logging.info("Swipe perimetral finalizado com sucesso!")
+    robot.move_to_roi()
 
 
     if __is_marker_detection_successful():
-        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO! Os marcadores ainda são detectados.")
+        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
     else:
-        logging.error("Teste final de detecção de marcadores após o swipe: FALHA! Os marcadores não são mais detectados.")
+        logging.error("Teste final de detecção de marcadores após o swipe: FALHA!")
 
 
     device.stop()
