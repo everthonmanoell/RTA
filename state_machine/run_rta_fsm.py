@@ -265,7 +265,7 @@ def main() -> int:
         options=args.options,
     )
 
-    def __turn_on_or_turn_off_debugger_touch(self, enable: bool):
+    def __turn_on_or_turn_off_debugger_touch(enable: bool):
         toggle_android_setting(setting_name="show_touches", enable=enable)
         toggle_android_setting(setting_name="pointer_location", enable=enable)
 
@@ -293,6 +293,16 @@ def main() -> int:
     model.turn_motor_on_action = MethodType(_turn_motor_on_action_with_tool, model)
 
     device, camera, detector, auto_align, controller, transform = _build_operational_stack(robot)
+
+
+    def __is_marker_detection_successful() -> bool:
+        frame = camera.capture_frame()
+        if frame is None:
+            logging.error("Failed to capture frame for marker detection check")
+            return False
+
+        return detector.is_alignment_passed(frame)
+        
 
 
     # ===== TESTE ISOLADO DE CENTRALIZAÇÃO EM 1 ARUCO =====
@@ -490,7 +500,7 @@ def main() -> int:
     
     rotation_aligment = RotationAlignment(robot, camera, detector)
 
-    ALIGNMENT_TOLERANCE = 1.0
+    ALIGNMENT_TOLERANCE = config.ALIGMENT_TOLERANCE_MM
     ID_TARGET = 1
 
     Z_TOUCH = config.Z_TOUCH
@@ -505,24 +515,27 @@ def main() -> int:
 
     try:
         for id in range(1, 5):
+            logging.info(f"####### Alinhando para o ArUco ID {id}... #######")
             interation = 0
             while interation < max_interations:
                 interation += 1
 
                 diff_error = rotation_aligment.error_diff_between_single_marker_and_image_center_on_mm(id)
                 if diff_error is None:
+                    time.sleep(0.3)
                     continue
+                    
                 error_mm_x, error_mm_y = diff_error
 
-
+                # Se AMBOS os eixos estão alinhados, paramos. Está no centro exato!
                 if abs(error_mm_x) < ALIGNMENT_TOLERANCE and abs(error_mm_y) < ALIGNMENT_TOLERANCE:
-                    logging.info("Alinhamento dentro da tolerância. Parando.")
+                    logging.info(f"ArUco {id} perfeitamente alinhado. Parando.")
                     break
 
-                if abs(error_mm_x) >= ALIGNMENT_TOLERANCE:
+                # A MÁGICA DA CORREÇÃO:
+                # Se QUALQUER UM dos eixos (X ou Y) estiver fora, ele é obrigado a ajustar!
+                if abs(error_mm_x) >= ALIGNMENT_TOLERANCE or abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
                     rotation_aligment.adjust_robot_to_marker_center((error_mm_x, error_mm_y))
-                # elif abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
-                #     rotation_aligment.adjust_robot_to_marker_center((0.0, error_mm_y))
 
                 time.sleep(0.3)
 
@@ -701,52 +714,82 @@ def main() -> int:
     safe_rz = float(pose_referencia.rz)
     safe_fig = int(getattr(pose_referencia, "fig", 1))
 
-    # 4. Trajeto perimetral
+# 4. Trajeto perimetral
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
     logging.info("Preparando para executar o Swipe na Zona Segura...")
 
     from utils.coordinate_transform import interpolate_robot_pose
 
-    __turn_on_or_turn_off_debugger_touch(enable=True)
+    Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela
+    PASSOS_POR_RETA = 15   # Quantidade de pontos intermediários (breadcrumbs)
+    OFF_SET_SWIPE = 1.0
 
-    for pt_name in trajeto:
-        # Pega o novo pixel calculado cirurgicamente para a área branca
-        px, py = perfect_swipe_points[pt_name]
+    # Percorre cada par de pontos (Ex: pt_1 -> pt_4)
+    for i in range(len(trajeto) - 1):
+        pt_start_name = trajeto[i]
+        pt_end_name = trajeto[i+1]
         
-        # PASSO ÚNICO: A Matemática Elástica resolve X, Y e Z de uma vez só!
-        # Ela consegue extrapolar para a área branca sem retornar NaN.
-        target_x, target_y, target_z = interpolate_robot_pose(
-            target_px=px, 
-            target_py=py, 
-            union_rect_px=centroid_rect_px,  # Mantemos os centros como escala 
-            touch_poses_dict=touch_poses_dict,
-            marker_infos=marker_infos
-        )
+        px_start, py_start = perfect_swipe_points[pt_start_name]
+        px_end, py_end = perfect_swipe_points[pt_end_name]
         
-        # =================================================================
-        # AJUSTE FINO DO Z (FINE-TUNING DE PRESSÃO DO SWIPE)
-        # Valores NEGATIVOS (-0.5) fazem o robô apertar mais forte.
-        # =================================================================
-        Z_SWIPE_OFFSET = -0.5  # Modifique este valor em milímetros se precisar
-        target_z_afinado = target_z + Z_SWIPE_OFFSET
+        logging.info(f"Traçando reta perfeitamente alinhada de {pt_start_name} para {pt_end_name}...")
         
-        # PASSO C: Constrói a Pose blindando contra o Gimbal Lock e o Pêndulo
-        swipe_pose = Pose(
-            x=target_x,
-            y=target_y,
-            z=target_z - 0.1,
-            rx=safe_rx,
-            ry=safe_ry,
-            rz=safe_rz,
-            fig=safe_fig
-        )
-        
-        logging.info("Deslizando para %s -> X:%.2f, Y:%.2f, Z:%.2f (Z_Afinado: %.2f)", 
-                     pt_name, target_x, target_y, target_z, target_z_afinado)
-        robot.move_cartesian(swipe_pose)
-        
-    logging.info("Swipe perimetral finalizado com sucesso!")
-    robot.move_to_roi() 
+        # Cria as "migalhas de pão" para forçar o robô a andar em linha reta
+        for step in range(PASSOS_POR_RETA + 1):
+            # Calcula a porcentagem do caminho (0.0 até 1.0)
+            fraction = step / float(PASSOS_POR_RETA)
+            
+            # Acha o pixel intermediário exato
+            px_current = px_start + (px_end - px_start) * fraction
+            py_current = py_start + (py_end - py_start) * fraction
+            
+            # PASSO ÚNICO: Resolve X, Y e Z para esse micro-ponto
+            target_x, target_y, target_z = interpolate_robot_pose(
+                target_px=px_current, 
+                target_py=py_current, 
+                union_rect_px=centroid_rect_px, 
+                touch_poses_dict=touch_poses_dict,
+                marker_infos=marker_infos
+            )
+            
+            # Aplica o ajuste de pressão fina no Z
+            target_z_afinado = target_z + Z_SWIPE_OFFSET
+            target_x_afinado = target_x
+            target_y_afinado = target_y
+
+            # se for a primeira etapa do swipe (pt_1 -> pt_4), aplica um pequeno offset no X para garantir que o robô "puxe" a tela para o lado esquerdo antes de descer
+            if i+1 == 1:
+                target_y_afinado += -OFF_SET_SWIPE
+            elif i+1 == 2:
+                target_x_afinado += -OFF_SET_SWIPE
+            elif i+1 == 3:
+                target_y_afinado += OFF_SET_SWIPE
+            elif i+1 == 4:
+                target_x_afinado += OFF_SET_SWIPE
+            
+            # Constrói a Pose
+            swipe_pose = Pose(
+                x=target_x_afinado,
+                y=target_y_afinado,
+                z=target_z_afinado,
+                rx=safe_rx,
+                ry=safe_ry,
+                rz=safe_rz,
+                fig=safe_fig
+            )
+            
+            # Move para o micro-ponto (O robô vai seguir isso como se fosse um trilho)
+            robot.move_cartesian(swipe_pose)
+            
+        logging.info("Swipe perimetral finalizado com sucesso!")
+        robot.move_to_roi()
+
+
+    if __is_marker_detection_successful():
+        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO! Os marcadores ainda são detectados.")
+    else:
+        logging.error("Teste final de detecção de marcadores após o swipe: FALHA! Os marcadores não são mais detectados.")
+
 
     device.stop()
     _safe_cleanup()
