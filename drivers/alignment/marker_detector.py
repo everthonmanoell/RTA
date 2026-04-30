@@ -541,6 +541,33 @@ class MarkerDetector:
                 "pt_3": (mid_x_max, mid_y_max)  # Perto do ID 3 (Inferior Dir)
             }
         }
+    
+    def is_alignment_passed(
+        self,
+        image: np.ndarray,
+
+    ) -> bool:
+        
+        marker_success_id = 14
+        marker_failed_id = 15
+        
+        id, corners = self.detect_markers(image)
+        if id is None or corners is None:
+            self.logger.warning("Nenhum marcador detectado para avaliação de alinhamento.")
+            return False
+        marker_info = self.get_marker_info(int(id[0]), corners[0])
+        if marker_info is None:
+            self.logger.warning("Não foi possível extrair informações do marcador para avaliação de alinhamento.")
+            return False
+        
+        if marker_info.get("marker_id") == marker_success_id:
+            self.logger.info("Marcador de sucesso detectado. Alinhamento aprovado.")
+            return True
+        else:
+            self.logger.info("Marcador de falha detectado. Alinhamento reprovado.")
+            return False
+        
+
 
 
 def _draw_rect(image: np.ndarray, rect: Tuple[int, int, int, int], color: Tuple[int, int, int], thickness: int) -> np.ndarray:

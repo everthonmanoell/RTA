@@ -167,11 +167,11 @@ COORDINATE_SCALE = {
 # CALIBRAÇÃO DE GANHOS E TOLERÂNCIAS
 # ============================================================================
 TRANSLATION_GAIN = 0.1  # Quanto da correção aplicar por iteração (ajustar para estabilidade)
-ALIGMENT_TOLERANCE_MM = 1.0  # Tolerância de alinhamento final (ajustar conforme precisão desejada)
-Z_TOUCH = 257.29
-Z_LIMIT = 257.29
-# TOUCH_FINGER_OFFSET_X = -31.5
-TOUCH_FINGER_OFFSET_X = -40.5
+ALIGMENT_TOLERANCE_MM = 0.5  # Tolerância de alinhamento final (ajustar conforme precisão desejada)
+Z_TOUCH = 260.98
+Z_LIMIT = 260.98
+TOUCH_FINGER_OFFSET_X = -31.5
+# TOUCH_FINGER_OFFSET_X = -40.5
 
 
 # ============================================================================
