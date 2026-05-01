@@ -784,13 +784,59 @@ def main() -> int:
     logging.info("Swipe perimetral finalizado com sucesso!")
     robot.move_to_roi()
 
-
+# ... (seu código de detecção final)
     if __is_marker_detection_successful():
-        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
+        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO! Os marcadores ainda são detectados.")
     else:
-        logging.error("Teste final de detecção de marcadores após o swipe: FALHA!")
+        logging.error("Teste final de detecção de marcadores após o swipe: FALHA! Os marcadores não são mais detectados.")
 
+    # =====================================================================
+    # FASE 5: SALVAR MAPA DE CALIBRAÇÃO (PIXEL -> ROBOT POSE)
+    # =====================================================================
+    logging.info("Gerando mapa de calibração físico-pixel...")
+    
+    # Estrutura do JSON com os dados cruciais da tela e das poses
+    calibration_map = {
+        "timestamp_epoch_s": time.time(),
+        "device_type": args.device_type,
+        "calibration_mode": "bilinear_physical_touches",
+        "screen_rect_px": safe_zone_data.get("screen_rect", []),
+        "aruco_rect_px": safe_zone_data.get("aruco_rect", []),
+        "markers": []
+    }
 
+    # Popula o mapa relacionando o ID, o Pixel exato e a Pose física real
+    for m in marker_infos:
+        pose = touch_poses_dict.get(m.marker_id)
+        if pose:
+            calibration_map["markers"].append({
+                "marker_id": int(m.marker_id),
+                "pixel_x": float(m.centroid[0]),
+                "pixel_y": float(m.centroid[1]),
+                "robot_x": float(pose.x),
+                "robot_y": float(pose.y),
+                "robot_z": float(pose.z),
+                "robot_rx": float(pose.rx),
+                "robot_ry": float(pose.ry),
+                "robot_rz": float(pose.rz)
+            })
+
+    # Cria o diretório de saída (se não existir) e salva o JSON
+    out_dir = Path(args.metrics_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    
+    map_filename = out_dir / f"physical_calibration_map_{int(time.time())}.json"
+    
+    try:
+        with open(map_filename, "w", encoding="utf-8") as f:
+            json.dump(calibration_map, f, indent=4)
+        logging.info(f"Mapa de calibração salvo com sucesso em: {map_filename}")
+    except Exception as e:
+        logging.error(f"Erro ao salvar mapa de calibração: {e}")
+
+    # =====================================================================
+    # FIM DA ROTINA
+    # =====================================================================
     device.stop()
     _safe_cleanup()
 
