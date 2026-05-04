@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 from drivers.alignment.marker_detector import MarkerDetector
+import config
 
 import cv2
 import numpy as np
@@ -48,19 +49,58 @@ class RobotCamera:
         self._camera_opened = False
     
     def _ensure_camera_open(self) -> bool:
-        """
-        Ensure camera is open and ready to capture.
-        
-        Returns:
-            bool: True if camera is ready, False otherwise.
-        """
-        if not self._camera_opened:
-            self.cap = cv2.VideoCapture(self.camera_id)
-            if not self.cap.isOpened():
-                self.logger.error(f"Failed to open camera {self.camera_id}")
-                return False
-            self._camera_opened = True
-        return True
+            """
+            Ensure camera is open and ready to capture, applying hardware settings.
+            
+            Returns:
+                bool: True if camera is ready, False otherwise.
+            """
+            if not self._camera_opened:
+                # Tenta abrir com DirectShow primeiro (Melhor para injetar configs em Logitech no Windows)
+                self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_DSHOW)
+                
+                # Fallback seguro caso esteja rodando no Linux, Mac ou o DSHOW falhe
+                if not self.cap.isOpened():
+                    self.cap = cv2.VideoCapture(self.camera_id)
+                    
+                if not self.cap.isOpened():
+                    self.logger.error(f"Failed to open camera {self.camera_id}")
+                    return False
+                
+                # =================================================================
+                # APLICA CONFIGURAÇÕES DE HARDWARE DA BRIO (via config.py)
+                # =================================================================
+                try:
+                    import config
+                    calib = getattr(config, "CAMERA_CALIBRATION_CONFIG", None)
+                    
+                    if calib:
+                        self.logger.info("Injetando configurações de hardware na Brio...")
+                        
+                        # Foco
+                        if "auto_focus" in calib:
+                            self.cap.set(cv2.CAP_PROP_AUTOFOCUS, calib["auto_focus"])
+                        if "fixed_focus" in calib:
+                            self.cap.set(cv2.CAP_PROP_FOCUS, calib["fixed_focus"])
+                            
+                        # Exposição
+                        if "auto_exposure" in calib:
+                            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, calib["auto_exposure"])
+                        if "fixed_exposure" in calib:
+                            self.cap.set(cv2.CAP_PROP_EXPOSURE, calib["fixed_exposure"])
+                            
+                        # Balanço de Branco
+                        if "auto_white_balance" in calib:
+                            self.cap.set(cv2.CAP_PROP_AUTO_WB, calib["auto_white_balance"])
+                        if "white_balance_temperature" in calib:
+                            self.cap.set(cv2.CAP_PROP_WB_TEMPERATURE, calib["white_balance_temperature"])
+                            
+                except ImportError:
+                    self.logger.warning("Arquivo 'config' não encontrado, ignorando calibração de hardware da câmera.")
+
+                self._camera_opened = True
+                
+            return True
     
     def capture_frame(self) -> Optional[np.ndarray]:
         """

@@ -296,6 +296,15 @@ CAMERA_INTRINSICS = {
     "distortion": [0, 0, 0, 0, 0],  # k1, k2, p1, p2, k3
 }
 
+CAMERA_CALIBRATION_CONFIG = {
+    "auto_focus": 2.0,
+    "fixed_focus": 20.0,
+    "auto_exposure": -1.0,
+    "fixed_exposure": -7.0,
+    "auto_white_balance": 1.0,
+    "white_balance_temperature": -1.0,
+}
+
 # ============================================================================
 # DICCIONÁRIO ARUCO
 # ============================================================================

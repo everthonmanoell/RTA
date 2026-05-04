@@ -1147,24 +1147,21 @@ def build_validation_report(device_type: str, output_dir: str = "validation_resu
 def toggle_android_setting(setting_name: str, enable: bool) -> None:
     """
     Toggles specific Android system settings via ADB.
-    
-    Args:
-        setting_name (str): 'show_touches' or 'pointer_location'
-        enable (bool): True to turn ON, False to turn OFF
     """
-    # Convert boolean True/False to ADB's '1' or '0'
     value = "1" if enable else "0"
     
-    # The exact command you would type in the terminal
-    command = ["adb", "shell", "settings", "put", "system", setting_name, value]
+    # Busca o Serial exato (ignora a conexão Wireless se estiver espelhada)
+    serial = get_preferred_adb_serial()
+    
+    # Injeta o -s <serial> para o ADB saber exatamente com quem falar
+    command = ["adb", "-s", serial, "shell", "settings", "put", "system", setting_name, value]
     
     try:
-        # Execute the command
         result = subprocess.run(
             command, 
-            check=True,          # Raises an error if the command fails
-            capture_output=True, # Captures the terminal output
-            text=True            # Returns output as a string rather than bytes
+            check=True,          
+            capture_output=True, 
+            text=True            
         )
         status = "ON" if enable else "OFF"
         print(f"Successfully turned {status} {setting_name}.")
