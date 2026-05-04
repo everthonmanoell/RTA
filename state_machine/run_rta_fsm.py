@@ -1,10 +1,8 @@
 import argparse
-import json
 import logging
 import os
 import time
 import threading
-from pathlib import Path
 from types import MethodType
 
 
@@ -17,7 +15,9 @@ from rta_model import RtaModel
 import config
 from drivers.alignment.auto_alignment import AutoAlignment
 from drivers.alignment.marker_detector import MarkerDetector
-from drivers.device.mobile import Mobile, TouchTracker, toggle_android_setting
+from drivers.device.mobile import Mobile, TouchTracker, TouchRecording, map_raw_touch_to_screen, toggle_android_setting
+from utils.touch_session_recorder import TouchSessionRecorder
+from utils.calibration_map_exporter import CalibrationMapExporter
 from drivers.robot.denso_aether import Denso
 from drivers.vision.robot_camera import RobotCamera
 from utils.coordinate_transform import (
@@ -230,6 +230,7 @@ def _build_operational_stack(robot: Denso):
 
 def main() -> int:
     args = parse_args()
+    run_start_ts = time.time()
 
     markers_by_device_type = {
         "flat": 4,
@@ -294,6 +295,11 @@ def main() -> int:
 
     device, camera, detector, auto_align, controller, transform = _build_operational_stack(robot)
 
+    # =========================================================================
+    # INICIALIZA O GRAVADOR GLOBAL MODULAR
+    # =========================================================================
+    session_recorder = TouchSessionRecorder(device)
+    session_recorder.start()
 
     def __is_marker_detection_successful() -> bool:
         frame = camera.capture_frame()
@@ -401,7 +407,7 @@ def main() -> int:
         safe_pose = Pose(
             x=float(pose.x),
             y=float(pose.y),
-            z=float(pose.z) + 10.0, # O +10 acontece apenas na cópia
+            z=float(pose.z) + config.Z_OFFSET_BEFORE_TOUCH, # O +20
             rx=float(pose.rx),
             ry=float(pose.ry),
             rz=float(pose.rz),
@@ -439,9 +445,7 @@ def main() -> int:
     
     # Variáveis para armazenar o resultado do loop
     detected_successfully = False
-    ids = None
-    corners = None
-    frame = None
+    ids, corners, frame = None, None, None
     height_px, width_px = 0, 0
 
     # 2. Tenta tirar a foto e detectar até 10 vezes
@@ -501,7 +505,7 @@ def main() -> int:
     rotation_aligment = RotationAlignment(robot, camera, detector)
 
     ALIGNMENT_TOLERANCE = config.ALIGMENT_TOLERANCE_MM
-    ID_TARGET = 1
+    # ID_TARGET = 1
 
     Z_TOUCH = config.Z_TOUCH
     Z_LIMIT = config.Z_LIMIT
@@ -517,6 +521,7 @@ def main() -> int:
         for id in range(1, 5):
             logging.info(f"####### Alinhando para o ArUco ID {id}... #######")
             interation = 0
+            first_valid_diff = False
             while interation < max_interations:
                 interation += 1
 
@@ -524,7 +529,7 @@ def main() -> int:
                 if diff_error is None:
                     time.sleep(0.3)
                     continue
-                    
+
                 error_mm_x, error_mm_y = diff_error
 
                 # Se AMBOS os eixos estão alinhados, paramos. Está no centro exato!
@@ -535,13 +540,16 @@ def main() -> int:
                 # A MÁGICA DA CORREÇÃO:
                 # Se QUALQUER UM dos eixos (X ou Y) estiver fora, ele é obrigado a ajustar!
                 if abs(error_mm_x) >= ALIGNMENT_TOLERANCE or abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
-
-                    is_first_attempt = (interation == 1)
+                    # Treat "first attempt" as the first time we get a valid diff (not simply iteration==1).
+                    is_first_attempt = not first_valid_diff
 
                     rotation_aligment.adjust_robot_to_marker_center(
-                        (error_mm_x, error_mm_y), 
-                        is_first_attempt
-                        )
+                        (error_mm_x, error_mm_y),
+                        is_first_attempt,
+                    )
+
+                    # Mark that we've seen a valid diff for this marker so subsequent corrections are not first-attempt.
+                    first_valid_diff = True
 
                 time.sleep(0.3)
 
@@ -555,9 +563,17 @@ def main() -> int:
                     float(current_position.x), float(current_position.y), float(current_position.z),
                     float(current_position.rx), float(current_position.ry), float(current_position.rz),
                 )
+
+
+
+                # Armamos o "gatilho" da thread global modular
+                touch_detected_event = threading.Event()
+                touch_feedback_holder = {"value": None}
+                session_recorder.arm_trigger("down", touch_feedback_holder, touch_detected_event)
                 
                 current_position.x += TOUCH_FINGER_OFFSET_X
-                current_position.z = Z_TOUCH + 10.0
+                #TODO essa parte 1 está dando duplo mergulho - fix the config.Z_OFFSET_BEFORE_TOUCH 
+                current_position.z = Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH # Posiciona o robô para o Z de pré-toque, que é um pouco acima do Z de toque real
                 ok = robot.move_cartesian(current_position)
                 logging.info("Move para pré-toque (offset + z inicial): %s", ok)
                 if not ok:
@@ -572,22 +588,19 @@ def main() -> int:
 
                 step = 1
                 
-
                 
-                touch_detected_event = threading.Event()
-                touch_feedback_holder = {"value": None}
 
-                def touch_listener():
-                    try:
-                        touch = device.wait_for_touch_feedback(timeout=999999)
-                        if touch is not None:
-                            touch_feedback_holder["value"] = touch
-                            touch_detected_event.set()
-                    except Exception as exc:
-                        logging.error("Erro no listener de toque: %s", exc)
+                # def touch_listener():
+                #     try:
+                #         touch = device.wait_for_touch_feedback(timeout=999999)
+                #         if touch is not None:
+                #             touch_feedback_holder["value"] = touch
+                #             touch_detected_event.set()
+                #     except Exception as exc:
+                #         logging.error("Erro no listener de toque: %s", exc)
 
-                touch_thread = threading.Thread(target=touch_listener, daemon=True)
-                touch_thread.start()
+                # touch_thread = threading.Thread(target=touch_listener, daemon=True)
+                # touch_thread.start()
 
                 while True:
                     current_position = robot.get_cartesian_pose()
@@ -596,7 +609,7 @@ def main() -> int:
                         robot.move_to_roi()
                         break
 
-                    # 1) prioridade máxima: se a tela respondeu, para imediatamente
+                    # 1) Disparo da Thread Global
                     if touch_detected_event.is_set():
                         logging.info(
                             "Toque detectado pelo celular em %s. Parando descida do robô.",
@@ -625,19 +638,20 @@ def main() -> int:
                             float(current_position.x), float(current_position.y), float(current_position.z),
                             float(current_position.rx), float(current_position.ry), float(current_position.rz),
                         )
-                        _move_to_return_touched_place(current_position)
+                        _move_to_return_touched_place(current_position) #TODO essa parte2 está dando duplo mergulho
                         robot.move_to_roi()
+                        session_recorder.disarm_trigger()
                         break
 
                     # 3) última camada de segurança
-                    if current_position.z <= Z_LIMIT:
-                        logging.warning(
-                            "Limite de segurança Z atingido (%.2f mm). Parando descida.",
-                            float(current_position.z)
-                        )
-                        _move_to_return_touched_place(current_position)
-                        robot.move_to_roi()
-                        break
+                    # if current_position.z <= Z_LIMIT:
+                    #     logging.warning(
+                    #         "Limite de segurança Z atingido (%.2f mm). Parando descida.",
+                    #         float(current_position.z)
+                    #     )
+                    #     _move_to_return_touched_place(current_position)
+                    #     robot.move_to_roi()
+                    #     break
 
                     logging.info(
                         "Descendo para toque: passo %d, pose atual z=%.2f mm",
@@ -659,6 +673,7 @@ def main() -> int:
                     if not ok:
                         logging.error("Falha no move_cartesian durante descida para toque.")
                         robot.move_to_roi()
+                        session_recorder.disarm_trigger()
                         break
 
                     step += 1
@@ -724,6 +739,50 @@ def main() -> int:
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
     logging.info("Preparando para executar o Swipe na Zona Segura...")
 
+    # #===============================================
+    # # DEBUG: dump touch anchors, marker centroids and a few interpolated micro-points
+    # try:
+    #     logging.info("SWIPE DEBUG: touch_poses_dict:")
+    #     for mid, p in touch_poses_dict.items():
+    #         logging.info(
+    #             "  marker %s -> robot (x=%.2f y=%.2f z=%.2f) rx=%.2f ry=%.2f rz=%.2f",
+    #             mid,
+    #             float(p.x),
+    #             float(p.y),
+    #             float(p.z),
+    #             float(p.rx),
+    #             float(p.ry),
+    #             float(p.rz),
+    #         )
+
+    #     logging.info("SWIPE DEBUG: centroid_rect_px=%s", str(centroid_rect_px))
+    #     logging.info("SWIPE DEBUG: perfect_swipe_points=%s", str(perfect_swipe_points))
+    #     marker_centroids = [(int(m.marker_id), (float(m.centroid[0]), float(m.centroid[1]))) for m in marker_infos]
+    #     logging.info("SWIPE DEBUG: marker_centroids=%s", str(marker_centroids))
+
+    #     # Sample a few interpolated micro-points for the first segment
+    #     sample_pts = []
+    #     try:
+    #         px_start, py_start = perfect_swipe_points["pt_1"]
+    #         px_end, py_end = perfect_swipe_points["pt_4"]
+    #         for s in range(min(3, 5)):
+    #             fraction = float(s) / float(max(1, 4))
+    #             px_curr = px_start + (px_end - px_start) * fraction
+    #             py_curr = py_start + (py_end - py_start) * fraction
+    #             tx, ty, tz = interpolate_robot_pose(
+    #                 target_px=px_curr,
+    #                 target_py=py_curr,
+    #                 union_rect_px=centroid_rect_px,
+    #                 touch_poses_dict=touch_poses_dict,
+    #                 marker_infos=marker_infos,
+    #             )
+    #             sample_pts.append((px_curr, py_curr, tx, ty, tz))
+    #         logging.info("SWIPE DEBUG: sample_interpolated_points(first segment)=%s", str(sample_pts))
+    #     except Exception as e:
+    #         logging.warning("SWIPE DEBUG: failed to sample interpolated points: %s", e)
+    # except Exception:
+    #     pass
+    #===============================================
 
 
     Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela
@@ -771,7 +830,7 @@ def main() -> int:
             elif i+1 == 3:
                 target_y_afinado += OFF_SET_SWIPE
             elif i+1 == 4:
-                target_x_afinado += OFF_SET_SWIPE
+                target_x_afinado += OFF_SET_SWIPE + 2
             
             # Constrói a Pose
             swipe_pose = Pose(
@@ -791,103 +850,36 @@ def main() -> int:
     robot.move_to_roi()
 
 # ... (seu código de detecção final)
-    if __is_marker_detection_successful():
-        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO! Os marcadores ainda são detectados.")
+    is_calibration_succeed = __is_marker_detection_successful()
+    if is_calibration_succeed:
+        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
     else:
-        logging.error("Teste final de detecção de marcadores após o swipe: FALHA! Os marcadores não são mais detectados.")
+        logging.error("Teste final de detecção de marcadores após o swipe: FALHA!")
 
 # =====================================================================
     # FASE 5: SALVAR MAPA DE CALIBRAÇÃO (CARTESIANO DA ÁREA ÚTIL)
     # =====================================================================
-    logging.info("Gerando mapa de calibração universal (Pixel -> Físico)...")
     
+    # Para o gravador para não adicionar mais pontos
+    session_recorder.stop()
+
     # 1. Puxa os limites EXATOS da Área Útil (Tela cinza brilhante), ignorando a safe_zone
     useful_rect = detector.get_useful_screen_rectangle(frame, marker_infos)
     
-    physical_corners = {}
-    if useful_rect is not None:
-        u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
-        
-        # 2. Converte as 4 quinas da Área Útil para o referencial cartesiano do Robô (mm)
-        # Top-Left (Superior Esquerdo)
-        tl_x, tl_y, tl_z = interpolate_robot_pose(
-            target_px=u_x_min, target_py=u_y_min,
-            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
-        )
-        # Top-Right (Superior Direito)
-        tr_x, tr_y, tr_z = interpolate_robot_pose(
-            target_px=u_x_max, target_py=u_y_min,
-            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
-        )
-        # Bottom-Left (Inferior Esquerdo)
-        bl_x, bl_y, bl_z = interpolate_robot_pose(
-            target_px=u_x_min, target_py=u_y_max,
-            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
-        )
-        # Bottom-Right (Inferior Direito)
-        br_x, br_y, br_z = interpolate_robot_pose(
-            target_px=u_x_max, target_py=u_y_max,
-            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
-        )
-        
-        physical_corners = {
-            "top_left": {"x": round(tl_x, 2), "y": round(tl_y, 2), "z": round(tl_z, 2)},
-            "top_right": {"x": round(tr_x, 2), "y": round(tr_y, 2), "z": round(tr_z, 2)},
-            "bottom_left": {"x": round(bl_x, 2), "y": round(bl_y, 2), "z": round(bl_z, 2)},
-            "bottom_right": {"x": round(br_x, 2), "y": round(br_y, 2), "z": round(br_z, 2)}
-        }
-    else:
-        logging.warning("Não foi possível detectar a área útil da tela na imagem para o mapa.")
-
-    # 3. Estrutura o JSON Master Puro
-    calibration_map = {
-        "timestamp_epoch_s": time.time(),
-        "device_type": args.device_type,
-        "calibration_mode": "bilinear_physical_touches",
-        
-        # A MINA DE OURO: Onde a Área Útil da tela está em MILÍMETROS no mundo real!
-        "physical_screen_corners_mm": physical_corners,
-        
-        # A orientação segura anti-pêndulo do braço
-        "safe_orientation": {
-            "rx": float(safe_rx),
-            "ry": float(safe_ry),
-            "rz": float(safe_rz),
-            "fig": int(safe_fig)
-        },
-        
-        # Opcional: A área útil em pixels da foto (se a visão precisar debugar)
-        "useful_rect_px": useful_rect if useful_rect else [],
-        
-        # As âncoras originais (Físico vs Pixel)
-        "markers": []
-    }
-
-    # Popula o mapa com as âncoras brutas
-    for m in marker_infos:
-        pose = touch_poses_dict.get(m.marker_id)
-        if pose:
-            calibration_map["markers"].append({
-                "marker_id": int(m.marker_id),
-                "pixel_x": float(m.centroid[0]),
-                "pixel_y": float(m.centroid[1]),
-                "robot_x": float(pose.x),
-                "robot_y": float(pose.y),
-                "robot_z": float(pose.z)
-            })
-
-    # 4. Salva no diretório
-    out_dir = Path(args.metrics_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    
-    map_filename = out_dir / f"physical_calibration_map_{int(time.time())}.json"
-    
-    try:
-        with open(map_filename, "w", encoding="utf-8") as f:
-            json.dump(calibration_map, f, indent=4)
-        logging.info(f"Mapa de calibração salvo com sucesso em: {map_filename}")
-    except Exception as e:
-        logging.error(f"Erro ao salvar mapa de calibração: {e}")
+    export_ok = CalibrationMapExporter.export(
+        output_dir=args.metrics_dir,
+        device_type=device_type,
+        useful_rect_px=useful_rect,
+        centroid_rect_px=centroid_rect_px,
+        marker_infos=marker_infos,
+        touch_poses_dict=touch_poses_dict,
+        safe_pose=pose_referencia,
+        device_touch_interaction=session_recorder.get_interaction_data(),
+        execution_duration_s=(time.time() - run_start_ts),
+        calibration_succeed=is_calibration_succeed,
+    )
+    if not export_ok:
+        logging.error("Falha ao exportar o mapa de calibração.")
 
     # =====================================================================
     # FIM DA ROTINA

@@ -231,7 +231,9 @@ class RotationAlignment:
         if first_attempt:
             gain_x = 1.0  # Anda 100% do erro
             gain_y = 1.0  # Anda 100% do erro
-            self.logger.info("FIRST ATTEMPT: Aplicando ganho de 100% para convergência rápida.")
+            error_y = (error_y / 4.0) * 3.0
+            error_x = (error_x / 4.0) * 3.0
+            self.logger.info("FIRST ATTEMPT: Aplicando ganho de 100% para convergência rápida e 3/4 do erro.")
         else:
             min_step_mm = 0.4
             gain_x = min_step_mm if abs(error_y) <= 2 else 0.10
