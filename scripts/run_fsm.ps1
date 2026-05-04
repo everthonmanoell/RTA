@@ -7,7 +7,7 @@ Como usar (na raiz do repositório):
 Quando o IP mudar, atualize estes parâmetros:
     -RobotServerIp  : IP do controlador/robô Denso (usado em --options "Server=...")
     -PythonServerIp : IP que o app Android usa para enviar parâmetros para o Python.
-                                        Com `adb reverse`, deixe 127.0.0.1.
+                      Com `adb reverse`, deixe 127.0.0.1.
 
 Exemplo completo:
     .\scripts\run_move_to_roi_test.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.17.128" -PythonServerIp "127.0.0.1"
@@ -30,7 +30,6 @@ param(
 
     [Parameter(Mandatory = $false)]
     # IP que o Android usa para conectar no listener Python (lado app -> Python)
-    # Com adb reverse, use 127.0.0.1. Sem reverse, use o IPv4 da máquina.
     [string]$PythonServerIp = "127.0.0.1",
 
     [Parameter(Mandatory = $false)]
@@ -62,23 +61,47 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $repoRoot
 
-Write-Host "[1/5] Verificando ADB device..."
-adb devices
+Write-Host "[1/5] Limpando ADB e detectando dispositivo USB..."
+# 1. Mata conexões wireless/TCP pendentes que causam o erro "more than one device"
+adb disconnect | Out-Null
+Start-Sleep -Seconds 1
+
+# 2. Pega o serial correto
+$devicesOutput = adb devices
+$lines = $devicesOutput -split "`r`n"
+$targetSerial = ""
+
+foreach ($line in $lines) {
+    if ($line -match "^([^\s]+)\s+device$") {
+        $serial = $matches[1]
+        # Ignora conexões IP/Wireless (que têm ":" ou começam com "adb-")
+        if (-not ($serial -match ":" -or $serial -match "^adb-")) {
+            $targetSerial = $serial
+            break
+        }
+    }
+}
+
+if ($targetSerial -eq "") {
+    Write-Error "Erro: Nenhum dispositivo Android detectado via USB!"
+    exit 1
+}
+
+Write-Host "--> Dispositivo alvo selecionado: $targetSerial"
 
 Write-Host "[2/5] Configurando adb reverse para tcp:$PythonServerPort..."
-# Redireciona localhost do Android para a mesma porta no host (USB).
-adb reverse "tcp:$PythonServerPort" "tcp:$PythonServerPort"
+# Usa o serial específico (-s) para evitar qualquer ambiguidade
+adb -s $targetSerial reverse "tcp:$PythonServerPort" "tcp:$PythonServerPort"
 
 Write-Host "[3/5] Forçando restart do app RTA..."
-# Importante para garantir novo onCreate() e reenvio dos parâmetros.
-adb shell am force-stop com.example.rta
+adb -s $targetSerial shell am force-stop com.example.rta
 
-# Inicia o app alguns instantes depois, enquanto o Python já estará escutando.
+# Inicia o app em background passando o Serial
 $startAppJob = Start-Job -ScriptBlock {
-    param($appIp, $appPort, $deviceType)
+    param($appIp, $appPort, $deviceType, $serial)
     Start-Sleep -Seconds 1
-    adb shell am start -S -n com.example.rta/.MainActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
-} -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType
+    adb -s $serial shell am start -S -n com.example.rta/.MainActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
+} -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType, $targetSerial
 
 Write-Host "[4/5] Executando FSM até '$StopAtState'..."
 $markerCountByDeviceType = @{
@@ -107,7 +130,6 @@ $cmd = @(
     "--control", $ControlName,
     "--device-type", $DeviceType,
     "--num-markers", "$numMarkers",
-    # options do RC8 provider: aponta para o IP do robô/controlador
     "--options", "Server=$RobotServerIp",
     "--stop-at-state", $StopAtState,
     "--max-steps", "$MaxSteps",

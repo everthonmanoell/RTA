@@ -213,8 +213,9 @@ class RotationAlignment:
     #### adding new methods to align the robot with the center of the marker ###
     #TODO verify if this works
     def adjust_robot_to_marker_center(
-    self,
-    error_diff: tuple[float, float],
+        self,
+        error_diff: tuple[float, float],
+        first_attempt: bool = False
     ) -> bool:
         current_pose = self.robot_arm.get_cartesian_pose()
         if current_pose is None:
@@ -224,11 +225,19 @@ class RotationAlignment:
         error_x = error_diff[0]  # erro visual em X
         error_y = error_diff[1]  # erro visual em Y
 
-        min_step_mm = 0.4
+        # =================================================================
+        # LÓGICA DE CONVERGÊNCIA RÁPIDA
+        # =================================================================
+        if first_attempt:
+            gain_x = 1.0  # Anda 100% do erro
+            gain_y = 1.0  # Anda 100% do erro
+            self.logger.info("FIRST ATTEMPT: Aplicando ganho de 100% para convergência rápida.")
+        else:
+            min_step_mm = 0.4
+            gain_x = min_step_mm if abs(error_y) <= 2 else 0.10
+            gain_y = min_step_mm if abs(error_x) <= 2 else 0.10
 
-        gain_x = min_step_mm if abs(error_y) <= 2 else 0.10
-        gain_y = min_step_mm if abs(error_x) <= 2 else 0.10
-
+        # Note o cruzamento de eixos (X do robô recebe Y da câmera e vice-versa)
         adjustment_x = gain_x * error_y
         adjustment_y = gain_y * error_x
 
@@ -239,6 +248,7 @@ class RotationAlignment:
             f"Ajuste aplicado: dx={adjustment_x:.2f} mm, dy={adjustment_y:.2f} mm | "
             f"erro_x={error_x:.2f} mm, erro_y={error_y:.2f} mm"
         )
+        
         # self.robot_arm.set_arm_speed(10, 5, 5)
         success = self.robot_arm.move_cartesian(current_pose)
         if not success:

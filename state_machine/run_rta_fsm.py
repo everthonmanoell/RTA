@@ -535,7 +535,13 @@ def main() -> int:
                 # A MÁGICA DA CORREÇÃO:
                 # Se QUALQUER UM dos eixos (X ou Y) estiver fora, ele é obrigado a ajustar!
                 if abs(error_mm_x) >= ALIGNMENT_TOLERANCE or abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
-                    rotation_aligment.adjust_robot_to_marker_center((error_mm_x, error_mm_y))
+
+                    is_first_attempt = (interation == 1)
+
+                    rotation_aligment.adjust_robot_to_marker_center(
+                        (error_mm_x, error_mm_y), 
+                        is_first_attempt
+                        )
 
                 time.sleep(0.3)
 
@@ -718,7 +724,7 @@ def main() -> int:
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
     logging.info("Preparando para executar o Swipe na Zona Segura...")
 
-    from utils.coordinate_transform import interpolate_robot_pose
+
 
     Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela
     PASSOS_POR_RETA = 15   # Quantidade de pontos intermediários (breadcrumbs)
@@ -790,22 +796,74 @@ def main() -> int:
     else:
         logging.error("Teste final de detecção de marcadores após o swipe: FALHA! Os marcadores não são mais detectados.")
 
+# =====================================================================
+    # FASE 5: SALVAR MAPA DE CALIBRAÇÃO (CARTESIANO DA ÁREA ÚTIL)
     # =====================================================================
-    # FASE 5: SALVAR MAPA DE CALIBRAÇÃO (PIXEL -> ROBOT POSE)
-    # =====================================================================
-    logging.info("Gerando mapa de calibração físico-pixel...")
+    logging.info("Gerando mapa de calibração universal (Pixel -> Físico)...")
     
-    # Estrutura do JSON com os dados cruciais da tela e das poses
+    # 1. Puxa os limites EXATOS da Área Útil (Tela cinza brilhante), ignorando a safe_zone
+    useful_rect = detector.get_useful_screen_rectangle(frame, marker_infos)
+    
+    physical_corners = {}
+    if useful_rect is not None:
+        u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
+        
+        # 2. Converte as 4 quinas da Área Útil para o referencial cartesiano do Robô (mm)
+        # Top-Left (Superior Esquerdo)
+        tl_x, tl_y, tl_z = interpolate_robot_pose(
+            target_px=u_x_min, target_py=u_y_min,
+            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
+        )
+        # Top-Right (Superior Direito)
+        tr_x, tr_y, tr_z = interpolate_robot_pose(
+            target_px=u_x_max, target_py=u_y_min,
+            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
+        )
+        # Bottom-Left (Inferior Esquerdo)
+        bl_x, bl_y, bl_z = interpolate_robot_pose(
+            target_px=u_x_min, target_py=u_y_max,
+            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
+        )
+        # Bottom-Right (Inferior Direito)
+        br_x, br_y, br_z = interpolate_robot_pose(
+            target_px=u_x_max, target_py=u_y_max,
+            union_rect_px=centroid_rect_px, touch_poses_dict=touch_poses_dict, marker_infos=marker_infos
+        )
+        
+        physical_corners = {
+            "top_left": {"x": round(tl_x, 2), "y": round(tl_y, 2), "z": round(tl_z, 2)},
+            "top_right": {"x": round(tr_x, 2), "y": round(tr_y, 2), "z": round(tr_z, 2)},
+            "bottom_left": {"x": round(bl_x, 2), "y": round(bl_y, 2), "z": round(bl_z, 2)},
+            "bottom_right": {"x": round(br_x, 2), "y": round(br_y, 2), "z": round(br_z, 2)}
+        }
+    else:
+        logging.warning("Não foi possível detectar a área útil da tela na imagem para o mapa.")
+
+    # 3. Estrutura o JSON Master Puro
     calibration_map = {
         "timestamp_epoch_s": time.time(),
         "device_type": args.device_type,
         "calibration_mode": "bilinear_physical_touches",
-        "screen_rect_px": safe_zone_data.get("screen_rect", []),
-        "aruco_rect_px": safe_zone_data.get("aruco_rect", []),
+        
+        # A MINA DE OURO: Onde a Área Útil da tela está em MILÍMETROS no mundo real!
+        "physical_screen_corners_mm": physical_corners,
+        
+        # A orientação segura anti-pêndulo do braço
+        "safe_orientation": {
+            "rx": float(safe_rx),
+            "ry": float(safe_ry),
+            "rz": float(safe_rz),
+            "fig": int(safe_fig)
+        },
+        
+        # Opcional: A área útil em pixels da foto (se a visão precisar debugar)
+        "useful_rect_px": useful_rect if useful_rect else [],
+        
+        # As âncoras originais (Físico vs Pixel)
         "markers": []
     }
 
-    # Popula o mapa relacionando o ID, o Pixel exato e a Pose física real
+    # Popula o mapa com as âncoras brutas
     for m in marker_infos:
         pose = touch_poses_dict.get(m.marker_id)
         if pose:
@@ -815,13 +873,10 @@ def main() -> int:
                 "pixel_y": float(m.centroid[1]),
                 "robot_x": float(pose.x),
                 "robot_y": float(pose.y),
-                "robot_z": float(pose.z),
-                "robot_rx": float(pose.rx),
-                "robot_ry": float(pose.ry),
-                "robot_rz": float(pose.rz)
+                "robot_z": float(pose.z)
             })
 
-    # Cria o diretório de saída (se não existir) e salva o JSON
+    # 4. Salva no diretório
     out_dir = Path(args.metrics_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     
