@@ -837,7 +837,7 @@ def main() -> int:
 
     Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela
     PASSOS_POR_RETA = 15   # Quantidade de pontos intermediários (breadcrumbs)
-    OFF_SET_SWIPE = 2.0
+    OFF_SET_SWIPE = 3
 
     # Percorre cada par de pontos (Ex: pt_1 -> pt_4)
     for i in range(len(trajeto) - 1):
@@ -898,7 +898,7 @@ def main() -> int:
             
     logging.info("Swipe perimetral finalizado com sucesso!")
     robot.move_to_roi()
-    # time.sleep(2)  # Pequena pausa para estabilizar antes da última detecção
+    time.sleep(3)  # Pequena pausa para estabilizar antes da última detecção
 
     # ... (seu código de detecção final)
     is_calibration_succeed = __is_marker_detection_successful_in_roi()
