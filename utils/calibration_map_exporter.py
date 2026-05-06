@@ -1,10 +1,28 @@
 import time
 import json
 import logging
+import re
+from enum import Enum, auto
 from pathlib import Path
 from utils.coordinate_transform import interpolate_robot_pose
 
 class CalibrationMapExporter:
+
+    @staticmethod
+    def _sanitize_path_segment(value: str) -> str:
+        cleaned = re.sub(r'[<>:"/\\|?*\s]+', "_", str(value).strip())
+        cleaned = cleaned.strip("._")
+        return cleaned or "unknown"
+
+    @staticmethod
+    def _resolve_output_path(output_dir: str, device_type: str, device_model: str, dir_separation: bool) -> Path:
+        out_path = Path(output_dir)
+        if not dir_separation:
+            return out_path
+
+        folder_name = CalibrationMapExporter._sanitize_path_segment(device_model or device_type)
+        return out_path / folder_name
+
     @staticmethod
     def export(
         output_dir: str,
@@ -17,6 +35,8 @@ class CalibrationMapExporter:
         device_touch_interaction: dict = None,
         execution_duration_s: float = None,
         calibration_succeed: bool = None,
+        device_model: str = None,
+        dir_separation: bool = False,
     ) -> bool:
         """Gera e salva o JSON do mapa de calibração físico."""
         logging.info("Gerando mapa de calibração universal (Pixel -> Físico)...")
@@ -58,7 +78,6 @@ class CalibrationMapExporter:
             
         }
 
-        # Extrai os marcadores
         for m in marker_infos:
             pose = touch_poses_dict.get(m.marker_id)
             if pose:
@@ -72,7 +91,12 @@ class CalibrationMapExporter:
                 })
 
         # Salva o arquivo
-        out_path = Path(output_dir)
+        out_path = CalibrationMapExporter._resolve_output_path(
+            output_dir=output_dir,
+            device_type=device_type,
+            device_model=device_model,
+            dir_separation=dir_separation,
+        )
         out_path.mkdir(parents=True, exist_ok=True)
         # human-readable timestamp for filename
         ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime())
