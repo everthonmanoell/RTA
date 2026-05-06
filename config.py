@@ -29,8 +29,8 @@ CAMERA_PROPERTIES = {
 
 ## id marcador de falha/sucesso final (na tela do app)
 #TODO colocar os ids
-FINAL_SUCCESS_MARKER_ID = 100
-FINAL_FAILURE_MARKER_ID = 200
+FINAL_SUCCESS_MARKER_ID = 14
+FINAL_FAILURE_MARKER_ID = 15
 
 # ============================================================================
 # CALIBRAÇÃO DE MARKERS
@@ -276,9 +276,9 @@ ROBOT_MOTION_CONFIG = {
 TOOL_CONFIG = {
     "enabled": True,
     "tag": "pen_tool",
-    "offset_x": 88.0,
+    "offset_x": 0.0,
     "offset_y": 0.0,
-    "offset_z": 75.0,
+    "offset_z": 0.0,
     "offset_rx": 0.0,
     "offset_ry": 0.0,
     "offset_rz": 0.0,
@@ -301,7 +301,7 @@ CAMERA_CALIBRATION_CONFIG = {
     "auto_focus": 2.0,
     "fixed_focus": 20.0,
     "auto_exposure": -1.0,
-    "fixed_exposure": -7.0,
+    "fixed_exposure": -5.0,
     "auto_white_balance": 1.0,
     "white_balance_temperature": -1.0,
 }

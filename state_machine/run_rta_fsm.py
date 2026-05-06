@@ -30,6 +30,13 @@ from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
 
+# Configure logging once at module import time so handlers persist across
+# repeated calls to `main()` (e.g. when running `for ...: main()`).
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+
 
 # def annotate_aruco_centroids(frame, detector: MarkerDetector):
 #     """Detecta ArUco no frame e desenha o centróide de cada marcador."""
@@ -68,36 +75,36 @@ from drivers.alignment.rotation_alignment import RotationAlignment
 #     return annotated, ids, marker_infos
 
 
-# def _configure_tool_from_config(robot: Denso) -> bool:
-#     tool_cfg = getattr(config, "TOOL_CONFIG", {})
-#     if not isinstance(tool_cfg, dict):
-#         logging.error("TOOL_CONFIG inválido: esperado dict.")
-#         return False
+def _configure_tool_from_config(robot: Denso) -> bool:
+    tool_cfg = getattr(config, "TOOL_CONFIG", {})
+    if not isinstance(tool_cfg, dict):
+        logging.error("TOOL_CONFIG inválido: esperado dict.")
+        return False
 
-#     if not tool_cfg.get("enabled", False):
-#         logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
-#         return True
+    if not tool_cfg.get("enabled", False):
+        logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
+        return True
 
-#     tag = str(tool_cfg.get("tag", "pen_tool"))
-#     offset = Offset3D(
-#         x=float(tool_cfg.get("offset_x", 0.0)),
-#         y=float(tool_cfg.get("offset_y", 0.0)),
-#         z=float(tool_cfg.get("offset_z", 0.0)),
-#         rx=float(tool_cfg.get("offset_rx", 0.0)),
-#         ry=float(tool_cfg.get("offset_ry", 0.0)),
-#         rz=float(tool_cfg.get("offset_rz", 0.0)),
-#     )
+    tag = str(tool_cfg.get("tag", "pen_tool"))
+    offset = Offset3D(
+        x=float(tool_cfg.get("offset_x", 0.0)),
+        y=float(tool_cfg.get("offset_y", 0.0)),
+        z=float(tool_cfg.get("offset_z", 0.0)),
+        rx=float(tool_cfg.get("offset_rx", 0.0)),
+        ry=float(tool_cfg.get("offset_ry", 0.0)),
+        rz=float(tool_cfg.get("offset_rz", 0.0)),
+    )
 
-#     if not robot.create_tool_reference(offset, tag):
-#         logging.error("Falha ao criar referência de tool '%s'.", tag)
-#         return False
+    if not robot.create_tool_reference(offset, tag):
+        logging.error("Falha ao criar referência de tool '%s'.", tag)
+        return False
 
-#     if not robot.set_current_tool_by_tag(tag):
-#         logging.error("Falha ao selecionar tool '%s'.", tag)
-#         return False
+    if not robot.set_current_tool_by_tag(tag):
+        logging.error("Falha ao selecionar tool '%s'.", tag)
+        return False
 
-#     logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
-#     return True
+    logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
+    return True
 
 
 def parse_args() -> argparse.Namespace:
@@ -229,6 +236,7 @@ def _build_operational_stack(robot: Denso):
 
 
 def main() -> int:
+    
     args = parse_args()
     run_start_ts = time.time()
 
@@ -247,11 +255,6 @@ def main() -> int:
     resolved_num_markers = int(args.num_markers) if args.num_markers is not None else inferred_markers
     resolved_num_markers = max(1, resolved_num_markers)
     args.num_markers = resolved_num_markers
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s [%(levelname)s] %(message)s",
-    )
 
     logging.info(
         "Runtime marker target: device_type=%s, num_markers=%d",
@@ -283,10 +286,10 @@ def main() -> int:
         try:
             self.motor_on_flag = bool(self.denso_robot.motor_on())
             if self.motor_on_flag:
-                # if _configure_tool_from_config(robot):
-                #     self.motor_on_attempt = 0
-                # else:
-                #     self.motor_on_flag = False
+                if _configure_tool_from_config(robot):
+                    self.motor_on_attempt = 0
+                else:
+                    self.motor_on_flag = False
                     self.motor_on_attempt = 0
         except Exception:
             self.motor_on_flag = False
@@ -301,13 +304,60 @@ def main() -> int:
     session_recorder = TouchSessionRecorder(device)
     session_recorder.start()
 
-    def __is_marker_detection_successful() -> bool:
-        frame = camera.capture_frame()
-        if frame is None:
-            logging.error("Failed to capture frame for marker detection check")
-            return False
+    def __is_marker_detection_successful_in_roi(
+        max_attempts: int = 5,
+        attempt_delay_s: float = 0.35,
+    ) -> bool:
+        success_marker_id = int(getattr(config, "FINAL_SUCCESS_MARKER_ID", 14))
+        failure_marker_id = int(getattr(config, "FINAL_FAILURE_MARKER_ID", 15))
 
-        return detector.is_alignment_passed(frame)
+        for attempt in range(1, max_attempts + 1):
+            frame = camera.capture_frame()
+            if frame is None:
+                logging.warning(
+                    "ROI final marker check attempt %d/%d: frame nulo.",
+                    attempt,
+                    max_attempts,
+                )
+                time.sleep(attempt_delay_s)
+                continue
+
+            marker_ids, _ = detector.detect_markers(frame, log_missing=False)
+            if marker_ids is None or len(marker_ids) == 0:
+                logging.warning(
+                    "ROI final marker check attempt %d/%d: nenhum marcador detectado.",
+                    attempt,
+                    max_attempts,
+                )
+                time.sleep(attempt_delay_s)
+                continue
+
+            detected_ids = {int(curr[0]) for curr in marker_ids}
+            logging.info(
+                "ROI final marker check attempt %d/%d: detected_ids=%s",
+                attempt,
+                max_attempts,
+                sorted(detected_ids),
+            )
+
+            if success_marker_id in detected_ids:
+                logging.info("Marcador de sucesso detectado na ROI final.")
+                print(f'detected_ids [true]={detected_ids}')
+                return True
+
+            if failure_marker_id in detected_ids:
+                logging.error("Marcador de falha detectado na ROI final.")
+                print(f'detected_ids [false]={detected_ids}')
+                return False
+
+            time.sleep(attempt_delay_s)
+
+        logging.error(
+            "ROI final marker check esgotou %d tentativas sem detectar o marcador de sucesso (%d).",
+            max_attempts,
+            success_marker_id,
+        )
+        return False
         
 
 
@@ -787,7 +837,7 @@ def main() -> int:
 
     Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela
     PASSOS_POR_RETA = 15   # Quantidade de pontos intermediários (breadcrumbs)
-    OFF_SET_SWIPE = 1.0
+    OFF_SET_SWIPE = 2.0
 
     # Percorre cada par de pontos (Ex: pt_1 -> pt_4)
     for i in range(len(trajeto) - 1):
@@ -830,7 +880,7 @@ def main() -> int:
             elif i+1 == 3:
                 target_y_afinado += OFF_SET_SWIPE
             elif i+1 == 4:
-                target_x_afinado += OFF_SET_SWIPE + 2
+                target_x_afinado += OFF_SET_SWIPE + 1
             
             # Constrói a Pose
             swipe_pose = Pose(
@@ -848,9 +898,10 @@ def main() -> int:
             
     logging.info("Swipe perimetral finalizado com sucesso!")
     robot.move_to_roi()
+    time.sleep(2)  # Pequena pausa para estabilizar antes da última detecção
 
-# ... (seu código de detecção final)
-    is_calibration_succeed = __is_marker_detection_successful()
+    # ... (seu código de detecção final)
+    is_calibration_succeed = __is_marker_detection_successful_in_roi()
     if is_calibration_succeed:
         logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
     else:
@@ -869,6 +920,7 @@ def main() -> int:
     export_ok = CalibrationMapExporter.export(
         output_dir=args.metrics_dir,
         device_type=device_type,
+        device_model=str(getattr(config, "DEVICE_MODEL", "unknown")).strip() or "unknown",
         useful_rect_px=useful_rect,
         centroid_rect_px=centroid_rect_px,
         marker_infos=marker_infos,
@@ -877,6 +929,7 @@ def main() -> int:
         device_touch_interaction=session_recorder.get_interaction_data(),
         execution_duration_s=(time.time() - run_start_ts),
         calibration_succeed=is_calibration_succeed,
+        dir_separation= True
     )
     if not export_ok:
         logging.error("Falha ao exportar o mapa de calibração.")
