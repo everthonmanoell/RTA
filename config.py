@@ -170,6 +170,11 @@ TRANSLATION_GAIN = 0.1  # Quanto da correção aplicar por iteração (ajustar p
 ALIGMENT_TOLERANCE_MM = 0.5  # Tolerância de alinhamento final (ajustar conforme precisão desejada)
 Z_TOUCH = 260.98
 Z_LIMIT = 260.98
+
+## motorobot Z_TOUCH
+# Z_LIMIT = 221.56
+# Z_TOUCH = 221.56
+
 TOUCH_FINGER_OFFSET_X = -30.1
 Z_OFFSET_BEFORE_TOUCH = 20.0
 # TOUCH_FINGER_OFFSET_X = -40.5

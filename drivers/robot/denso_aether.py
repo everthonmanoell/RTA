@@ -47,6 +47,15 @@ class Denso(AbstractRobot):
     ROI_RZ = 180.00
     DEFAULT_FIG = 5
 
+    #motorobot ROI
+    # ROI_X = 366.83
+    # ROI_Y = 5.64
+    # ROI_Z = 446.20
+    # ROI_RX = -180.00
+    # ROI_RY = 0.00
+    # ROI_RZ = -180.00
+    # DEFAULT_FIG = 5
+
 
     joint_pose_roi = [1.184635, 34.15339, 103.8132, -178.8901, -43.63271, -180.2519]
 
