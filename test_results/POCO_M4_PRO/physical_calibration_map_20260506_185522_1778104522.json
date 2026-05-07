@@ -3,7 +3,7 @@
     "device_type": "flat",
     "calibration_mode": "bilinear_physical_touches",
     "execution_duration_s": 200.645,
-    "calibration_succeed": true,
+    "calibration_succeed": false,
     "physical_screen_corners_mm": {
         "top_left": {
             "x": 256.92,
