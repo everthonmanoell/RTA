@@ -742,9 +742,9 @@ def main() -> int:
             return False
 
 # =====================================================================
-    # FASE 4: SWIPE NA ZONA SEGURA (CORREÇÃO DE ESCALA E ÁREA ÚTIL)
+    # FASE 4: SWIPE DIRETO NAS QUINAS DA TELA ÚTIL
     # =====================================================================
-    logging.info("Calculando X,Y via Bilinear e Z via Bilinear na Zona Segura...")
+    logging.info("Calculando X,Y via Bilinear e Z via Bilinear na Tela Útil...")
     
     # 1. Dicionário das poses físicas de toque
     touch_poses_dict = {}
@@ -752,8 +752,7 @@ def main() -> int:
         touch_poses_dict[target_id] = homography_position[idx]
 
     # 2. O GRANDE SEGREDO DA ESCALA (A CORREÇÃO):
-    # Como o robô tocou nos CENTROS dos ArUcos, a nossa referência do tamanho da tela 
-    # tem que ser o limite dos centros, não a borda externa!
+    # A nossa referência do tamanho da tela continua sendo o limite dos centros
     c_x_min = min(m.centroid[0] for m in marker_infos)
     c_y_min = min(m.centroid[1] for m in marker_infos)
     c_x_max = max(m.centroid[0] for m in marker_infos)
@@ -761,21 +760,25 @@ def main() -> int:
     centroid_rect_px = (c_x_min, c_y_min, c_x_max, c_y_max)
 
     # =========================================================================
-    # RECALCULANDO OS PONTOS DE SWIPE PERFEITOS (O VERDADEIRO GAP BRANCO)
-    # Tira a média entre o Centro do ArUco e a Borda da Tela Cinza
+    # PONTOS DE SWIPE: QUINAS EXATAS DA TELA ÚTIL
+    # Usando os limites reais do display, sem tirar médias.
     # =========================================================================
     u_x_min, u_y_min, u_x_max, u_y_max = safe_zone_data["screen_rect"]
 
-    gap_x_min = (c_x_min + u_x_min) / 2.0
-    gap_x_max = (c_x_max + u_x_max) / 2.0
-    gap_y_min = (c_y_min + u_y_min) / 2.0
-    gap_y_max = (c_y_max + u_y_max) / 2.0
+    OFF_SET_SWIPE = 7
+
+    u_x_min += OFF_SET_SWIPE
+    u_y_max -= OFF_SET_SWIPE
+    u_x_max -= OFF_SET_SWIPE
+    u_y_min += OFF_SET_SWIPE
+
+    
 
     perfect_swipe_points = {
-        "pt_1": (gap_x_min, gap_y_max), # Inferior Esquerdo
-        "pt_4": (gap_x_min, gap_y_min), # Superior Esquerdo
-        "pt_2": (gap_x_max, gap_y_min), # Superior Direito
-        "pt_3": (gap_x_max, gap_y_max)  # Inferior Direito
+        "pt_1": (u_x_min, u_y_max), # Quina Inferior Esquerda da Tela Útil
+        "pt_4": (u_x_min, u_y_min), # Quina Superior Esquerda da Tela Útil
+        "pt_2": (u_x_max, u_y_min), # Quina Superior Direita da Tela Útil
+        "pt_3": (u_x_max, u_y_max)  # Quina Inferior Direita da Tela Útil
     }
 
     # 3. Congela a orientação exata do momento em que o Z foi medido! (Anti-Pêndulo)
@@ -785,8 +788,10 @@ def main() -> int:
     safe_rz = float(pose_referencia.rz)
     safe_fig = int(getattr(pose_referencia, "fig", 1))
 
-# 4. Trajeto perimetral
+    #todo ajustar trajeto conforme a orientação do device
+    # 4. Trajeto perimetral 
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
+    # trajeto = ["pt_4", "pt_2", "pt_3", "pt_1", "pt_4"] # Começa do superior esquerdo para dar um "puxão" inicial para o lado esquerdo da tela
     logging.info("Preparando para executar o Swipe na Zona Segura...")
 
     # #===============================================
@@ -872,15 +877,26 @@ def main() -> int:
             target_x_afinado = target_x
             target_y_afinado = target_y
 
+            # # se for a primeira etapa do swipe (pt_1 -> pt_4), aplica um pequeno offset no X para garantir que o robô "puxe" a tela para o lado esquerdo antes de descer
+            # if i+1 == 1:
+            #     target_y_afinado += -OFF_SET_SWIPE
+            # elif i+1 == 2:
+            #     target_x_afinado += -OFF_SET_SWIPE
+            # elif i+1 == 3:
+            #     target_y_afinado += OFF_SET_SWIPE
+            # elif i+1 == 4:
+            #     target_x_afinado += OFF_SET_SWIPE + 1
+
+            # trajeto = ["pt_4", "pt_2", "pt_3", "pt_1", "pt_4"] # Começa do superior esquerdo para dar um "puxão" inicial para o lado esquerdo da tela
             # se for a primeira etapa do swipe (pt_1 -> pt_4), aplica um pequeno offset no X para garantir que o robô "puxe" a tela para o lado esquerdo antes de descer
-            if i+1 == 1:
-                target_y_afinado += -OFF_SET_SWIPE
-            elif i+1 == 2:
-                target_x_afinado += -OFF_SET_SWIPE
-            elif i+1 == 3:
-                target_y_afinado += OFF_SET_SWIPE
-            elif i+1 == 4:
-                target_x_afinado += OFF_SET_SWIPE + 1
+            # if i+1 == 1:
+            #     target_y_afinado += OFF_SET_SWIPE
+            # elif i+1 == 2:
+            #     target_x_afinado += +OFF_SET_SWIPE
+            # elif i+1 == 3:
+            #     target_y_afinado += OFF_SET_SWIPE
+            # elif i+1 == 4:
+            #     target_x_afinado += -OFF_SET_SWIPE + 1
             
             # Constrói a Pose
             swipe_pose = Pose(
