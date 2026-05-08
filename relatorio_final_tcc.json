@@ -76,6 +76,12 @@
             "media_tempo_overhead_s": 34.19,
             "percentual_mecanico": 80.39,
             "percentual_overhead": 19.61
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "motorola_edge_40": {
@@ -155,6 +161,12 @@
             "media_tempo_overhead_s": 42.3,
             "percentual_mecanico": 79.39,
             "percentual_overhead": 20.61
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "motorola_edge_50_fusion": {
@@ -234,6 +246,12 @@
             "media_tempo_overhead_s": 48.35,
             "percentual_mecanico": 75.91,
             "percentual_overhead": 24.09
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "motorola_edge_50_pro": {
@@ -313,6 +331,12 @@
             "media_tempo_overhead_s": 40.43,
             "percentual_mecanico": 78.38,
             "percentual_overhead": 21.62
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "motorola_edge_60_pro": {
@@ -392,6 +416,12 @@
             "media_tempo_overhead_s": 37.0,
             "percentual_mecanico": 79.36,
             "percentual_overhead": 20.64
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "moto_g_-_2025": {
@@ -471,6 +501,12 @@
             "media_tempo_overhead_s": 48.83,
             "percentual_mecanico": 74.44,
             "percentual_overhead": 25.56
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "POCO_M4_PRO": {
@@ -550,6 +586,12 @@
             "media_tempo_overhead_s": 95.89,
             "percentual_mecanico": 55.43,
             "percentual_overhead": 44.57
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 0,
+            "falhas": 4,
+            "taxa_sucesso_percentual": 0.0
         }
     },
     "SM-A346M": {
@@ -629,6 +671,12 @@
             "media_tempo_overhead_s": 45.67,
             "percentual_mecanico": 78.01,
             "percentual_overhead": 21.99
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "SM-A566E": {
@@ -708,6 +756,12 @@
             "media_tempo_overhead_s": 40.77,
             "percentual_mecanico": 79.63,
             "percentual_overhead": 20.37
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     },
     "SM-S721B-S24FE": {
@@ -787,6 +841,12 @@
             "media_tempo_overhead_s": 50.51,
             "percentual_mecanico": 75.86,
             "percentual_overhead": 24.14
+        },
+        "metric_7_success_rate": {
+            "total_execucoes": 4,
+            "sucessos": 4,
+            "falhas": 0,
+            "taxa_sucesso_percentual": 100.0
         }
     }
 }
