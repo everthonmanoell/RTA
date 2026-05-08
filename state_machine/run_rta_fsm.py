@@ -305,15 +305,15 @@ def main() -> int:
     session_recorder.start()
 
     def __is_marker_detection_successful_in_roi(
-        max_attempts: int = 5,
-        attempt_delay_s: float = 0.35,
+        max_attempts: int = 10,
+        attempt_delay_s: float = 0.5,
     ) -> bool:
         success_marker_id = int(getattr(config, "FINAL_SUCCESS_MARKER_ID", 14))
         failure_marker_id = int(getattr(config, "FINAL_FAILURE_MARKER_ID", 15))
 
         for attempt in range(1, max_attempts + 1):
-            frame = camera.capture_frame()
-            if frame is None:
+            frame_ = camera.capture_frame()
+            if frame_ is None:
                 logging.warning(
                     "ROI final marker check attempt %d/%d: frame nulo.",
                     attempt,
@@ -322,7 +322,7 @@ def main() -> int:
                 time.sleep(attempt_delay_s)
                 continue
 
-            marker_ids, _ = detector.detect_markers(frame, log_missing=False)
+            marker_ids, _ = detector.detect_markers(frame_, log_missing=False)
             if marker_ids is None or len(marker_ids) == 0:
                 logging.warning(
                     "ROI final marker check attempt %d/%d: nenhum marcador detectado.",
@@ -710,7 +710,7 @@ def main() -> int:
                     )
 
                     # 4) descida controlada até o Z_TOUCH
-                    if current_position.z > Z_TOUCH + 20.0:
+                    if current_position.z > Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH:
                         current_position.z -= 5.0
                     elif current_position.z > Z_TOUCH + 5.0:
                         current_position.z -= 0.2
@@ -788,56 +788,11 @@ def main() -> int:
     safe_rz = float(pose_referencia.rz)
     safe_fig = int(getattr(pose_referencia, "fig", 1))
 
-    #todo ajustar trajeto conforme a orientação do device
+    #todo ajustar trajeto conforme a orientação do device. precisa deixar dinâmico
     # 4. Trajeto perimetral 
     trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
     # trajeto = ["pt_4", "pt_2", "pt_3", "pt_1", "pt_4"] # Começa do superior esquerdo para dar um "puxão" inicial para o lado esquerdo da tela
     logging.info("Preparando para executar o Swipe na Zona Segura...")
-
-    # #===============================================
-    # # DEBUG: dump touch anchors, marker centroids and a few interpolated micro-points
-    # try:
-    #     logging.info("SWIPE DEBUG: touch_poses_dict:")
-    #     for mid, p in touch_poses_dict.items():
-    #         logging.info(
-    #             "  marker %s -> robot (x=%.2f y=%.2f z=%.2f) rx=%.2f ry=%.2f rz=%.2f",
-    #             mid,
-    #             float(p.x),
-    #             float(p.y),
-    #             float(p.z),
-    #             float(p.rx),
-    #             float(p.ry),
-    #             float(p.rz),
-    #         )
-
-    #     logging.info("SWIPE DEBUG: centroid_rect_px=%s", str(centroid_rect_px))
-    #     logging.info("SWIPE DEBUG: perfect_swipe_points=%s", str(perfect_swipe_points))
-    #     marker_centroids = [(int(m.marker_id), (float(m.centroid[0]), float(m.centroid[1]))) for m in marker_infos]
-    #     logging.info("SWIPE DEBUG: marker_centroids=%s", str(marker_centroids))
-
-    #     # Sample a few interpolated micro-points for the first segment
-    #     sample_pts = []
-    #     try:
-    #         px_start, py_start = perfect_swipe_points["pt_1"]
-    #         px_end, py_end = perfect_swipe_points["pt_4"]
-    #         for s in range(min(3, 5)):
-    #             fraction = float(s) / float(max(1, 4))
-    #             px_curr = px_start + (px_end - px_start) * fraction
-    #             py_curr = py_start + (py_end - py_start) * fraction
-    #             tx, ty, tz = interpolate_robot_pose(
-    #                 target_px=px_curr,
-    #                 target_py=py_curr,
-    #                 union_rect_px=centroid_rect_px,
-    #                 touch_poses_dict=touch_poses_dict,
-    #                 marker_infos=marker_infos,
-    #             )
-    #             sample_pts.append((px_curr, py_curr, tx, ty, tz))
-    #         logging.info("SWIPE DEBUG: sample_interpolated_points(first segment)=%s", str(sample_pts))
-    #     except Exception as e:
-    #         logging.warning("SWIPE DEBUG: failed to sample interpolated points: %s", e)
-    # except Exception:
-    #     pass
-    #===============================================
 
 
     Z_SWIPE_OFFSET = -3.0  # Ajuste de pressão na tela

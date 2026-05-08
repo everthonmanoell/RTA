@@ -177,6 +177,10 @@ Z_LIMIT = 260.98
 
 TOUCH_FINGER_OFFSET_X = -30.1
 Z_OFFSET_BEFORE_TOUCH = 20.0
+
+# routine swipe with 15 degrees inclination
+# Z_OFFSET_BEFORE_TOUCH = 60.0
+
 # TOUCH_FINGER_OFFSET_X = -40.5
 
 
@@ -306,7 +310,7 @@ CAMERA_CALIBRATION_CONFIG = {
     "auto_focus": 2.0,
     "fixed_focus": 20.0,
     "auto_exposure": -1.0,
-    "fixed_exposure": -5.0,
+    "fixed_exposure": -7.0,
     "auto_white_balance": 1.0,
     "white_balance_temperature": -1.0,
 }
