@@ -233,3 +233,31 @@ class TCCMetricsAnalyzer:
             "percentual_mecanico": round(float(mecanico_pct), 2),
             "percentual_overhead": round(float(overhead_pct), 2)
         }
+    
+    # =========================================================================
+    # MÉTRICA 7: TAXA DE SUCESSO DA CALIBRAÇÃO (RELIABILITY)
+    # =========================================================================
+    def calculate_success_rate(self) -> dict:
+        """
+        Calcula a proporção de testes que passaram na calibração com sucesso
+        (calibration_succeed == True). Mede a robustez do sistema para cada modelo.
+        """
+        total_runs = len(self.executions)
+        if total_runs == 0:
+            return {"total_execucoes": 0, "sucessos": 0, "falhas": 0, "taxa_sucesso_percentual": 0.0}
+
+        sucessos = 0
+        for run in self.executions:
+            # Usa o .get() com False por padrão, caso a chave não exista numa execução falhada
+            if run.get("calibration_succeed", False) is True:
+                sucessos += 1
+
+        falhas = total_runs - sucessos
+        taxa_sucesso = (sucessos / total_runs) * 100.0
+
+        return {
+            "total_execucoes": total_runs,
+            "sucessos": sucessos,
+            "falhas": falhas,
+            "taxa_sucesso_percentual": round(float(taxa_sucesso), 2)
+        }

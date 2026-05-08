@@ -30,7 +30,8 @@ def run_full_analysis():
                 "metric_3_4_touch_quality": analyzer.calculate_touch_quality(),
                 "metric_4_polling_rate": analyzer.calculate_polling_rate(),
                 "metric_5_contact_area": analyzer.calculate_touch_contact_area(),
-                "metric_6_system_efficiency": analyzer.calculate_system_efficiency()
+                "metric_6_system_efficiency": analyzer.calculate_system_efficiency(),
+                "metric_7_success_rate": analyzer.calculate_success_rate()
 
             }
 
