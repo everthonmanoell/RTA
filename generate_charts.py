@@ -130,33 +130,117 @@ def main():
             media_std = sum(std_list) / len(std_list) if std_list else 0
             
             # Dual search strategy for success rate
-            # Search at root first; if not found, search within metric_7_success_rate
             taxa = metricas.get("taxa_sucesso_percentual", suc.get("taxa_sucesso_percentual", 0))
             
             linhas.append({
                 "Modelo": modelo,
-                "percentual_mecanico": eff.get("percentual_mecanico", 0),
-                "percentual_overhead": eff.get("percentual_overhead", 0),
+                "taxa_sucesso_percentual": taxa,
+                "erro_std_medio_mm": media_std,
                 "tilt_medio_mm": tilt.get("media_tilt_mm", 0),
                 "polling_rate_hz": poll.get("media_hz", 0),
-                "erro_std_medio_mm": media_std,
-                "taxa_sucesso_percentual": taxa  # <-- Now it finds the value either way!
+                "percentual_mecanico": eff.get("percentual_mecanico", 0),
+                "percentual_overhead": eff.get("percentual_overhead", 0),
+                "tempo_medio_s": eff.get("media_tempo_total_s", 0)
             })
         
     df = pd.DataFrame(linhas)
     
-    # Create folder to save charts
+    # Create folder to save charts and tables
     out_dir = Path("graficos_tcc")
     out_dir.mkdir(exist_ok=True)
     
+    # =========================================================================
+    # EXPORTAÇÃO DA TABELA (Modelos nas Colunas, Métricas nas Linhas)
+    # =========================================================================
+    # 1. Define o 'Modelo' como índice e transpõe a matriz (.T)
+    df_tabela = df.set_index("Modelo").T
+    
+    # 2. Renomeia as linhas para um formato amigável para o texto do TCC
+    df_tabela.index.name = "Métricas Analisadas"
+    df_tabela.rename(index={
+        "taxa_sucesso_percentual": "Sucesso da Calibração (%)",
+        "erro_std_medio_mm": "Erro de Repetibilidade (mm)",
+        "tilt_medio_mm": "Desnível na Bancada - Tilt (mm)",
+        "polling_rate_hz": "Taxa de Amostragem (Hz)",
+        "tempo_medio_s": "Tempo Total de Execução (s)",
+        "percentual_mecanico": "Tempo de Ação Mecânica (%)",
+        "percentual_overhead": "Tempo de Overhead (%)"
+    }, inplace=True)
+    
+    # 3. Salva em CSV (para abrir no Excel e formatar para o Word)
+    caminho_csv = out_dir / "tabela_metricas_tcc.csv"
+    df_tabela.to_csv(caminho_csv, sep=";", decimal=",") # Formato PT-BR (ponto e vírgula)
+    
+    # 4. Imprime no terminal em formato Markdown (fácil de visualizar)
+    print("\n" + "="*80)
+    print("📊 TABELA DE DADOS CONSOLIDADOS")
+    print("="*80)
+    print(df_tabela.to_markdown())
+    print("="*80 + "\n")
+    # =========================================================================
+
     # Generate charts
     plot_system_efficiency(df, out_dir)
     plot_planar_tilt(df, out_dir)
     plot_polling_rate(df, out_dir)
     plot_repeatability_error(df, out_dir)
-    plot_success_rate(df, out_dir) # <-- NEW CHART CALL HERE
+    plot_success_rate(df, out_dir)
     
-    print(f"✅ 5 Charts generated successfully in folder: '{out_dir.absolute()}'")
+    print(f"✅ 5 Charts and 1 Data Table generated successfully in folder: '{out_dir.absolute()}'")
 
 if __name__ == "__main__":
     main()
+
+# def main():
+#     print("Starting chart generation...")
+#     data = load_data()
+    
+#     # Extract data from JSON into tabular format (Pandas DataFrame)
+#     linhas = []
+#     for modelo, metricas in data.items():
+#             # Safe extraction
+#             eff = metricas.get("metric_6_system_efficiency", {})
+#             tilt = metricas.get("metric_2_planar_tilt", {})
+#             poll = metricas.get("metric_4_polling_rate", {})
+            
+#             # Load metric 7 block
+#             suc = metricas.get("metric_7_success_rate", {}) 
+            
+#             rep = metricas.get("metric_1_repeatability", {})
+#             std_list = []
+#             for corner in rep.values():
+#                 if "std_mm" in corner:
+#                     std_list.extend([corner["std_mm"]["x"], corner["std_mm"]["y"], corner["std_mm"]["z"]])
+#             media_std = sum(std_list) / len(std_list) if std_list else 0
+            
+#             # Dual search strategy for success rate
+#             # Search at root first; if not found, search within metric_7_success_rate
+#             taxa = metricas.get("taxa_sucesso_percentual", suc.get("taxa_sucesso_percentual", 0))
+            
+#             linhas.append({
+#                 "Modelo": modelo,
+#                 "percentual_mecanico": eff.get("percentual_mecanico", 0),
+#                 "percentual_overhead": eff.get("percentual_overhead", 0),
+#                 "tilt_medio_mm": tilt.get("media_tilt_mm", 0),
+#                 "polling_rate_hz": poll.get("media_hz", 0),
+#                 "erro_std_medio_mm": media_std,
+#                 "taxa_sucesso_percentual": taxa  # <-- Now it finds the value either way!
+#             })
+        
+#     df = pd.DataFrame(linhas)
+    
+#     # Create folder to save charts
+#     out_dir = Path("graficos_tcc")
+#     out_dir.mkdir(exist_ok=True)
+    
+#     # Generate charts
+#     plot_system_efficiency(df, out_dir)
+#     plot_planar_tilt(df, out_dir)
+#     plot_polling_rate(df, out_dir)
+#     plot_repeatability_error(df, out_dir)
+#     plot_success_rate(df, out_dir) # <-- NEW CHART CALL HERE
+    
+#     print(f"✅ 5 Charts generated successfully in folder: '{out_dir.absolute()}'")
+
+# if __name__ == "__main__":
+#     main()
