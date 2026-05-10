@@ -363,6 +363,8 @@ def main() -> int:
                     max_attempts,
                 )
                 time.sleep(attempt_delay_s)
+                _adjust_robot_to_see_the_marker(robot, robot.get_cartesian_pose())
+                logging.info("Tentativa de ajuste de posição para ver marcador na próxima tentativa.")
                 continue
 
             detected_ids = {int(curr[0]) for curr in marker_ids}
@@ -554,6 +556,8 @@ def main() -> int:
         else:
             qtd_encontrada = len(ids) if ids is not None else 0
             logging.warning(f"Tentativa {tentativa + 1}/{max_tentativas}: Encontrados apenas {qtd_encontrada} marcadores. Aguardando a tela do app abrir...")
+            _adjust_robot_to_see_the_marker(robot, robot.get_cartesian_pose())
+            logging.info("Tentativa de ajuste de posição para ver marcador na próxima tentativa.")
             time.sleep(0.5) # Espera meio segundo antes da próxima foto (dá tempo do app abrir e focar)
 
     # Verifica se o loop terminou sem sucesso
@@ -609,7 +613,9 @@ def main() -> int:
                 interation += 1
 
                 diff_error = rotation_aligment.error_diff_between_single_marker_and_image_center_on_mm(id)
-                if diff_error is None:
+                if diff_error is None: # Se não conseguiu calcular o erro (ex: não viu o marcador), tenta de novo.
+                    _adjust_robot_to_see_the_marker(robot, robot.get_cartesian_pose())
+                    logging.info("Tentativa de ajuste de posição para ver marcador na próxima tentativa.")
                     time.sleep(0.3)
                     continue
 
