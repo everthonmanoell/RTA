@@ -5,7 +5,7 @@ import time
 import threading
 from types import MethodType
 
-
+import random
 import cv2
 import numpy as np
 from aether_rdk.datatypes import Offset3D, Pose
@@ -232,6 +232,39 @@ def _build_operational_stack(robot: Denso):
     )
 
     return device, camera, detector, auto_align, controller, transform
+
+def _adjust_robot_to_see_the_marker(robot: Denso, current_pose: Pose):
+    """Ajusta a posição do robô para tentar ver o marcador, baseado na pose atual."""
+    # Estratégia simples: move o robô em um pequeno círculo para tentar trazer o marcador para o campo de visão da câmera
+    choose = random.randint(0, 3)
+    radius = 10.0  # mm
+    angles_deg = [0, 90, 180, 270]  # Tenta em 4 direções: direita, frente, esquerda, trás
+
+    angle_deg = angles_deg[choose]
+    angle_rad = np.radians(angle_deg)
+    offset_x = radius * np.cos(angle_rad)
+    offset_y = radius * np.sin(angle_rad)
+
+    target_pose = Pose(
+        x=current_pose.x + offset_x,
+        y=current_pose.y + offset_y,
+        z=current_pose.z,
+        rx=current_pose.rx,
+        ry=current_pose.ry,
+        rz=current_pose.rz,
+        fig=int(getattr(current_pose, "fig", 1))
+    )
+
+    logging.info(
+        "Tentando ajustar posição para ver marcador: movendo para x=%.2f y=%.2f (offset_x=%.2f offset_y=%.2f)",
+        target_pose.x, target_pose.y, offset_x, offset_y
+    )
+
+    success = robot.move_cartesian(target_pose)
+    if not success:
+        logging.warning("Falha ao mover para posição de ajuste. Tentando próximo ângulo.")
+
+    time.sleep(1.0)  # Espera um pouco para a câmera atualizar a visão após o movimento
 
 
 
