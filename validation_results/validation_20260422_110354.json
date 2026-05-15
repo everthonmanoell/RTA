@@ -1,0 +1,161 @@
+{
+  "validation_id": "validation_20260422_110354",
+  "timestamp": "2026-04-22T11:03:54.163851",
+  "device_type": "flat",
+  "output_json": "validation_results\\validation_20260422_110354.json",
+  "summary": {
+    "total_steps": 6,
+    "passed": 5,
+    "failed": 1
+  },
+  "steps": [
+    {
+      "name": "parse_getevent_line",
+      "ok": true,
+      "details": {
+        "parsed_event": {
+          "device": "/dev/input/event9",
+          "tipo": "0003",
+          "codigo": "0035",
+          "valor": "000001f4",
+          "valor_decimal": 500
+        }
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "map_raw_touch_to_screen",
+      "ok": true,
+      "details": {
+        "mapped_pixel": [
+          539,
+          1199
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "TouchTracker.feed",
+      "ok": true,
+      "details": {
+        "actions": [
+          "down",
+          "move",
+          "up"
+        ],
+        "points": [
+          {
+            "action": "down",
+            "x": 256,
+            "y": 512,
+            "pressure": 100,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776866634.1638515
+          },
+          {
+            "action": "move",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776866634.1638515
+          },
+          {
+            "action": "up",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": -1,
+            "timestamp": 1776866634.1638515
+          }
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "TouchRecording.metrics",
+      "ok": true,
+      "details": {
+        "total_points": 3,
+        "down_count": 1,
+        "move_count": 1,
+        "up_count": 1,
+        "duration_s": 0.0,
+        "x_range": [
+          256,
+          288
+        ],
+        "y_range": [
+          512,
+          544
+        ],
+        "avg_pressure": 105.0,
+        "points": [
+          {
+            "action": "down",
+            "x": 256,
+            "y": 512,
+            "pressure": 100,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776866634.1638515
+          },
+          {
+            "action": "move",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776866634.1638515
+          },
+          {
+            "action": "up",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": -1,
+            "timestamp": 1776866634.1638515
+          }
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "RTAResult.accuracy",
+      "ok": true,
+      "details": {
+        "status": "success",
+        "hits": 9,
+        "total": 10,
+        "errors": 1,
+        "reason": "ok",
+        "device_type": "flat",
+        "accuracy": 90.0
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "ADB environment",
+      "ok": false,
+      "details": {},
+      "error": "AssertionError: Não foi possível obter screen size",
+      "duration_s": 0.252
+    }
+  ]
+}

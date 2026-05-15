@@ -1,0 +1,6000 @@
+{
+  "validation_id": "validation_20260422_111311",
+  "timestamp": "2026-04-22T11:13:11.652179",
+  "device_type": "flat",
+  "output_json": "validation_results\\validation_20260422_111311.json",
+  "summary": {
+    "total_steps": 7,
+    "passed": 7,
+    "failed": 0
+  },
+  "steps": [
+    {
+      "name": "parse_getevent_line",
+      "ok": true,
+      "details": {
+        "parsed_event": {
+          "device": "/dev/input/event9",
+          "tipo": "0003",
+          "codigo": "0035",
+          "valor": "000001f4",
+          "valor_decimal": 500
+        }
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "map_raw_touch_to_screen",
+      "ok": true,
+      "details": {
+        "mapped_pixel": [
+          539,
+          1199
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "TouchTracker.feed",
+      "ok": true,
+      "details": {
+        "actions": [
+          "down",
+          "move",
+          "up"
+        ],
+        "points": [
+          {
+            "action": "down",
+            "x": 256,
+            "y": 512,
+            "pressure": 100,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776867191.65218
+          },
+          {
+            "action": "move",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776867191.65218
+          },
+          {
+            "action": "up",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": -1,
+            "timestamp": 1776867191.65218
+          }
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "TouchRecording.metrics",
+      "ok": true,
+      "details": {
+        "total_points": 3,
+        "down_count": 1,
+        "move_count": 1,
+        "up_count": 1,
+        "duration_s": 0.0,
+        "x_range": [
+          256,
+          288
+        ],
+        "y_range": [
+          512,
+          544
+        ],
+        "avg_pressure": 105.0,
+        "points": [
+          {
+            "action": "down",
+            "x": 256,
+            "y": 512,
+            "pressure": 100,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776867191.65218
+          },
+          {
+            "action": "move",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": 42,
+            "timestamp": 1776867191.65218
+          },
+          {
+            "action": "up",
+            "x": 288,
+            "y": 544,
+            "pressure": 110,
+            "touch_major": 0,
+            "touch_minor": 0,
+            "tracking_id": -1,
+            "timestamp": 1776867191.65218
+          }
+        ]
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "RTAResult.accuracy",
+      "ok": true,
+      "details": {
+        "status": "success",
+        "hits": 9,
+        "total": 10,
+        "errors": 1,
+        "reason": "ok",
+        "device_type": "flat",
+        "accuracy": 90.0
+      },
+      "error": null,
+      "duration_s": 0.0
+    },
+    {
+      "name": "ADB environment",
+      "ok": true,
+      "details": {
+        "connected_devices": [
+          "NGCLC30107",
+          "adb-NGCLC30107-8G45yJ._adb-tls-connect._tcp"
+        ],
+        "device_name": "event9",
+        "screen_size": [
+          1080,
+          2400
+        ],
+        "x_range": [
+          0,
+          17280
+        ],
+        "y_range": [
+          0,
+          38400
+        ],
+        "device_model": "motorola edge 50 fusion"
+      },
+      "error": null,
+      "duration_s": 0.562
+    },
+    {
+      "name": "run_rta_test smoke",
+      "ok": true,
+      "details": {
+        "test_id": "smoke_test",
+        "timestamp": "2026-04-22T11:13:12.287119",
+        "device_model": "motorola edge 50 fusion",
+        "device_type": "flat",
+        "duration_s": 8.539,
+        "app_result": {
+          "status": "fail",
+          "hits": 24,
+          "total": 56,
+          "errors": 19,
+          "reason": "Touch detected outside the borders.",
+          "device_type": "flat",
+          "accuracy": 42.86
+        },
+        "touch": {
+          "total_points": 578,
+          "down_count": 8,
+          "move_count": 562,
+          "up_count": 8,
+          "duration_s": 5.766,
+          "x_range": [
+            169,
+            16084
+          ],
+          "y_range": [
+            571,
+            34222
+          ],
+          "avg_pressure": 0.0,
+          "points": [
+            {
+              "action": "down",
+              "x": 7623,
+              "y": 10678,
+              "pressure": 0,
+              "touch_major": 63,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7437022
+            },
+            {
+              "action": "move",
+              "x": 7619,
+              "y": 10702,
+              "pressure": 0,
+              "touch_major": 65,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7676525
+            },
+            {
+              "action": "move",
+              "x": 7604,
+              "y": 10749,
+              "pressure": 0,
+              "touch_major": 70,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7706769
+            },
+            {
+              "action": "move",
+              "x": 7591,
+              "y": 10889,
+              "pressure": 0,
+              "touch_major": 70,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7746763
+            },
+            {
+              "action": "move",
+              "x": 7556,
+              "y": 11117,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.779276
+            },
+            {
+              "action": "move",
+              "x": 7504,
+              "y": 11388,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.783213
+            },
+            {
+              "action": "move",
+              "x": 7453,
+              "y": 11665,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7869794
+            },
+            {
+              "action": "move",
+              "x": 7405,
+              "y": 11906,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7917898
+            },
+            {
+              "action": "move",
+              "x": 7375,
+              "y": 12132,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.795746
+            },
+            {
+              "action": "move",
+              "x": 7342,
+              "y": 12300,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.7996814
+            },
+            {
+              "action": "move",
+              "x": 7323,
+              "y": 12465,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8044589
+            },
+            {
+              "action": "move",
+              "x": 7290,
+              "y": 12622,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8080893
+            },
+            {
+              "action": "move",
+              "x": 7252,
+              "y": 12785,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.812014
+            },
+            {
+              "action": "move",
+              "x": 7224,
+              "y": 12953,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8160133
+            },
+            {
+              "action": "move",
+              "x": 7182,
+              "y": 13117,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8200223
+            },
+            {
+              "action": "move",
+              "x": 7152,
+              "y": 13291,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8246965
+            },
+            {
+              "action": "move",
+              "x": 7114,
+              "y": 13467,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8287473
+            },
+            {
+              "action": "move",
+              "x": 7087,
+              "y": 13652,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8328395
+            },
+            {
+              "action": "move",
+              "x": 7055,
+              "y": 13839,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.836761
+            },
+            {
+              "action": "move",
+              "x": 7018,
+              "y": 14031,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8417628
+            },
+            {
+              "action": "move",
+              "x": 6977,
+              "y": 14241,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8476086
+            },
+            {
+              "action": "move",
+              "x": 6947,
+              "y": 14476,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.850606
+            },
+            {
+              "action": "move",
+              "x": 6917,
+              "y": 14734,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8556092
+            },
+            {
+              "action": "move",
+              "x": 6878,
+              "y": 15016,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8596067
+            },
+            {
+              "action": "move",
+              "x": 6843,
+              "y": 15334,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8622835
+            },
+            {
+              "action": "move",
+              "x": 6790,
+              "y": 15684,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.866401
+            },
+            {
+              "action": "move",
+              "x": 6740,
+              "y": 16072,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8723001
+            },
+            {
+              "action": "move",
+              "x": 6681,
+              "y": 16471,
+              "pressure": 0,
+              "touch_major": 69,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8763006
+            },
+            {
+              "action": "move",
+              "x": 6632,
+              "y": 16869,
+              "pressure": 0,
+              "touch_major": 63,
+              "touch_minor": 0,
+              "tracking_id": 2823,
+              "timestamp": 1776867194.8800747
+            },
+            {
+              "action": "up",
+              "x": 6632,
+              "y": 16869,
+              "pressure": 0,
+              "touch_major": 63,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867194.8855915
+            },
+            {
+              "action": "down",
+              "x": 3975,
+              "y": 19082,
+              "pressure": 0,
+              "touch_major": 64,
+              "touch_minor": 0,
+              "tracking_id": 2824,
+              "timestamp": 1776867195.197865
+            },
+            {
+              "action": "up",
+              "x": 3975,
+              "y": 19082,
+              "pressure": 0,
+              "touch_major": 65,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867195.2950177
+            },
+            {
+              "action": "down",
+              "x": 10323,
+              "y": 13687,
+              "pressure": 0,
+              "touch_major": 60,
+              "touch_minor": 0,
+              "tracking_id": 2825,
+              "timestamp": 1776867195.4987807
+            },
+            {
+              "action": "up",
+              "x": 10323,
+              "y": 13687,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867195.5970209
+            },
+            {
+              "action": "down",
+              "x": 2040,
+              "y": 2990,
+              "pressure": 0,
+              "touch_major": 65,
+              "touch_minor": 0,
+              "tracking_id": 2826,
+              "timestamp": 1776867195.9161117
+            },
+            {
+              "action": "up",
+              "x": 2040,
+              "y": 2990,
+              "pressure": 0,
+              "touch_major": 64,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867195.94991
+            },
+            {
+              "action": "down",
+              "x": 12468,
+              "y": 3130,
+              "pressure": 0,
+              "touch_major": 54,
+              "touch_minor": 0,
+              "tracking_id": 2827,
+              "timestamp": 1776867196.324545
+            },
+            {
+              "action": "move",
+              "x": 12455,
+              "y": 3151,
+              "pressure": 0,
+              "touch_major": 55,
+              "touch_minor": 0,
+              "tracking_id": 2827,
+              "timestamp": 1776867196.391495
+            },
+            {
+              "action": "move",
+              "x": 12459,
+              "y": 3192,
+              "pressure": 0,
+              "touch_major": 55,
+              "touch_minor": 0,
+              "tracking_id": 2827,
+              "timestamp": 1776867196.3956492
+            },
+            {
+              "action": "move",
+              "x": 12470,
+              "y": 3315,
+              "pressure": 0,
+              "touch_major": 55,
+              "touch_minor": 0,
+              "tracking_id": 2827,
+              "timestamp": 1776867196.399745
+            },
+            {
+              "action": "up",
+              "x": 12470,
+              "y": 3315,
+              "pressure": 0,
+              "touch_major": 55,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867196.4036498
+            },
+            {
+              "action": "down",
+              "x": 2979,
+              "y": 33136,
+              "pressure": 0,
+              "touch_major": 60,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867196.952581
+            },
+            {
+              "action": "move",
+              "x": 2990,
+              "y": 33160,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.009967
+            },
+            {
+              "action": "move",
+              "x": 2988,
+              "y": 33207,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.014012
+            },
+            {
+              "action": "move",
+              "x": 3003,
+              "y": 33332,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0189795
+            },
+            {
+              "action": "move",
+              "x": 3018,
+              "y": 33519,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.022979
+            },
+            {
+              "action": "move",
+              "x": 3050,
+              "y": 33721,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0264926
+            },
+            {
+              "action": "move",
+              "x": 3092,
+              "y": 33889,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0305161
+            },
+            {
+              "action": "move",
+              "x": 3145,
+              "y": 34001,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0355296
+            },
+            {
+              "action": "move",
+              "x": 3219,
+              "y": 34084,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0395274
+            },
+            {
+              "action": "move",
+              "x": 3325,
+              "y": 34155,
+              "pressure": 0,
+              "touch_major": 69,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.0432382
+            },
+            {
+              "action": "move",
+              "x": 3426,
+              "y": 34213,
+              "pressure": 0,
+              "touch_major": 63,
+              "touch_minor": 0,
+              "tracking_id": 2828,
+              "timestamp": 1776867197.047608
+            },
+            {
+              "action": "up",
+              "x": 3426,
+              "y": 34213,
+              "pressure": 0,
+              "touch_major": 63,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867197.0515184
+            },
+            {
+              "action": "down",
+              "x": 13637,
+              "y": 34222,
+              "pressure": 0,
+              "touch_major": 38,
+              "touch_minor": 0,
+              "tracking_id": 2829,
+              "timestamp": 1776867197.403327
+            },
+            {
+              "action": "up",
+              "x": 13637,
+              "y": 34222,
+              "pressure": 0,
+              "touch_major": 38,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867197.5135858
+            },
+            {
+              "action": "down",
+              "x": 8723,
+              "y": 18717,
+              "pressure": 0,
+              "touch_major": 57,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.2470307
+            },
+            {
+              "action": "move",
+              "x": 8727,
+              "y": 18695,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3310895
+            },
+            {
+              "action": "move",
+              "x": 8736,
+              "y": 18644,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3343775
+            },
+            {
+              "action": "move",
+              "x": 8787,
+              "y": 18489,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3343775
+            },
+            {
+              "action": "move",
+              "x": 8869,
+              "y": 18228,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3343775
+            },
+            {
+              "action": "move",
+              "x": 8964,
+              "y": 17899,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3464618
+            },
+            {
+              "action": "move",
+              "x": 9079,
+              "y": 17557,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3464618
+            },
+            {
+              "action": "move",
+              "x": 9185,
+              "y": 17235,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3464618
+            },
+            {
+              "action": "move",
+              "x": 9295,
+              "y": 16942,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.358897
+            },
+            {
+              "action": "move",
+              "x": 9388,
+              "y": 16672,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3634956
+            },
+            {
+              "action": "move",
+              "x": 9455,
+              "y": 16450,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3725176
+            },
+            {
+              "action": "move",
+              "x": 9537,
+              "y": 16237,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3735414
+            },
+            {
+              "action": "move",
+              "x": 9610,
+              "y": 16037,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3735414
+            },
+            {
+              "action": "move",
+              "x": 9692,
+              "y": 15837,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3735414
+            },
+            {
+              "action": "move",
+              "x": 9775,
+              "y": 15639,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3846438
+            },
+            {
+              "action": "move",
+              "x": 9857,
+              "y": 15437,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3860703
+            },
+            {
+              "action": "move",
+              "x": 9930,
+              "y": 15235,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3860703
+            },
+            {
+              "action": "move",
+              "x": 10012,
+              "y": 15026,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3978326
+            },
+            {
+              "action": "move",
+              "x": 10096,
+              "y": 14801,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3989305
+            },
+            {
+              "action": "move",
+              "x": 10161,
+              "y": 14573,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.3989305
+            },
+            {
+              "action": "move",
+              "x": 10250,
+              "y": 14343,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4110143
+            },
+            {
+              "action": "move",
+              "x": 10321,
+              "y": 14108,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4120765
+            },
+            {
+              "action": "move",
+              "x": 10408,
+              "y": 13863,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4120765
+            },
+            {
+              "action": "move",
+              "x": 10489,
+              "y": 13607,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4120765
+            },
+            {
+              "action": "move",
+              "x": 10580,
+              "y": 13357,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4253912
+            },
+            {
+              "action": "move",
+              "x": 10651,
+              "y": 13104,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.430735
+            },
+            {
+              "action": "move",
+              "x": 10719,
+              "y": 12854,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.430735
+            },
+            {
+              "action": "move",
+              "x": 10779,
+              "y": 12616,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4386601
+            },
+            {
+              "action": "move",
+              "x": 10829,
+              "y": 12379,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4386601
+            },
+            {
+              "action": "move",
+              "x": 10893,
+              "y": 12140,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4386601
+            },
+            {
+              "action": "move",
+              "x": 10943,
+              "y": 11900,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4512558
+            },
+            {
+              "action": "move",
+              "x": 10986,
+              "y": 11665,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4564977
+            },
+            {
+              "action": "move",
+              "x": 11032,
+              "y": 11439,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4605942
+            },
+            {
+              "action": "move",
+              "x": 11083,
+              "y": 11218,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4645164
+            },
+            {
+              "action": "move",
+              "x": 11129,
+              "y": 10996,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4685516
+            },
+            {
+              "action": "move",
+              "x": 11170,
+              "y": 10775,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.473515
+            },
+            {
+              "action": "move",
+              "x": 11191,
+              "y": 10560,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.477734
+            },
+            {
+              "action": "move",
+              "x": 11213,
+              "y": 10343,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4807308
+            },
+            {
+              "action": "move",
+              "x": 11237,
+              "y": 10123,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.485313
+            },
+            {
+              "action": "move",
+              "x": 11259,
+              "y": 9906,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4903111
+            },
+            {
+              "action": "move",
+              "x": 11269,
+              "y": 9700,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.49331
+            },
+            {
+              "action": "move",
+              "x": 11287,
+              "y": 9497,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.4970908
+            },
+            {
+              "action": "move",
+              "x": 11278,
+              "y": 9297,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5019288
+            },
+            {
+              "action": "move",
+              "x": 11271,
+              "y": 9095,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.505998
+            },
+            {
+              "action": "move",
+              "x": 11243,
+              "y": 8908,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5109591
+            },
+            {
+              "action": "move",
+              "x": 11235,
+              "y": 8730,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5143049
+            },
+            {
+              "action": "move",
+              "x": 11209,
+              "y": 8577,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5191126
+            },
+            {
+              "action": "move",
+              "x": 11170,
+              "y": 8422,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5191126
+            },
+            {
+              "action": "move",
+              "x": 11146,
+              "y": 8265,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5191126
+            },
+            {
+              "action": "move",
+              "x": 11109,
+              "y": 8117,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.531462
+            },
+            {
+              "action": "move",
+              "x": 11064,
+              "y": 7981,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5351171
+            },
+            {
+              "action": "move",
+              "x": 11017,
+              "y": 7841,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5391343
+            },
+            {
+              "action": "move",
+              "x": 10954,
+              "y": 7725,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5440645
+            },
+            {
+              "action": "move",
+              "x": 10889,
+              "y": 7603,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5446448
+            },
+            {
+              "action": "move",
+              "x": 10816,
+              "y": 7495,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5446448
+            },
+            {
+              "action": "move",
+              "x": 10736,
+              "y": 7398,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5446448
+            },
+            {
+              "action": "move",
+              "x": 10656,
+              "y": 7306,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.558358
+            },
+            {
+              "action": "move",
+              "x": 10559,
+              "y": 7222,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.558358
+            },
+            {
+              "action": "move",
+              "x": 10442,
+              "y": 7143,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.558358
+            },
+            {
+              "action": "move",
+              "x": 10332,
+              "y": 7082,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5715048
+            },
+            {
+              "action": "move",
+              "x": 10241,
+              "y": 7029,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5715048
+            },
+            {
+              "action": "move",
+              "x": 10122,
+              "y": 6994,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5715048
+            },
+            {
+              "action": "move",
+              "x": 9952,
+              "y": 6949,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5865343
+            },
+            {
+              "action": "move",
+              "x": 9788,
+              "y": 6923,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5865343
+            },
+            {
+              "action": "move",
+              "x": 9666,
+              "y": 6906,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5865343
+            },
+            {
+              "action": "move",
+              "x": 9511,
+              "y": 6884,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.5865343
+            },
+            {
+              "action": "move",
+              "x": 9396,
+              "y": 6876,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6025298
+            },
+            {
+              "action": "move",
+              "x": 9273,
+              "y": 6876,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6025298
+            },
+            {
+              "action": "move",
+              "x": 9137,
+              "y": 6880,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6025298
+            },
+            {
+              "action": "move",
+              "x": 8990,
+              "y": 6878,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6123223
+            },
+            {
+              "action": "move",
+              "x": 8841,
+              "y": 6880,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6202676
+            },
+            {
+              "action": "move",
+              "x": 8718,
+              "y": 6884,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6202676
+            },
+            {
+              "action": "move",
+              "x": 8565,
+              "y": 6895,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6202676
+            },
+            {
+              "action": "move",
+              "x": 8425,
+              "y": 6902,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.634526
+            },
+            {
+              "action": "move",
+              "x": 8278,
+              "y": 6923,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.634526
+            },
+            {
+              "action": "move",
+              "x": 8126,
+              "y": 6949,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6382816
+            },
+            {
+              "action": "move",
+              "x": 7951,
+              "y": 6985,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6382816
+            },
+            {
+              "action": "move",
+              "x": 7809,
+              "y": 7037,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6382816
+            },
+            {
+              "action": "move",
+              "x": 7604,
+              "y": 7099,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.651858
+            },
+            {
+              "action": "move",
+              "x": 7370,
+              "y": 7177,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6569788
+            },
+            {
+              "action": "move",
+              "x": 7092,
+              "y": 7276,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6609998
+            },
+            {
+              "action": "move",
+              "x": 6831,
+              "y": 7362,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6659997
+            },
+            {
+              "action": "move",
+              "x": 6614,
+              "y": 7435,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.669002
+            },
+            {
+              "action": "move",
+              "x": 6411,
+              "y": 7502,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6760502
+            },
+            {
+              "action": "move",
+              "x": 6215,
+              "y": 7557,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.678099
+            },
+            {
+              "action": "move",
+              "x": 6048,
+              "y": 7611,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6841333
+            },
+            {
+              "action": "move",
+              "x": 5878,
+              "y": 7657,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6871493
+            },
+            {
+              "action": "move",
+              "x": 5724,
+              "y": 7693,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6910446
+            },
+            {
+              "action": "move",
+              "x": 5597,
+              "y": 7730,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.697251
+            },
+            {
+              "action": "move",
+              "x": 5442,
+              "y": 7768,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.6992729
+            },
+            {
+              "action": "move",
+              "x": 5312,
+              "y": 7803,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.70227
+            },
+            {
+              "action": "move",
+              "x": 5150,
+              "y": 7844,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.706267
+            },
+            {
+              "action": "move",
+              "x": 5027,
+              "y": 7880,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7106814
+            },
+            {
+              "action": "move",
+              "x": 4899,
+              "y": 7925,
+              "pressure": 0,
+              "touch_major": 83,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7152915
+            },
+            {
+              "action": "move",
+              "x": 4787,
+              "y": 7964,
+              "pressure": 0,
+              "touch_major": 84,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7192874
+            },
+            {
+              "action": "move",
+              "x": 4666,
+              "y": 8001,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7233055
+            },
+            {
+              "action": "move",
+              "x": 4539,
+              "y": 8046,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7274182
+            },
+            {
+              "action": "move",
+              "x": 4431,
+              "y": 8093,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7326016
+            },
+            {
+              "action": "move",
+              "x": 4333,
+              "y": 8145,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.736552
+            },
+            {
+              "action": "move",
+              "x": 4185,
+              "y": 8201,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7406504
+            },
+            {
+              "action": "move",
+              "x": 4089,
+              "y": 8252,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7445557
+            },
+            {
+              "action": "move",
+              "x": 3990,
+              "y": 8306,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7493484
+            },
+            {
+              "action": "move",
+              "x": 3902,
+              "y": 8364,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7533596
+            },
+            {
+              "action": "move",
+              "x": 3819,
+              "y": 8418,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7594168
+            },
+            {
+              "action": "move",
+              "x": 3703,
+              "y": 8493,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.761362
+            },
+            {
+              "action": "move",
+              "x": 3608,
+              "y": 8557,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7658784
+            },
+            {
+              "action": "move",
+              "x": 3510,
+              "y": 8629,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7699149
+            },
+            {
+              "action": "move",
+              "x": 3392,
+              "y": 8712,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7760024
+            },
+            {
+              "action": "move",
+              "x": 3286,
+              "y": 8790,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7799098
+            },
+            {
+              "action": "move",
+              "x": 3199,
+              "y": 8863,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.783
+            },
+            {
+              "action": "move",
+              "x": 3053,
+              "y": 8951,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7881324
+            },
+            {
+              "action": "move",
+              "x": 2938,
+              "y": 9039,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7931397
+            },
+            {
+              "action": "move",
+              "x": 2841,
+              "y": 9130,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.7952363
+            },
+            {
+              "action": "move",
+              "x": 2731,
+              "y": 9231,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.799238
+            },
+            {
+              "action": "move",
+              "x": 2616,
+              "y": 9345,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8045352
+            },
+            {
+              "action": "move",
+              "x": 2478,
+              "y": 9459,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8085527
+            },
+            {
+              "action": "move",
+              "x": 2359,
+              "y": 9571,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.813306
+            },
+            {
+              "action": "move",
+              "x": 2238,
+              "y": 9700,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8162777
+            },
+            {
+              "action": "move",
+              "x": 2092,
+              "y": 9848,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.820316
+            },
+            {
+              "action": "move",
+              "x": 1971,
+              "y": 10018,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8231938
+            },
+            {
+              "action": "move",
+              "x": 1815,
+              "y": 10222,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8307078
+            },
+            {
+              "action": "move",
+              "x": 1636,
+              "y": 10463,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8338108
+            },
+            {
+              "action": "move",
+              "x": 1478,
+              "y": 10691,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8387225
+            },
+            {
+              "action": "move",
+              "x": 1325,
+              "y": 10908,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8437078
+            },
+            {
+              "action": "move",
+              "x": 1188,
+              "y": 11115,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8458111
+            },
+            {
+              "action": "move",
+              "x": 1057,
+              "y": 11308,
+              "pressure": 0,
+              "touch_major": 91,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.850827
+            },
+            {
+              "action": "move",
+              "x": 968,
+              "y": 11472,
+              "pressure": 0,
+              "touch_major": 90,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8569124
+            },
+            {
+              "action": "move",
+              "x": 899,
+              "y": 11626,
+              "pressure": 0,
+              "touch_major": 89,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.858905
+            },
+            {
+              "action": "move",
+              "x": 834,
+              "y": 11771,
+              "pressure": 0,
+              "touch_major": 87,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8608274
+            },
+            {
+              "action": "move",
+              "x": 783,
+              "y": 11915,
+              "pressure": 0,
+              "touch_major": 87,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.86567
+            },
+            {
+              "action": "move",
+              "x": 735,
+              "y": 12048,
+              "pressure": 0,
+              "touch_major": 86,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8709893
+            },
+            {
+              "action": "move",
+              "x": 692,
+              "y": 12173,
+              "pressure": 0,
+              "touch_major": 85,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8740609
+            },
+            {
+              "action": "move",
+              "x": 646,
+              "y": 12293,
+              "pressure": 0,
+              "touch_major": 83,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8780124
+            },
+            {
+              "action": "move",
+              "x": 603,
+              "y": 12418,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8830118
+            },
+            {
+              "action": "move",
+              "x": 556,
+              "y": 12536,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8870196
+            },
+            {
+              "action": "move",
+              "x": 504,
+              "y": 12657,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.891451
+            },
+            {
+              "action": "move",
+              "x": 459,
+              "y": 12783,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8955224
+            },
+            {
+              "action": "move",
+              "x": 424,
+              "y": 12914,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.8995895
+            },
+            {
+              "action": "move",
+              "x": 383,
+              "y": 13054,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9035966
+            },
+            {
+              "action": "move",
+              "x": 333,
+              "y": 13200,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9074996
+            },
+            {
+              "action": "move",
+              "x": 299,
+              "y": 13351,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9115224
+            },
+            {
+              "action": "move",
+              "x": 256,
+              "y": 13510,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9168065
+            },
+            {
+              "action": "move",
+              "x": 236,
+              "y": 13674,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9196994
+            },
+            {
+              "action": "move",
+              "x": 219,
+              "y": 13839,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9245987
+            },
+            {
+              "action": "move",
+              "x": 210,
+              "y": 14001,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.92862
+            },
+            {
+              "action": "move",
+              "x": 204,
+              "y": 14160,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9337254
+            },
+            {
+              "action": "move",
+              "x": 193,
+              "y": 14308,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9376187
+            },
+            {
+              "action": "move",
+              "x": 182,
+              "y": 14452,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9415343
+            },
+            {
+              "action": "move",
+              "x": 173,
+              "y": 14585,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.945561
+            },
+            {
+              "action": "move",
+              "x": 169,
+              "y": 14715,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.950648
+            },
+            {
+              "action": "move",
+              "x": 175,
+              "y": 14846,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9546897
+            },
+            {
+              "action": "move",
+              "x": 193,
+              "y": 14975,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9586108
+            },
+            {
+              "action": "move",
+              "x": 212,
+              "y": 15100,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.962354
+            },
+            {
+              "action": "move",
+              "x": 212,
+              "y": 15228,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9663858
+            },
+            {
+              "action": "move",
+              "x": 210,
+              "y": 15353,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.971386
+            },
+            {
+              "action": "move",
+              "x": 206,
+              "y": 15474,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9754286
+            },
+            {
+              "action": "move",
+              "x": 210,
+              "y": 15592,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.97865
+            },
+            {
+              "action": "move",
+              "x": 212,
+              "y": 15700,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9845266
+            },
+            {
+              "action": "move",
+              "x": 221,
+              "y": 15805,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9875531
+            },
+            {
+              "action": "move",
+              "x": 245,
+              "y": 15902,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9915457
+            },
+            {
+              "action": "move",
+              "x": 273,
+              "y": 15988,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867198.9956543
+            },
+            {
+              "action": "move",
+              "x": 294,
+              "y": 16078,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.000263
+            },
+            {
+              "action": "move",
+              "x": 303,
+              "y": 16158,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.00337
+            },
+            {
+              "action": "move",
+              "x": 318,
+              "y": 16233,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0082798
+            },
+            {
+              "action": "move",
+              "x": 329,
+              "y": 16300,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0128472
+            },
+            {
+              "action": "move",
+              "x": 338,
+              "y": 16364,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.017512
+            },
+            {
+              "action": "move",
+              "x": 351,
+              "y": 16418,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0207
+            },
+            {
+              "action": "move",
+              "x": 368,
+              "y": 16471,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0256777
+            },
+            {
+              "action": "move",
+              "x": 383,
+              "y": 16512,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0297651
+            },
+            {
+              "action": "move",
+              "x": 394,
+              "y": 16549,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0336652
+            },
+            {
+              "action": "move",
+              "x": 413,
+              "y": 16588,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0386212
+            },
+            {
+              "action": "move",
+              "x": 435,
+              "y": 16631,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0427496
+            },
+            {
+              "action": "move",
+              "x": 452,
+              "y": 16663,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.046723
+            },
+            {
+              "action": "move",
+              "x": 467,
+              "y": 16684,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.050681
+            },
+            {
+              "action": "move",
+              "x": 487,
+              "y": 16699,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0546808
+            },
+            {
+              "action": "move",
+              "x": 521,
+              "y": 16717,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0587866
+            },
+            {
+              "action": "move",
+              "x": 547,
+              "y": 16728,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0648031
+            },
+            {
+              "action": "move",
+              "x": 573,
+              "y": 16736,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0698004
+            },
+            {
+              "action": "move",
+              "x": 597,
+              "y": 16740,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.073805
+            },
+            {
+              "action": "move",
+              "x": 618,
+              "y": 16738,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0776198
+            },
+            {
+              "action": "move",
+              "x": 638,
+              "y": 16730,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0816293
+            },
+            {
+              "action": "move",
+              "x": 659,
+              "y": 16712,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0837276
+            },
+            {
+              "action": "move",
+              "x": 679,
+              "y": 16685,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0906842
+            },
+            {
+              "action": "move",
+              "x": 692,
+              "y": 16661,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0950875
+            },
+            {
+              "action": "move",
+              "x": 711,
+              "y": 16626,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.0981884
+            },
+            {
+              "action": "move",
+              "x": 720,
+              "y": 16579,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1002934
+            },
+            {
+              "action": "move",
+              "x": 729,
+              "y": 16527,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.10528
+            },
+            {
+              "action": "move",
+              "x": 741,
+              "y": 16471,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.111917
+            },
+            {
+              "action": "move",
+              "x": 748,
+              "y": 16413,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1139424
+            },
+            {
+              "action": "move",
+              "x": 752,
+              "y": 16349,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1199512
+            },
+            {
+              "action": "move",
+              "x": 757,
+              "y": 16276,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1239448
+            },
+            {
+              "action": "move",
+              "x": 767,
+              "y": 16183,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1270003
+            },
+            {
+              "action": "move",
+              "x": 759,
+              "y": 16082,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1323469
+            },
+            {
+              "action": "move",
+              "x": 765,
+              "y": 15962,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1371455
+            },
+            {
+              "action": "move",
+              "x": 769,
+              "y": 15824,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1411452
+            },
+            {
+              "action": "move",
+              "x": 770,
+              "y": 15682,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1451526
+            },
+            {
+              "action": "move",
+              "x": 765,
+              "y": 15540,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1472054
+            },
+            {
+              "action": "move",
+              "x": 739,
+              "y": 15392,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1512504
+            },
+            {
+              "action": "move",
+              "x": 718,
+              "y": 15239,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1572814
+            },
+            {
+              "action": "move",
+              "x": 700,
+              "y": 15074,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1613836
+            },
+            {
+              "action": "move",
+              "x": 670,
+              "y": 14899,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.165266
+            },
+            {
+              "action": "move",
+              "x": 655,
+              "y": 14717,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1707442
+            },
+            {
+              "action": "move",
+              "x": 646,
+              "y": 14530,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1727512
+            },
+            {
+              "action": "move",
+              "x": 621,
+              "y": 14334,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.177861
+            },
+            {
+              "action": "move",
+              "x": 603,
+              "y": 14130,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.182746
+            },
+            {
+              "action": "move",
+              "x": 584,
+              "y": 13908,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.186346
+            },
+            {
+              "action": "move",
+              "x": 571,
+              "y": 13687,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1894276
+            },
+            {
+              "action": "move",
+              "x": 562,
+              "y": 13476,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.195366
+            },
+            {
+              "action": "move",
+              "x": 554,
+              "y": 13274,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.1974719
+            },
+            {
+              "action": "move",
+              "x": 551,
+              "y": 13072,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.203795
+            },
+            {
+              "action": "move",
+              "x": 541,
+              "y": 12867,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.20682
+            },
+            {
+              "action": "move",
+              "x": 541,
+              "y": 12671,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2118568
+            },
+            {
+              "action": "move",
+              "x": 551,
+              "y": 12478,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2170112
+            },
+            {
+              "action": "move",
+              "x": 560,
+              "y": 12287,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2205665
+            },
+            {
+              "action": "move",
+              "x": 567,
+              "y": 12089,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2235167
+            },
+            {
+              "action": "move",
+              "x": 582,
+              "y": 11891,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2276113
+            },
+            {
+              "action": "move",
+              "x": 594,
+              "y": 11687,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2305076
+            },
+            {
+              "action": "move",
+              "x": 599,
+              "y": 11487,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.234508
+            },
+            {
+              "action": "move",
+              "x": 620,
+              "y": 11280,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2390237
+            },
+            {
+              "action": "move",
+              "x": 614,
+              "y": 11052,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.243144
+            },
+            {
+              "action": "move",
+              "x": 608,
+              "y": 10814,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2481604
+            },
+            {
+              "action": "move",
+              "x": 629,
+              "y": 10583,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2521617
+            },
+            {
+              "action": "move",
+              "x": 661,
+              "y": 10334,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.256171
+            },
+            {
+              "action": "move",
+              "x": 677,
+              "y": 10076,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2597315
+            },
+            {
+              "action": "move",
+              "x": 687,
+              "y": 9822,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2663484
+            },
+            {
+              "action": "move",
+              "x": 700,
+              "y": 9562,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2715096
+            },
+            {
+              "action": "move",
+              "x": 748,
+              "y": 9297,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2734995
+            },
+            {
+              "action": "move",
+              "x": 767,
+              "y": 9028,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2814574
+            },
+            {
+              "action": "move",
+              "x": 776,
+              "y": 8775,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2824104
+            },
+            {
+              "action": "move",
+              "x": 798,
+              "y": 8532,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2870283
+            },
+            {
+              "action": "move",
+              "x": 811,
+              "y": 8299,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.2910197
+            },
+            {
+              "action": "move",
+              "x": 817,
+              "y": 8078,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.293027
+            },
+            {
+              "action": "move",
+              "x": 845,
+              "y": 7880,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.29916
+            },
+            {
+              "action": "move",
+              "x": 862,
+              "y": 7699,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.303162
+            },
+            {
+              "action": "move",
+              "x": 884,
+              "y": 7542,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3068068
+            },
+            {
+              "action": "move",
+              "x": 897,
+              "y": 7373,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3109722
+            },
+            {
+              "action": "move",
+              "x": 914,
+              "y": 7203,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3141532
+            },
+            {
+              "action": "move",
+              "x": 921,
+              "y": 7011,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3191776
+            },
+            {
+              "action": "move",
+              "x": 955,
+              "y": 6833,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3221524
+            },
+            {
+              "action": "move",
+              "x": 973,
+              "y": 6644,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.327906
+            },
+            {
+              "action": "move",
+              "x": 998,
+              "y": 6437,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.331923
+            },
+            {
+              "action": "move",
+              "x": 1024,
+              "y": 6237,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3349178
+            },
+            {
+              "action": "move",
+              "x": 1063,
+              "y": 6035,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3389637
+            },
+            {
+              "action": "move",
+              "x": 1087,
+              "y": 5828,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.345041
+            },
+            {
+              "action": "move",
+              "x": 1107,
+              "y": 5642,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3501487
+            },
+            {
+              "action": "move",
+              "x": 1128,
+              "y": 5467,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3541856
+            },
+            {
+              "action": "move",
+              "x": 1152,
+              "y": 5291,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3581486
+            },
+            {
+              "action": "move",
+              "x": 1173,
+              "y": 5134,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.360155
+            },
+            {
+              "action": "move",
+              "x": 1184,
+              "y": 4990,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3659744
+            },
+            {
+              "action": "move",
+              "x": 1204,
+              "y": 4859,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3699226
+            },
+            {
+              "action": "move",
+              "x": 1249,
+              "y": 4732,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3739336
+            },
+            {
+              "action": "move",
+              "x": 1271,
+              "y": 4618,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3779237
+            },
+            {
+              "action": "move",
+              "x": 1303,
+              "y": 4506,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3820686
+            },
+            {
+              "action": "move",
+              "x": 1303,
+              "y": 4386,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3860838
+            },
+            {
+              "action": "move",
+              "x": 1310,
+              "y": 4280,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.390081
+            },
+            {
+              "action": "move",
+              "x": 1314,
+              "y": 4171,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3950853
+            },
+            {
+              "action": "move",
+              "x": 1323,
+              "y": 4063,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.3981314
+            },
+            {
+              "action": "move",
+              "x": 1327,
+              "y": 3962,
+              "pressure": 0,
+              "touch_major": 71,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4021447
+            },
+            {
+              "action": "move",
+              "x": 1357,
+              "y": 3856,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4068484
+            },
+            {
+              "action": "move",
+              "x": 1364,
+              "y": 3749,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4106715
+            },
+            {
+              "action": "move",
+              "x": 1370,
+              "y": 3646,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.415227
+            },
+            {
+              "action": "move",
+              "x": 1377,
+              "y": 3553,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4193203
+            },
+            {
+              "action": "move",
+              "x": 1428,
+              "y": 3452,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4242544
+            },
+            {
+              "action": "move",
+              "x": 1430,
+              "y": 3355,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4288802
+            },
+            {
+              "action": "move",
+              "x": 1443,
+              "y": 3261,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.432943
+            },
+            {
+              "action": "move",
+              "x": 1448,
+              "y": 3177,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4350262
+            },
+            {
+              "action": "move",
+              "x": 1471,
+              "y": 3097,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.44002
+            },
+            {
+              "action": "move",
+              "x": 1463,
+              "y": 3026,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4438963
+            },
+            {
+              "action": "move",
+              "x": 1465,
+              "y": 2949,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4501066
+            },
+            {
+              "action": "move",
+              "x": 1472,
+              "y": 2884,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4541101
+            },
+            {
+              "action": "move",
+              "x": 1487,
+              "y": 2816,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4581223
+            },
+            {
+              "action": "move",
+              "x": 1497,
+              "y": 2751,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4611154
+            },
+            {
+              "action": "move",
+              "x": 1517,
+              "y": 2693,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.464302
+            },
+            {
+              "action": "move",
+              "x": 1534,
+              "y": 2603,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4685245
+            },
+            {
+              "action": "move",
+              "x": 1536,
+              "y": 2528,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4750638
+            },
+            {
+              "action": "move",
+              "x": 1545,
+              "y": 2450,
+              "pressure": 0,
+              "touch_major": 76,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4773297
+            },
+            {
+              "action": "move",
+              "x": 1558,
+              "y": 2381,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4834068
+            },
+            {
+              "action": "move",
+              "x": 1567,
+              "y": 2304,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4883468
+            },
+            {
+              "action": "move",
+              "x": 1579,
+              "y": 2235,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4903486
+            },
+            {
+              "action": "move",
+              "x": 1610,
+              "y": 2168,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.4955068
+            },
+            {
+              "action": "move",
+              "x": 1642,
+              "y": 2104,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.500041
+            },
+            {
+              "action": "move",
+              "x": 1672,
+              "y": 2054,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5040417
+            },
+            {
+              "action": "move",
+              "x": 1692,
+              "y": 2007,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5080428
+            },
+            {
+              "action": "move",
+              "x": 1728,
+              "y": 1957,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5110438
+            },
+            {
+              "action": "move",
+              "x": 1767,
+              "y": 1904,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.515109
+            },
+            {
+              "action": "move",
+              "x": 1791,
+              "y": 1865,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5207696
+            },
+            {
+              "action": "move",
+              "x": 1824,
+              "y": 1811,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.525679
+            },
+            {
+              "action": "move",
+              "x": 1873,
+              "y": 1760,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.529681
+            },
+            {
+              "action": "move",
+              "x": 1921,
+              "y": 1714,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5326781
+            },
+            {
+              "action": "move",
+              "x": 1966,
+              "y": 1663,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5359056
+            },
+            {
+              "action": "move",
+              "x": 1999,
+              "y": 1614,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5420399
+            },
+            {
+              "action": "move",
+              "x": 2048,
+              "y": 1564,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5460777
+            },
+            {
+              "action": "move",
+              "x": 2104,
+              "y": 1512,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5489767
+            },
+            {
+              "action": "move",
+              "x": 2156,
+              "y": 1463,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.553979
+            },
+            {
+              "action": "move",
+              "x": 2210,
+              "y": 1420,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.55798
+            },
+            {
+              "action": "move",
+              "x": 2281,
+              "y": 1379,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.562979
+            },
+            {
+              "action": "move",
+              "x": 2327,
+              "y": 1351,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5670824
+            },
+            {
+              "action": "move",
+              "x": 2422,
+              "y": 1304,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5699835
+            },
+            {
+              "action": "move",
+              "x": 2489,
+              "y": 1271,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.574538
+            },
+            {
+              "action": "move",
+              "x": 2560,
+              "y": 1235,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5769463
+            },
+            {
+              "action": "move",
+              "x": 2636,
+              "y": 1196,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5829449
+            },
+            {
+              "action": "move",
+              "x": 2713,
+              "y": 1162,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5859542
+            },
+            {
+              "action": "move",
+              "x": 2780,
+              "y": 1136,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5913093
+            },
+            {
+              "action": "move",
+              "x": 2867,
+              "y": 1115,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5963
+            },
+            {
+              "action": "move",
+              "x": 2938,
+              "y": 1095,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.5982704
+            },
+            {
+              "action": "move",
+              "x": 3035,
+              "y": 1063,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6023722
+            },
+            {
+              "action": "move",
+              "x": 3132,
+              "y": 1031,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6083918
+            },
+            {
+              "action": "move",
+              "x": 3240,
+              "y": 1001,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6112862
+            },
+            {
+              "action": "move",
+              "x": 3370,
+              "y": 968,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6156118
+            },
+            {
+              "action": "move",
+              "x": 3513,
+              "y": 934,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6184754
+            },
+            {
+              "action": "move",
+              "x": 3595,
+              "y": 908,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6234837
+            },
+            {
+              "action": "move",
+              "x": 3735,
+              "y": 871,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6274896
+            },
+            {
+              "action": "move",
+              "x": 3871,
+              "y": 839,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6324933
+            },
+            {
+              "action": "move",
+              "x": 3990,
+              "y": 807,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6374815
+            },
+            {
+              "action": "move",
+              "x": 4105,
+              "y": 781,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6395833
+            },
+            {
+              "action": "move",
+              "x": 4217,
+              "y": 755,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6444852
+            },
+            {
+              "action": "move",
+              "x": 4355,
+              "y": 728,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.648498
+            },
+            {
+              "action": "move",
+              "x": 4495,
+              "y": 712,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6534946
+            },
+            {
+              "action": "move",
+              "x": 4673,
+              "y": 689,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.65458
+            },
+            {
+              "action": "move",
+              "x": 4807,
+              "y": 671,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.65458
+            },
+            {
+              "action": "move",
+              "x": 4943,
+              "y": 650,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6651332
+            },
+            {
+              "action": "move",
+              "x": 5074,
+              "y": 633,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6651332
+            },
+            {
+              "action": "move",
+              "x": 5172,
+              "y": 620,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6651332
+            },
+            {
+              "action": "move",
+              "x": 5312,
+              "y": 614,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.678913
+            },
+            {
+              "action": "move",
+              "x": 5478,
+              "y": 598,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.678913
+            },
+            {
+              "action": "move",
+              "x": 5634,
+              "y": 583,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.678913
+            },
+            {
+              "action": "move",
+              "x": 5802,
+              "y": 573,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.678913
+            },
+            {
+              "action": "move",
+              "x": 5945,
+              "y": 571,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6940367
+            },
+            {
+              "action": "move",
+              "x": 6085,
+              "y": 583,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6940367
+            },
+            {
+              "action": "move",
+              "x": 6260,
+              "y": 590,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6940367
+            },
+            {
+              "action": "move",
+              "x": 6411,
+              "y": 605,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.6940367
+            },
+            {
+              "action": "move",
+              "x": 6541,
+              "y": 614,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7107584
+            },
+            {
+              "action": "move",
+              "x": 6703,
+              "y": 620,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.713562
+            },
+            {
+              "action": "move",
+              "x": 6858,
+              "y": 633,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.713562
+            },
+            {
+              "action": "move",
+              "x": 6992,
+              "y": 639,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.713562
+            },
+            {
+              "action": "move",
+              "x": 7090,
+              "y": 642,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7262113
+            },
+            {
+              "action": "move",
+              "x": 7208,
+              "y": 644,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7319584
+            },
+            {
+              "action": "move",
+              "x": 7304,
+              "y": 659,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.736173
+            },
+            {
+              "action": "move",
+              "x": 7386,
+              "y": 656,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.736173
+            },
+            {
+              "action": "move",
+              "x": 7470,
+              "y": 669,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.745791
+            },
+            {
+              "action": "move",
+              "x": 7558,
+              "y": 685,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.745791
+            },
+            {
+              "action": "move",
+              "x": 7656,
+              "y": 695,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.745791
+            },
+            {
+              "action": "move",
+              "x": 7740,
+              "y": 706,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7581
+            },
+            {
+              "action": "move",
+              "x": 7850,
+              "y": 736,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7587862
+            },
+            {
+              "action": "move",
+              "x": 8003,
+              "y": 775,
+              "pressure": 0,
+              "touch_major": 79,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7587862
+            },
+            {
+              "action": "move",
+              "x": 8137,
+              "y": 829,
+              "pressure": 0,
+              "touch_major": 75,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7587862
+            },
+            {
+              "action": "move",
+              "x": 8371,
+              "y": 872,
+              "pressure": 0,
+              "touch_major": 73,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.772903
+            },
+            {
+              "action": "move",
+              "x": 8651,
+              "y": 915,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.772903
+            },
+            {
+              "action": "move",
+              "x": 8928,
+              "y": 943,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.784755
+            },
+            {
+              "action": "move",
+              "x": 9152,
+              "y": 958,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7872589
+            },
+            {
+              "action": "move",
+              "x": 9355,
+              "y": 975,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7872589
+            },
+            {
+              "action": "move",
+              "x": 9520,
+              "y": 983,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7872589
+            },
+            {
+              "action": "move",
+              "x": 9652,
+              "y": 970,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7990391
+            },
+            {
+              "action": "move",
+              "x": 9744,
+              "y": 958,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7990391
+            },
+            {
+              "action": "move",
+              "x": 9842,
+              "y": 953,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.7990391
+            },
+            {
+              "action": "move",
+              "x": 9954,
+              "y": 942,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8116643
+            },
+            {
+              "action": "move",
+              "x": 10066,
+              "y": 938,
+              "pressure": 0,
+              "touch_major": 74,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8138103
+            },
+            {
+              "action": "move",
+              "x": 10170,
+              "y": 927,
+              "pressure": 0,
+              "touch_major": 77,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8138103
+            },
+            {
+              "action": "move",
+              "x": 10289,
+              "y": 915,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8259325
+            },
+            {
+              "action": "move",
+              "x": 10420,
+              "y": 906,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.828986
+            },
+            {
+              "action": "move",
+              "x": 10548,
+              "y": 899,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.828986
+            },
+            {
+              "action": "move",
+              "x": 10705,
+              "y": 908,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8391428
+            },
+            {
+              "action": "move",
+              "x": 10880,
+              "y": 915,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8418362
+            },
+            {
+              "action": "move",
+              "x": 11068,
+              "y": 919,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.845825
+            },
+            {
+              "action": "move",
+              "x": 11293,
+              "y": 923,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.849821
+            },
+            {
+              "action": "move",
+              "x": 11490,
+              "y": 932,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8538163
+            },
+            {
+              "action": "move",
+              "x": 11686,
+              "y": 938,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8578162
+            },
+            {
+              "action": "move",
+              "x": 11863,
+              "y": 942,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8608708
+            },
+            {
+              "action": "move",
+              "x": 12051,
+              "y": 943,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8668702
+            },
+            {
+              "action": "move",
+              "x": 12213,
+              "y": 960,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8703265
+            },
+            {
+              "action": "move",
+              "x": 12388,
+              "y": 970,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8781354
+            },
+            {
+              "action": "move",
+              "x": 12531,
+              "y": 975,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8781354
+            },
+            {
+              "action": "move",
+              "x": 12669,
+              "y": 992,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8781354
+            },
+            {
+              "action": "move",
+              "x": 12811,
+              "y": 1003,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8781354
+            },
+            {
+              "action": "move",
+              "x": 12952,
+              "y": 1009,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.8781354
+            },
+            {
+              "action": "move",
+              "x": 13086,
+              "y": 1020,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.891308
+            },
+            {
+              "action": "move",
+              "x": 13218,
+              "y": 1041,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.891308
+            },
+            {
+              "action": "move",
+              "x": 13317,
+              "y": 1052,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.904899
+            },
+            {
+              "action": "move",
+              "x": 13431,
+              "y": 1091,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.905658
+            },
+            {
+              "action": "move",
+              "x": 13539,
+              "y": 1114,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.905658
+            },
+            {
+              "action": "move",
+              "x": 13637,
+              "y": 1138,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9141195
+            },
+            {
+              "action": "move",
+              "x": 13721,
+              "y": 1177,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9200597
+            },
+            {
+              "action": "move",
+              "x": 13801,
+              "y": 1228,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9200597
+            },
+            {
+              "action": "move",
+              "x": 13879,
+              "y": 1293,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9200597
+            },
+            {
+              "action": "move",
+              "x": 13941,
+              "y": 1360,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9326065
+            },
+            {
+              "action": "move",
+              "x": 14004,
+              "y": 1433,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9326065
+            },
+            {
+              "action": "move",
+              "x": 14060,
+              "y": 1527,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9326065
+            },
+            {
+              "action": "move",
+              "x": 14136,
+              "y": 1639,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.946119
+            },
+            {
+              "action": "move",
+              "x": 14200,
+              "y": 1760,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.946119
+            },
+            {
+              "action": "move",
+              "x": 14228,
+              "y": 1863,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.946119
+            },
+            {
+              "action": "move",
+              "x": 14285,
+              "y": 1981,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.959334
+            },
+            {
+              "action": "move",
+              "x": 14349,
+              "y": 2097,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.959334
+            },
+            {
+              "action": "move",
+              "x": 14378,
+              "y": 2207,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.959334
+            },
+            {
+              "action": "move",
+              "x": 14429,
+              "y": 2321,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.972412
+            },
+            {
+              "action": "move",
+              "x": 14486,
+              "y": 2448,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9800289
+            },
+            {
+              "action": "move",
+              "x": 14542,
+              "y": 2571,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9800289
+            },
+            {
+              "action": "move",
+              "x": 14596,
+              "y": 2695,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9851725
+            },
+            {
+              "action": "move",
+              "x": 14656,
+              "y": 2800,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.988231
+            },
+            {
+              "action": "move",
+              "x": 14710,
+              "y": 2904,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.991169
+            },
+            {
+              "action": "move",
+              "x": 14758,
+              "y": 3005,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867199.9954827
+            },
+            {
+              "action": "move",
+              "x": 14825,
+              "y": 3115,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0005877
+            },
+            {
+              "action": "move",
+              "x": 14883,
+              "y": 3241,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.003583
+            },
+            {
+              "action": "move",
+              "x": 14941,
+              "y": 3358,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0096815
+            },
+            {
+              "action": "move",
+              "x": 14989,
+              "y": 3489,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0141106
+            },
+            {
+              "action": "move",
+              "x": 15039,
+              "y": 3633,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0141106
+            },
+            {
+              "action": "move",
+              "x": 15082,
+              "y": 3773,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0141106
+            },
+            {
+              "action": "move",
+              "x": 15127,
+              "y": 3917,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0249987
+            },
+            {
+              "action": "move",
+              "x": 15160,
+              "y": 4069,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0288987
+            },
+            {
+              "action": "move",
+              "x": 15190,
+              "y": 4216,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0288987
+            },
+            {
+              "action": "move",
+              "x": 15201,
+              "y": 4362,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0385118
+            },
+            {
+              "action": "move",
+              "x": 15248,
+              "y": 4514,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0396335
+            },
+            {
+              "action": "move",
+              "x": 15272,
+              "y": 4644,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0396335
+            },
+            {
+              "action": "move",
+              "x": 15296,
+              "y": 4766,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0523584
+            },
+            {
+              "action": "move",
+              "x": 15330,
+              "y": 4882,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0539412
+            },
+            {
+              "action": "move",
+              "x": 15360,
+              "y": 4986,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0539412
+            },
+            {
+              "action": "move",
+              "x": 15373,
+              "y": 5087,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0539412
+            },
+            {
+              "action": "move",
+              "x": 15416,
+              "y": 5201,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0659447
+            },
+            {
+              "action": "move",
+              "x": 15447,
+              "y": 5323,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0659447
+            },
+            {
+              "action": "move",
+              "x": 15488,
+              "y": 5446,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0659447
+            },
+            {
+              "action": "move",
+              "x": 15522,
+              "y": 5568,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.079361
+            },
+            {
+              "action": "move",
+              "x": 15552,
+              "y": 5691,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.086161
+            },
+            {
+              "action": "move",
+              "x": 15563,
+              "y": 5813,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0902388
+            },
+            {
+              "action": "move",
+              "x": 15578,
+              "y": 5932,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0921583
+            },
+            {
+              "action": "move",
+              "x": 15589,
+              "y": 6067,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0921583
+            },
+            {
+              "action": "move",
+              "x": 15607,
+              "y": 6214,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.0921583
+            },
+            {
+              "action": "move",
+              "x": 15617,
+              "y": 6383,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.105233
+            },
+            {
+              "action": "move",
+              "x": 15620,
+              "y": 6549,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1063266
+            },
+            {
+              "action": "move",
+              "x": 15632,
+              "y": 6721,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1063266
+            },
+            {
+              "action": "move",
+              "x": 15652,
+              "y": 6902,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1141863
+            },
+            {
+              "action": "move",
+              "x": 15682,
+              "y": 7108,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.119299
+            },
+            {
+              "action": "move",
+              "x": 15700,
+              "y": 7327,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.119299
+            },
+            {
+              "action": "move",
+              "x": 15710,
+              "y": 7542,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1315324
+            },
+            {
+              "action": "move",
+              "x": 15725,
+              "y": 7751,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1335685
+            },
+            {
+              "action": "move",
+              "x": 15743,
+              "y": 7960,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.13452
+            },
+            {
+              "action": "move",
+              "x": 15764,
+              "y": 8183,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.13452
+            },
+            {
+              "action": "move",
+              "x": 15777,
+              "y": 8396,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1462932
+            },
+            {
+              "action": "move",
+              "x": 15803,
+              "y": 8594,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1462932
+            },
+            {
+              "action": "move",
+              "x": 15818,
+              "y": 8786,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1462932
+            },
+            {
+              "action": "move",
+              "x": 15842,
+              "y": 8973,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1593041
+            },
+            {
+              "action": "move",
+              "x": 15870,
+              "y": 9158,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1649907
+            },
+            {
+              "action": "move",
+              "x": 15898,
+              "y": 9334,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.167935
+            },
+            {
+              "action": "move",
+              "x": 15926,
+              "y": 9500,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1729279
+            },
+            {
+              "action": "move",
+              "x": 15952,
+              "y": 9661,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1759813
+            },
+            {
+              "action": "move",
+              "x": 15967,
+              "y": 9835,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1822467
+            },
+            {
+              "action": "move",
+              "x": 15995,
+              "y": 10014,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.184301
+            },
+            {
+              "action": "move",
+              "x": 16017,
+              "y": 10194,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.188261
+            },
+            {
+              "action": "move",
+              "x": 16041,
+              "y": 10371,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.1912653
+            },
+            {
+              "action": "move",
+              "x": 16058,
+              "y": 10549,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.196273
+            },
+            {
+              "action": "move",
+              "x": 16069,
+              "y": 10719,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2002985
+            },
+            {
+              "action": "move",
+              "x": 16080,
+              "y": 10884,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2045095
+            },
+            {
+              "action": "move",
+              "x": 16084,
+              "y": 11035,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2085092
+            },
+            {
+              "action": "move",
+              "x": 16084,
+              "y": 11192,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2125185
+            },
+            {
+              "action": "move",
+              "x": 16075,
+              "y": 11338,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2168808
+            },
+            {
+              "action": "move",
+              "x": 16067,
+              "y": 11487,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.221839
+            },
+            {
+              "action": "move",
+              "x": 16062,
+              "y": 11624,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2257333
+            },
+            {
+              "action": "move",
+              "x": 16058,
+              "y": 11770,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2297356
+            },
+            {
+              "action": "move",
+              "x": 16054,
+              "y": 11912,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2338068
+            },
+            {
+              "action": "move",
+              "x": 16052,
+              "y": 12067,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2387595
+            },
+            {
+              "action": "move",
+              "x": 16051,
+              "y": 12213,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2428637
+            },
+            {
+              "action": "move",
+              "x": 16049,
+              "y": 12355,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2463746
+            },
+            {
+              "action": "move",
+              "x": 16049,
+              "y": 12495,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2514236
+            },
+            {
+              "action": "move",
+              "x": 16047,
+              "y": 12631,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2554176
+            },
+            {
+              "action": "move",
+              "x": 16039,
+              "y": 12751,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.259423
+            },
+            {
+              "action": "move",
+              "x": 16034,
+              "y": 12867,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2634134
+            },
+            {
+              "action": "move",
+              "x": 16013,
+              "y": 12994,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.26704
+            },
+            {
+              "action": "move",
+              "x": 16000,
+              "y": 13114,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.271444
+            },
+            {
+              "action": "move",
+              "x": 15993,
+              "y": 13229,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2754617
+            },
+            {
+              "action": "move",
+              "x": 15989,
+              "y": 13345,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2795234
+            },
+            {
+              "action": "move",
+              "x": 15978,
+              "y": 13467,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2834663
+            },
+            {
+              "action": "move",
+              "x": 15970,
+              "y": 13585,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2881076
+            },
+            {
+              "action": "move",
+              "x": 15961,
+              "y": 13712,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2921288
+            },
+            {
+              "action": "move",
+              "x": 15954,
+              "y": 13844,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.2972472
+            },
+            {
+              "action": "move",
+              "x": 15944,
+              "y": 13992,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3012576
+            },
+            {
+              "action": "move",
+              "x": 15926,
+              "y": 14158,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3052588
+            },
+            {
+              "action": "move",
+              "x": 15913,
+              "y": 14330,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.309108
+            },
+            {
+              "action": "move",
+              "x": 15903,
+              "y": 14534,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3130465
+            },
+            {
+              "action": "move",
+              "x": 15900,
+              "y": 14757,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3196576
+            },
+            {
+              "action": "move",
+              "x": 15898,
+              "y": 14992,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3236573
+            },
+            {
+              "action": "move",
+              "x": 15879,
+              "y": 15213,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3256507
+            },
+            {
+              "action": "move",
+              "x": 15857,
+              "y": 15441,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.332208
+            },
+            {
+              "action": "move",
+              "x": 15853,
+              "y": 15680,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3343136
+            },
+            {
+              "action": "move",
+              "x": 15846,
+              "y": 15927,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.340389
+            },
+            {
+              "action": "move",
+              "x": 15836,
+              "y": 16166,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3423352
+            },
+            {
+              "action": "move",
+              "x": 15822,
+              "y": 16403,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3483338
+            },
+            {
+              "action": "move",
+              "x": 15820,
+              "y": 16639,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3536751
+            },
+            {
+              "action": "move",
+              "x": 15814,
+              "y": 16874,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3567376
+            },
+            {
+              "action": "move",
+              "x": 15808,
+              "y": 17095,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3617141
+            },
+            {
+              "action": "move",
+              "x": 15807,
+              "y": 17332,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3656745
+            },
+            {
+              "action": "move",
+              "x": 15799,
+              "y": 17577,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3687217
+            },
+            {
+              "action": "move",
+              "x": 15795,
+              "y": 17813,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3727355
+            },
+            {
+              "action": "move",
+              "x": 15786,
+              "y": 18033,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3767395
+            },
+            {
+              "action": "move",
+              "x": 15769,
+              "y": 18259,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3807695
+            },
+            {
+              "action": "move",
+              "x": 15758,
+              "y": 18472,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.383787
+            },
+            {
+              "action": "move",
+              "x": 15753,
+              "y": 18684,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.3893547
+            },
+            {
+              "action": "move",
+              "x": 15719,
+              "y": 18880,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.392357
+            },
+            {
+              "action": "move",
+              "x": 15682,
+              "y": 19065,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.396673
+            },
+            {
+              "action": "move",
+              "x": 15654,
+              "y": 19252,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4017742
+            },
+            {
+              "action": "move",
+              "x": 15604,
+              "y": 19418,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.405543
+            },
+            {
+              "action": "move",
+              "x": 15574,
+              "y": 19571,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4096334
+            },
+            {
+              "action": "move",
+              "x": 15509,
+              "y": 19732,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4145534
+            },
+            {
+              "action": "move",
+              "x": 15460,
+              "y": 19854,
+              "pressure": 0,
+              "touch_major": 82,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4185998
+            },
+            {
+              "action": "move",
+              "x": 15406,
+              "y": 19973,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.424341
+            },
+            {
+              "action": "move",
+              "x": 15352,
+              "y": 20084,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.429354
+            },
+            {
+              "action": "move",
+              "x": 15261,
+              "y": 20209,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.431343
+            },
+            {
+              "action": "move",
+              "x": 15214,
+              "y": 20340,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4343448
+            },
+            {
+              "action": "move",
+              "x": 15164,
+              "y": 20465,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4383504
+            },
+            {
+              "action": "move",
+              "x": 15120,
+              "y": 20590,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4445455
+            },
+            {
+              "action": "move",
+              "x": 15082,
+              "y": 20700,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4496136
+            },
+            {
+              "action": "move",
+              "x": 15032,
+              "y": 20814,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4515758
+            },
+            {
+              "action": "move",
+              "x": 14997,
+              "y": 20934,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4556181
+            },
+            {
+              "action": "move",
+              "x": 14961,
+              "y": 21059,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.459561
+            },
+            {
+              "action": "move",
+              "x": 14915,
+              "y": 21192,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.463371
+            },
+            {
+              "action": "move",
+              "x": 14896,
+              "y": 21327,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4694514
+            },
+            {
+              "action": "move",
+              "x": 14907,
+              "y": 21461,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4734464
+            },
+            {
+              "action": "move",
+              "x": 14904,
+              "y": 21600,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4774506
+            },
+            {
+              "action": "move",
+              "x": 14877,
+              "y": 21740,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4804497
+            },
+            {
+              "action": "move",
+              "x": 14848,
+              "y": 21887,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.484711
+            },
+            {
+              "action": "move",
+              "x": 14840,
+              "y": 22042,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4897308
+            },
+            {
+              "action": "move",
+              "x": 14853,
+              "y": 22220,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4937558
+            },
+            {
+              "action": "move",
+              "x": 14889,
+              "y": 22400,
+              "pressure": 0,
+              "touch_major": 81,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.4967728
+            },
+            {
+              "action": "move",
+              "x": 14872,
+              "y": 22603,
+              "pressure": 0,
+              "touch_major": 80,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.502833
+            },
+            {
+              "action": "move",
+              "x": 14861,
+              "y": 22833,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": 2830,
+              "timestamp": 1776867200.5058355
+            },
+            {
+              "action": "up",
+              "x": 14861,
+              "y": 22833,
+              "pressure": 0,
+              "touch_major": 72,
+              "touch_minor": 0,
+              "tracking_id": -1,
+              "timestamp": 1776867200.509631
+            }
+          ]
+        }
+      },
+      "error": null,
+      "duration_s": 9.252
+    }
+  ]
+}

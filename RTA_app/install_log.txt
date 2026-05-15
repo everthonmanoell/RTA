@@ -1,0 +1,271 @@
+--------- beginning of main
+05-06 12:54:48.553 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): unbindService is called for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiService and for client com.google.android.gms.persistent
+05-06 12:54:48.712 I/MiuiNetworkPolicy( 1861): updateUidState uid = 1000, uidState = 0
+05-06 12:54:49.161 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9696797098
+05-06 12:54:49.231 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): unbindService is called for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiService and for client com.google.android.apps.subscriptions.red
+05-06 12:54:49.231 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of service connections for service: com.google.android.gms/.chimera.PersistentDirectBootAwareApiServiceafter removal is 20
+05-06 12:54:49.231 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of client connections for client: com.google.android.apps.subscriptions.redafter removal is 1
+05-06 12:54:50.654 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+05-06 12:54:50.655 D/vendor.qti.bluetooth@1.0-ibs_handler( 1020): SerialClockVote: vote for UART CLK ON
+05-06 12:54:50.655 D/vendor.qti.bluetooth@1.0-wake_lock( 1020): Acquire wakelock is acquired 
+05-06 12:54:50.655 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Writing IBS_WAKE_ACK
+05-06 12:54:50.696 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+05-06 12:54:50.696 D/vendor.qti.bluetooth@1.0-ibs_handler( 1020): SerialClockVote: vote for UART CLK OFF
+05-06 12:54:50.847 D/vendor.qti.bluetooth@1.0-wake_lock( 1020): Release wakelock is released 
+05-06 12:54:51.109 I/NearbyMediums( 3161): No BLE Fast/GATT advertisements found in the latest cycle.
+05-06 12:54:51.109 I/NearbyMediums( 3161): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+05-06 12:54:51.162 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9735197091
+05-06 12:54:51.690 I/.gms.persisten( 3161): Explicit concurrent copying GC freed 19MB AllocSpace bytes, 51(1568KB) LOS objects, 49% free, 21MB/43MB, paused 128us,42us total 127.487ms
+05-06 12:54:51.930 D/FiveGDataOptimize( 3061): TxRx: 0, Tx: 0, Rx: 0, Hit: 0
+05-06 12:54:53.024 D/UCDetectService_8150( 3061): action is android.intent.action.BATTERY_CHANGED
+05-06 12:54:53.024 D/UCDetectService_8150( 3061): onEventReceive6 : USB plug = 2
+05-06 12:54:53.025 D/DynamicService( 3061):  ACTION_BATTERY_CHANGED change,USB plug = 2
+05-06 12:54:53.026 D/QtiCarrierConfigHelper( 2987): WARNING, no carrier configs on phone Id: 0
+05-06 12:54:53.028 D/PowerCheckerService( 5235): onBatteryChanged, mBatteryLevel = 56, status = 2, level = 56, plug = 2, scale = 100
+05-06 12:54:53.029 I/PowerUtils(17535): getSurfaceTemprature temp: 34
+05-06 12:54:53.029 V/DeviceStatisticsService( 3027): chargerType=2 batteryLevel=56 totalBatteryCapacity=5097700
+05-06 12:54:53.030 I/PowerSaveService(17535): onReceive: android.intent.action.BATTERY_CHANGED
+05-06 12:54:53.030 I/PowerNoticeUI(17535): handleBatteryChanged oldPlugType 2 mPlugType 2 oldBatteryLevel 56 mBatteryLevel 56 temperature 295
+05-06 12:54:53.030 I/ChargerBatteryIntelligenceReceiver(17535): onBatteryChanged temperature：29,plugType:2
+05-06 12:54:53.031 D/PowerKeeper.Thermal( 5235): mBatteryTemperature: 29
+05-06 12:54:53.161 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9773596844
+05-06 12:54:54.325 I/BtGatt.ScanManager( 2801): msg.what = 3
+05-06 12:54:54.325 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - queue=4
+05-06 12:54:54.325 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - ScanSetting LE 1M Scan mode=3ScanSetting LE Coded Scan mode=3 mLastConfiguredScanSettingLE1M=3 mLastConfiguredScanSettingLECoded=3scanPhy=255
+05-06 12:54:54.399 D/MiuiFastConnectService( 3679): stopBleScan: scanning: true
+05-06 12:54:54.400 D/BluetoothAdapter( 3679): isLeEnabled(): ON
+05-06 12:54:54.404 D/BtGatt.GattService( 2801): stopScan() - queue size =4
+05-06 12:54:54.407 I/BtGatt.ScanManager( 2801): msg.what = 1
+05-06 12:54:54.407 D/BtGatt.ScanManager( 2801): trackLeScan() called with: scannerId = [5], behavior = [2]
+05-06 12:54:54.408 D/vendor.qti.bluetooth@1.0-ibs_handler( 1020): SerialClockVote: vote for UART CLK ON
+05-06 12:54:54.409 D/BtGatt.GattService( 2801): unregisterScanner() - scannerId=5
+05-06 12:54:54.409 D/vendor.qti.bluetooth@1.0-wake_lock( 1020): Acquire wakelock is acquired 
+05-06 12:54:54.409 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): DeviceWakeUp: Writing IBS_WAKE_IND
+05-06 12:54:54.409 V/bt_stack( 2801): [VERBOSE1:gatt_api.cc(1276)] GATT_Deregister gatt_if=5
+05-06 12:54:54.410 V/bt_stack( 2801): [VERBOSE1:connection_manager.cc(161)] on_app_deregistered : app_id 0x05
+05-06 12:54:54.412 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_WAKE_ACK: 0xFC
+05-06 12:54:54.413 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+05-06 12:54:54.413 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Writing IBS_WAKE_ACK
+05-06 12:54:54.413 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=7
+05-06 12:54:54.413 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.414 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=8
+05-06 12:54:54.414 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.415 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=9
+05-06 12:54:54.415 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.416 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=10
+05-06 12:54:54.416 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.417 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=11
+05-06 12:54:54.417 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.418 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=1, availableSpace=12
+05-06 12:54:54.418 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.418 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - queue=3
+05-06 12:54:54.418 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - ScanSetting LE 1M Scan mode=3ScanSetting LE Coded Scan mode=3 mLastConfiguredScanSettingLE1M=3 mLastConfiguredScanSettingLECoded=3scanPhy=255
+05-06 12:54:54.419 D/BtGatt.ScanManager( 2801): configureRegularScanParams - scanInterval LE 1M = 660configureRegularScanParams - scanWindow LE 1M= 66configureRegularScanParams - scanInterval LE Coded= 660configureRegularScanParams - scanWindow LE Coded= 66
+05-06 12:54:54.420 D/BtGatt.GattService( 2801): onScanParamSetupCompleted : 0
+05-06 12:54:54.450 D/MiuiFastConnectService( 3679): handleMessage: MSG_START_BLE_SCAN
+05-06 12:54:54.450 D/BluetoothAdapter( 3679): isLeEnabled(): ON
+05-06 12:54:54.451 D/BluetoothLeImp( 3679): isRoutingAllowedForScanStub
+05-06 12:54:54.454 D/BtGatt.GattService( 2801): registerScanner() - UUID=24c24ff6-6cc7-4129-a435-535e78b7f241
+05-06 12:54:54.455 V/bt_stack( 2801): [VERBOSE1:bta_gattc_act.cc(210)] bta_gattc_register: state:2
+05-06 12:54:54.455 I/bt_stack( 2801): [INFO:gatt_api.cc(1229)] GATT_Register ac306c4f-c3c2-3cca-0b89-8fe3615c2e40
+05-06 12:54:54.455 I/bt_stack( 2801): [INFO:gatt_api.cc(1250)] allocated gatt_if=5
+05-06 12:54:54.455 V/bt_stack( 2801): [VERBOSE1:gatt_api.cc(1375)] GATT_StartIf gatt_if=5
+05-06 12:54:54.455 V/bt_stack( 2801): [VERBOSE1:gatt_utils.cc(289)] gatt_find_the_connected_bda start_idx=0
+05-06 12:54:54.455 V/bt_stack( 2801): [VERBOSE1:gatt_utils.cc(301)]  found=0 found_idx=10
+05-06 12:54:54.455 D/BtGatt.GattService( 2801): onScannerRegistered() - UUID=24c24ff6-6cc7-4129-a435-535e78b7f241, scannerId=5, status=0
+05-06 12:54:54.456 D/BluetoothLeScanner( 3679): onScannerRegistered() - status=0 scannerId=5 mScannerId=0
+05-06 12:54:54.459 D/BtGatt.GattService( 2801): start scan with filters. callingPackage: com.xiaomi.bluetooth
+05-06 12:54:54.463 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+05-06 12:54:54.465 E/BtGatt.GattService( 2801):  [Landroid.content.pm.ServiceInfo;@8f364cc
+05-06 12:54:54.465 D/BtGatt.GattService( 2801): enforcePrivilegedPermissionIfNeeded([BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=null, mServiceData=null, mServiceDataMask=null, mManufacturerId=911, mManufacturerData=[], mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false, BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=null, mServiceData=null, mServiceDataMask=null, mManufacturerId=65535, mManufacturerData=[77], mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false, BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=0000fe95-0000-1000-8000-00805f9b34fb, mServiceData=[], mServiceDataMask=null, mManufacturerId=-1, mManufacturerData=null, mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false, BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=0000fdaa-0000-1000-8000-00805f9b34fb, mServiceData=[], mServiceDataMask=null, mManufacturerId=-1, mManufacturerData=null, mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false, BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=0000fdee-0000-1000-8000-00805f9b34fb, mServiceData=[1, 1, 1], mServiceDataMask=null, mManufacturerId=-1, mManufacturerData=null, mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false, BluetoothLeScanFilter [mDeviceName=null, mDeviceAddress=null, mUuid=null, mUuidMask=null, mServiceSolicitationUuid=null, mServiceSolicitationUuidMask=null, mServiceDataUuid=0000fd2d-0000-1000-8000-00805f9b34fb, mServiceData=[], mServiceDataMask=null, mManufacturerId=-1, mManufacturerData=null, mManufacturerDataMask=null, mOrganizationId=-1, mTDSFlags=-1, mTDSFlagsMask=-1, mWifiNANHash=null], mGroupBasedFiltering=false])
+05-06 12:54:54.466 W/BluetoothUtils( 2801): callingUid is Process.BLUETOOTH_UID
+05-06 12:54:54.469 I/BtGatt.ScanManager( 2801): msg.what = 0
+05-06 12:54:54.469 D/BtGatt.ScanManager( 2801): handling starting scan
+05-06 12:54:54.469 D/BtGatt.ScanManager( 2801): isAptXLowLatencyModeEnabled: false
+05-06 12:54:54.469 D/BtGatt.ScanManager( 2801): trackLeScan() called with: scannerId = [5], behavior = [1]
+05-06 12:54:54.471 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_WAKE_IND: 0xFD
+05-06 12:54:54.471 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Writing IBS_WAKE_ACK
+05-06 12:54:54.471 D/BtGatt.GattService( 2801): onScanFilterEnableDisabled() - clientIf=5, status=0, action=1
+05-06 12:54:54.471 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.471 D/BtGatt.ScanManager( 2801): Available Filter size: 9
+05-06 12:54:54.472 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.472 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.472 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.474 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=11
+05-06 12:54:54.474 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.474 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.474 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.474 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.476 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=10
+05-06 12:54:54.476 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.476 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.476 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.477 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.478 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=9
+05-06 12:54:54.478 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.478 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.478 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.478 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.480 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=8
+05-06 12:54:54.480 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.480 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.480 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.480 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.482 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=7
+05-06 12:54:54.482 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.482 D/BtGatt.GattService( 2801): onScanFilterConfig() - clientIf=5, action = 0 status = 0, filterType=0, availableSpace=0
+05-06 12:54:54.482 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.482 D/BtGatt.ScanManager( 2801): configureFilterParamter 500 10000 1 0, deliveryMode=0
+05-06 12:54:54.483 D/BtGatt.GattService( 2801): onScanFilterParamsConfigured() - clientIf=5, status=0, action=0, availableSpace=6
+05-06 12:54:54.483 D/BtGatt.ScanManager( 2801): callback done for scannerId - 5 status - 0
+05-06 12:54:54.484 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - queue=4
+05-06 12:54:54.484 D/BtGatt.ScanManager( 2801): configureRegularScanParams() - ScanSetting LE 1M Scan mode=3ScanSetting LE Coded Scan mode=3 mLastConfiguredScanSettingLE1M=3 mLastConfiguredScanSettingLECoded=3scanPhy=255
+05-06 12:54:54.484 D/BtGatt.ScanManager( 2801): configureRegularScanParams - scanInterval LE 1M = 660configureRegularScanParams - scanWindow LE 1M= 66configureRegularScanParams - scanInterval LE Coded= 660configureRegularScanParams - scanWindow LE Coded= 66
+05-06 12:54:54.485 D/BtGatt.GattService( 2801): onScanParamSetupCompleted : 0
+05-06 12:54:54.531 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): ProcessIbsCmd: Received IBS_SLEEP_IND: 0xFE
+05-06 12:54:55.162 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9811997067
+05-06 12:54:55.491 I/vendor.qti.bluetooth@1.0-ibs_handler( 1020): DeviceSleep: TX Awake, Sending SLEEP_IND
+05-06 12:54:55.491 D/vendor.qti.bluetooth@1.0-ibs_handler( 1020): SerialClockVote: vote for UART CLK OFF
+05-06 12:54:55.641 D/vendor.qti.bluetooth@1.0-wake_lock( 1020): Release wakelock is released 
+05-06 12:54:56.873 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): bindService is called for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiService and for client com.google.android.apps.maps
+05-06 12:54:56.873 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiServiceare :21
+05-06 12:54:56.873 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for client : com.google.android.apps.mapsare :3
+--------- beginning of system
+05-06 12:54:56.875 W/ProcessStats( 1861): Tracking association SourceState{7d99fb1 com.miui.analytics/10150 BTopFgs #18531} whose proc state 2 is better than process ProcessState{a371c96 com.miui.securitycenter.remote/1000 pkg=com.miui.securitycenter (sub)} proc state 3 (11 skipped)
+05-06 12:54:56.937 D/FiveGDataOptimize( 3061): TxRx: 0, Tx: 0, Rx: 0, Hit: 0
+05-06 12:54:57.052 W/ThreadPoolForeg( 3161): type=1400 audit(0.0:1277): avc: denied { write } for name="traced_producer" dev="tmpfs" ino=27575 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 app=com.google.android.gms
+05-06 12:54:57.161 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9850396971
+05-06 12:54:59.161 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9888797001
+05-06 12:55:00.006 D/KeyguardUpdateMonitor( 3068): received broadcast android.intent.action.TIME_TICK
+05-06 12:55:00.037 I/SDM     ( 1058): StrategyImpl::SetIdleTimeoutMs: Idle timeout: active = 70, inactive = 520
+05-06 12:55:00.038 I/OpenGLRenderer( 3103): Davey! duration=9223371525586ms; Flags=0, FrameTimelineVsyncId=53268, IntendedVsync=511268321169, Vsync=511268321169, InputEventId=0, HandleInputStart=511268817043, AnimationStart=511268819595, PerformTraversalsStart=511268821053, DrawStart=511270396366, FrameDeadline=511292321168, FrameInterval=511268777147, FrameStartTime=8333333, SyncQueued=511272004178, SyncStart=511272276106, IssueDrawCommandsStart=511273271053, SwapBuffers=511276212668, FrameCompleted=9223372036854775807, DequeueBufferDuration=44323, QueueBufferDuration=981875, GpuCompleted=9223372036854775807, SwapBuffersCompleted=511278120428, DisplayPresentTime=4435786157359898880, 
+05-06 12:55:00.041 D/KeyguardUpdateMonitor( 3068): handleTimeUpdate
+05-06 12:55:00.044 D/KeyguardUpdateMonitor( 3068): received broadcast android.intent.action.TIME_TICK
+05-06 12:55:00.058 D/KeyguardUpdateMonitor( 3068): handleTimeUpdate
+05-06 12:55:00.107 I/SDM     ( 1058): StrategyImpl::SetIdleTimeoutMs: Idle timeout: active = 70, inactive = 520
+05-06 12:55:00.218 I/gle.android.gm( 4909): Explicit concurrent copying GC freed 9239KB AllocSpace bytes, 10(348KB) LOS objects, 45% free, 28MB/52MB, paused 130us,42us total 162.191ms
+05-06 12:55:00.289 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): bindService is called for service : com.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobService and for client system
+05-06 12:55:00.289 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for service : com.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobServiceare :1
+05-06 12:55:00.289 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for client : systemare :28
+05-06 12:55:00.292 D/CompatibilityChangeReporter( 1861): Compat change id reported: 135634846; UID 10255; state: DISABLED
+05-06 12:55:00.292 D/CompatibilityChangeReporter( 1861): Compat change id reported: 177438394; UID 10255; state: DISABLED
+05-06 12:55:00.292 D/CompatibilityChangeReporter( 1861): Compat change id reported: 135772972; UID 10255; state: DISABLED
+05-06 12:55:00.292 D/CompatibilityChangeReporter( 1861): Compat change id reported: 135754954; UID 10255; state: ENABLED
+05-06 12:55:00.293 D/CompatibilityChangeReporter( 1861): Compat change id reported: 143937733; UID 10255; state: ENABLED
+05-06 12:55:00.324 D/Zygote  (  914): Forked child process 21673
+05-06 12:55:00.324 D/Boost   ( 1861): hostingType=service, hostingName={com.google.android.apps.photos/com.google.android.apps.photos.dbprocessor.impl.DatabaseProcessorJobService}, callerPackage=android, isSystem=true, isBoostNeeded=false.
+05-06 12:55:00.325 I/ActivityManager( 1861): Start proc 21673:com.google.android.apps.photos/u0a255 for service {com.google.android.apps.photos/com.google.android.apps.photos.dbprocessor.impl.DatabaseProcessorJobService} caller=android
+05-06 12:55:00.348 I/oid.apps.photo(21673): Using CollectorTypeCC GC.
+05-06 12:55:00.356 D/ProcessState(21673): Binder ioctl to enable oneway spam detection failed: Invalid argument
+05-06 12:55:00.372 I/MiuiNetworkPolicy( 1861): updateUidState uid = 10255, uidState = 8
+05-06 12:55:00.375 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): startService() is called for servicecom.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobService
+05-06 12:55:00.378 D/CompatibilityChangeReporter(21673): Compat change id reported: 171979766; UID 10255; state: ENABLED
+05-06 12:55:00.378 W/MQSService( 4030): CallerName:com.google.android.apps.photos,calling Uid:10255
+05-06 12:55:00.379 D/MQSService( 4030): registerApplicationScoutThread pid = 21673, packageName = com.google.android.apps.photos
+05-06 12:55:00.393 D/nativeloader(21673): Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/lib/arm64:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk!/lib/arm64-v8a:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.en.apk!/lib/arm64-v8a:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.xxhdpi.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.google.android.apps.photos
+05-06 12:55:00.394 D/nativeloader(21673): Extending system_exposed_libraries: libcamera_algoup_jni.xiaomi.so:libcamera_mianode_jni.xiaomi.so:libvraudio_client.qti.so:libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+05-06 12:55:00.462 W/ThreadPoolForeg( 4909): type=1400 audit(0.0:1278): avc: denied { write } for name="traced_producer" dev="tmpfs" ino=27575 scontext=u:r:gmscore_app:s0:c512,c768 tcontext=u:object_r:traced_producer_socket:s0 tclass=sock_file permissive=0 app=com.google.android.gms
+05-06 12:55:00.557 W/oid.apps.photo(21673): Failed to find entry 'classes.dex': Entry not found
+05-06 12:55:00.557 W/oid.apps.photo(21673): Failed to find entry 'classes.dex': Entry not found
+05-06 12:55:00.558 W/oid.apps.photo(21673): Failed to find entry 'classes.dex': Entry not found
+05-06 12:55:00.558 D/nativeloader(21673): Configuring clns-5 for other apk /data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.arm64_v8a.apk:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.en.apk:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.xxhdpi.apk. target_sdk_version=36, uses_libraries=libOpenCL.so:libcdsprpc.so:libOpenCL.so, library_path=/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/lib/arm64:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk!/lib/arm64-v8a:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/split_config.arm64_v8a.apk!/lib/arm64-v8a:/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ
+05-06 12:55:00.566 V/GraphicsEnvironment(21673): ANGLE Developer option for 'com.google.android.apps.photos' set to: 'default'
+05-06 12:55:00.567 V/GraphicsEnvironment(21673): Updatable production driver is not supported on the device.
+05-06 12:55:00.570 I/ForceDarkHelperStubImpl(21673): initialize for com.google.android.apps.photos , ForceDarkOrigin
+05-06 12:55:00.573 D/nativeloader(21673): Load libforcedarkimpl.so using system ns (caller=/system/framework/miui-framework.jar): ok
+05-06 12:55:00.573 D/OpenGLRenderer(21673): JNI_OnLoad success
+05-06 12:55:00.573 I/MiuiForceDarkConfig(21673): setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+05-06 12:55:00.575 D/NetworkSecurityConfig(21673): Using Network Security Config from resource network_security_config debugBuild: false
+05-06 12:55:00.576 D/NetworkSecurityConfig(21673): Using Network Security Config from resource network_security_config debugBuild: false
+05-06 12:55:00.582 E/oid.apps.photo(21673): hiddenapi: Accessing hidden method Landroid/app/job/JobInfo$Builder;->setPriority(I)Landroid/app/job/JobInfo$Builder; (runtime_flags=0, domain=platform, api=max-target-r) from /data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk!classes4.dex (domain=app, TargetSdkVersion=36) using linking: denied
+05-06 12:55:00.582 E/oid.apps.photo(21673): hiddenapi: Accessing hidden method Landroid/view/SurfaceControl$Builder;->setHidden(Z)Landroid/view/SurfaceControl$Builder; (runtime_flags=0, domain=platform, api=blocked) from /data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk!classes4.dex (domain=app, TargetSdkVersion=36) using linking: denied
+05-06 12:55:00.621 D/nativeloader(21673): Load /data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/lib/arm64/libnative_crash_handler_jni.so using class loader ns clns-5 (caller=/data/app/~~IjnLnhK0wEaD1GKt9DfAXQ==/com.google.android.apps.photos-N6qkGu6hupeSDL6qKSFpbQ==/base.apk!classes2.dex): ok
+05-06 12:55:00.659 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): bindService is called for service : com.google.android.gms/.chimera.PersistentApiService and for client com.google.android.apps.photos
+05-06 12:55:00.659 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for service : com.google.android.gms/.chimera.PersistentApiServiceare :21
+05-06 12:55:00.659 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for client : com.google.android.apps.photosare :1
+05-06 12:55:00.685 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): bindService is called for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiService and for client com.google.android.apps.photos
+05-06 12:55:00.685 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for service : com.google.android.gms/.chimera.PersistentDirectBootAwareApiServiceare :22
+05-06 12:55:00.685 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): total connections for client : com.google.android.apps.photosare :2
+05-06 12:55:00.693 D/ConnectivityService( 1861): requestNetwork for uid/pid:10255/21673 activeRequest: null callbackRequest: 413 [NetworkRequest [ REQUEST id=414, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10255 RequestorUid: 10255 RequestorPkg: com.google.android.apps.photos UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST
+05-06 12:55:00.698 D/ConnectivityService( 1861): NetReassign [414 : null → 100] [c 1] [a 0] [i 3]
+05-06 12:55:00.698 D/WifiNetworkFactory( 1861): got request NetworkRequest [ REQUEST id=414, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10255 RequestorUid: 10255 RequestorPkg: com.google.android.apps.photos UnderlyingNetworks: Null] ]
+05-06 12:55:00.698 D/UntrustedWifiNetworkFactory( 1861): got request NetworkRequest [ REQUEST id=414, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10255 RequestorUid: 10255 RequestorPkg: com.google.android.apps.photos UnderlyingNetworks: Null] ]
+05-06 12:55:00.699 D/OemPaidWifiNetworkFactory( 1861): got request NetworkRequest [ REQUEST id=414, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10255 RequestorUid: 10255 RequestorPkg: com.google.android.apps.photos UnderlyingNetworks: Null] ]
+05-06 12:55:00.704 D/ViewScrollStubImpl(21673): the value of ScrollFrictionRes is: 0.03
+05-06 12:55:00.834 D/CompatibilityChangeReporter(21673): Compat change id reported: 170233598; UID 10255; state: DISABLED
+05-06 12:55:00.883 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): unbindService is called for service : com.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobService and for client system
+05-06 12:55:00.883 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of service connections for service: com.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobServiceafter removal is 0
+05-06 12:55:00.883 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of client connections for client: systemafter removal is 27
+05-06 12:55:00.884 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): destroyService is called for service : com.google.android.apps.photos/.dbprocessor.impl.DatabaseProcessorJobService
+05-06 12:55:00.890 I/MiuiNetworkPolicy( 1861): updateUidState uid = 10255, uidState = 10
+05-06 12:55:00.895 I/ActivityManager( 1861): Killing 21089:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0a196i12 (adj 975): empty #17
+05-06 12:55:00.895 I/MiuiNetworkPolicy( 1861): updateUidState uid = 10255, uidState = 19
+05-06 12:55:00.897 D/PerfImpl( 1861): perfProcessKillBoost: com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0, 21089, 0
+05-06 12:55:00.898 E/vendor.qti.hardware.perf@2.2-service( 1086): Unknown params
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): LMPerfGlue: perfmodule_submit_request() 132: perfmodule_submit_request()
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): Core: getInstance() 84: LM getInstance
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): WQ: push() 59: LMTriggerQ push() size=0
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): WQ: push() 61: LMTriggerQ push() done size=1
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): WQ: pop() 42: LMTriggerQ pop() done size=0
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): Core: lmMain() 373: Waiting on trigger Queue
+05-06 12:55:00.898 I/ANDR-PERF-LM( 1086): WQ: pop() 31: LMTriggerQ pop() size=0
+05-06 12:55:00.914 I/libprocessgroup( 1861): Successfully killed process cgroup uid 99012 pid 21089 in 16ms
+05-06 12:55:00.953 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): unbindService is called for service : com.google.android.googlequicksearchbox/org.chromium.content.app.SandboxedProcessService0:0 and for client com.google.android.googlequicksearchbox:googleapp
+05-06 12:55:00.953 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of service connections for service: com.google.android.googlequicksearchbox/org.chromium.content.app.SandboxedProcessService0:0after removal is 0
+05-06 12:55:00.953 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): size of client connections for client: com.google.android.googlequicksearchbox:googleappafter removal is 4
+05-06 12:55:00.956 I/Zygote  (16920): Process 21089 exited due to signal 9 (Killed)
+05-06 12:55:00.956 W/ActivityManager( 1861): Exception when unbinding service com.google.android.googlequicksearchbox/org.chromium.content.app.SandboxedProcessService0:0
+05-06 12:55:00.956 W/ActivityManager( 1861): android.os.DeadObjectException
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.os.BinderProxy.transactNative(Native Method)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.os.BinderProxy.transact(BinderProxy.java:624)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.app.IApplicationThread$Stub$Proxy.scheduleUnbindService(IApplicationThread.java:1808)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at com.android.server.am.ActiveServices.removeConnectionLocked(ActiveServices.java:4503)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at com.android.server.am.ActiveServices.unbindServiceLocked(ActiveServices.java:3024)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at com.android.server.am.ActivityManagerService.unbindService(ActivityManagerService.java:12338)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2715)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:2558)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.os.Binder.execTransactInternal(Binder.java:1182)
+05-06 12:55:00.956 W/ActivityManager( 1861): 	at android.os.Binder.execTransact(Binder.java:1146)
+05-06 12:55:00.957 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): destroyService is called for service : com.google.android.googlequicksearchbox/org.chromium.content.app.SandboxedProcessService0:0
+05-06 12:55:00.959 D/ActivityManagerServiceImpl( 1861): Service controller is not enabled.
+05-06 12:55:00.959 D/ProcessRecordInjector( 1861): Begin to report kill process events...
+05-06 12:55:00.959 D/ProcessRecordInjector( 1861): Finishing reporting clean up app record.
+05-06 12:55:00.960 I/vendor.qti.hardware.servicetracker@1.2-service( 1091): killProcess is called for pid : 21089
+05-06 12:55:00.963 I/com.xiaomi.xms(12860): oneway function results for code 3 on binder at 0xb400007c2db97e00 will be dropped but finished with status UNKNOWN_TRANSACTION
+05-06 12:55:00.964 I/MiuiNetworkPolicy( 1861): removeUidState uid = 99012
+05-06 12:55:00.969 D/UCDetectService_8150( 3061): action is android.intent.action.BATTERY_CHANGED
+05-06 12:55:00.969 D/UCDetectService_8150( 3061): onEventReceive6 : USB plug = 2
+05-06 12:55:00.969 D/DynamicService( 3061):  ACTION_BATTERY_CHANGED change,USB plug = 2
+05-06 12:55:00.970 D/QtiCarrierConfigHelper( 2987): WARNING, no carrier configs on phone Id: 0
+05-06 12:55:00.971 I/PowerUtils(17535): getSurfaceTemprature temp: 34
+05-06 12:55:00.971 I/PowerSaveService(17535): onReceive: android.intent.action.BATTERY_CHANGED
+05-06 12:55:00.972 I/PowerNoticeUI(17535): handleBatteryChanged oldPlugType 2 mPlugType 2 oldBatteryLevel 56 mBatteryLevel 56 temperature 295
+05-06 12:55:00.972 I/ChargerBatteryIntelligenceReceiver(17535): onBatteryChanged temperature：29,plugType:2
+05-06 12:55:00.972 D/PowerKeeper.Thermal( 5235): mBatteryTemperature: 29
+05-06 12:55:00.972 D/PowerCheckerService( 5235): onBatteryChanged, mBatteryLevel = 56, status = 2, level = 56, plug = 2, scale = 100
+05-06 12:55:00.972 D/DisplayFeatureHal( 1111): dataCallback value=< 514.2150,3488.0000,   0.0000>,time=512218119287, sensor=5, temperature(K)=3488.0000
+05-06 12:55:00.974 V/DeviceStatisticsService( 3027): chargerType=2 batteryLevel=56 totalBatteryCapacity=5098100
+05-06 12:55:00.989 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 1037-1037
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 1037-1037
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99001-99001
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99000-99000
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99002-99002
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99003-99003
+05-06 12:55:00.990 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99004-99004
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99005-99005
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99006-99006
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90001-90001
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90000-90000
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90002-90002
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90003-90003
+05-06 12:55:00.991 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90005-90005
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90004-90004
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 90006-90006
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99007-99007
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99008-99008
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99009-99009
+05-06 12:55:00.992 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 99010-99010
+05-06 12:55:00.993 D/KernelCpuUidUserSysTimeReader( 1861): Removing uids 1037-1037
+05-06 12:55:01.111 I/NearbyMediums( 3161): No BLE Fast/GATT advertisements found in the latest cycle.
+05-06 12:55:01.111 I/NearbyMediums( 3161): Current Tracked Scanning Clients are : {NearbyConnections.EnvironmentMonitor, NearbySharing}
+05-06 12:55:01.161 I/sensors-hal( 1067): ssc_conn_event_cb:484, event[0] sensor:pedometer  Wakeup msg_id=129, ts=9927196590
