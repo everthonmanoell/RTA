@@ -13,7 +13,11 @@ dependencies = [
     "pupil-apriltags (>=1.0.4.post11,<2.0.0)",
     "pipx (>=1.11.0,<2.0.0)",
     "transitions (>=0.9.3,<0.10.0)",
-    "scipy (>=1.17.1,<2.0.0)"
+    "scipy (>=1.17.1,<2.0.0)",
+    "matplotlib (>=3.10.9,<4.0.0)",
+    "pandas (<3.0.0)",
+    "seaborn (>=0.13.2,<0.14.0)",
+    "tabulate (>=0.10.0,<0.11.0)"
     
 ]
 

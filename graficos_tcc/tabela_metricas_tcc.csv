@@ -1,0 +1,9 @@
+Analyzed Metrics;Xiaomi POCO X3 Pro;Motorola Edge 40;Motorola Edge 50 Fusion;Motorola Edge 50 Pro;Motorola Edge 60 Pro;Motorola Moto G (2025);Xiaomi POCO M4 Pro;Samsung Galaxy A34;Samsung Galaxy A55;Samsung Galaxy S24 FE
+Mechanical Arm Action Ratio (%);80,39;79,39;75,91;78,38;79,36;74,44;55,43;78,01;79,63;75,86
+Computational Processing Overhead (%);19,61;20,61;24,09;21,62;20,64;25,56;44,57;21,99;20,37;24,14
+Bench Surface Tilt (mm);1,8275;6,19;4,3175;5,8025;6,67;4,2975;4,4775;1,955;5,0925;3,575
+Capacitive Sampling Rate (Hz);28,24;31,89;36,78;38,88;23,67;16,22;42,95;13,93;13,65;13,55
+Sampling Frequency Std Dev (Hz);12,4;0,4;0,5;0,5;0,5;0,4;12,4;0,4;0,4;0,4
+Repeatability Error (mm);0,08911666666666668;0,3808416666666667;1,4502083333333335;0,12518333333333334;0,297275;0,3833;0,6561166666666667;0,340025;0,0724;0,25650833333333334
+Calibration Success Rate (%);100,0;100,0;100,0;100,0;100,0;100,0;0,0;100,0;100,0;100,0
+Total System Execution Duration (s);174,38;205,29;200,7;186,96;179,24;191,08;215,16;207,71;200,13;209,26
