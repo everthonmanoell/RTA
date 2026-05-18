@@ -529,6 +529,7 @@ def _build_swipe_params(homography_position: list, marker_infos: list, safe_zone
         "safe_ry":  safe_ry,
         "safe_rz":  safe_rz,
         "safe_fig": safe_fig,
+        "marker_infos": marker_infos, #todo adicionei isso
     }
 
 
@@ -845,7 +846,6 @@ def main() -> int:
     # FASE 4 — Swipe na Tela Útil
     # =========================================================================
     swipe_params = _build_swipe_params(homography_position, marker_infos, safe_zone_data)
-    swipe_params["marker_infos"] = marker_infos  # necessário para interpolate_robot_pose
 
     _execute_swipe(robot, swipe_params)
 
