@@ -815,70 +815,70 @@ def main() -> int:
         except Exception:
             pass
         return None
+    try:
+        # =========================================================================
+        # FASE 1 — Conexão e posicionamento inicial
+        # =========================================================================
+        if not _connect_and_home(robot):
+            return 1
 
-    # =========================================================================
-    # FASE 1 — Conexão e posicionamento inicial
-    # =========================================================================
-    if not _connect_and_home(robot):
-        return 1
+        # =========================================================================
+        # FASE 2 — Visão global: detecta os 4 ArUcos na ROI
+        # =========================================================================
+        result = _detect_markers_from_roi(robot, camera, detector)
+        if result is None:
+            _cleanup(device, camera, robot)
+            return 1
 
-    # =========================================================================
-    # FASE 2 — Visão global: detecta os 4 ArUcos na ROI
-    # =========================================================================
-    result = _detect_markers_from_roi(robot, camera, detector)
-    if result is None:
-        _cleanup(device, camera, robot)
-        return 1
+        frame, ids, corners, marker_infos, safe_zone_data = result
 
-    frame, ids, corners, marker_infos, safe_zone_data = result
+        # =========================================================================
+        # FASE 3 — Calibração do Plano Z (toque nos 4 ArUcos)
+        # =========================================================================
+        homography_position = _calibrate_z_touches(
+            robot, camera, detector, device, session_recorder, _safe_cleanup
+        )
+        if homography_position is None:
+            _cleanup(device, camera, robot)
+            return 1
 
-    # =========================================================================
-    # FASE 3 — Calibração do Plano Z (toque nos 4 ArUcos)
-    # =========================================================================
-    homography_position = _calibrate_z_touches(
-        robot, camera, detector, device, session_recorder, _safe_cleanup
-    )
-    if homography_position is None:
-        _cleanup(device, camera, robot)
-        return 1
+        # =========================================================================
+        # FASE 4 — Swipe na Tela Útil
+        # =========================================================================
+        swipe_params = _build_swipe_params(homography_position, marker_infos, safe_zone_data)
 
-    # =========================================================================
-    # FASE 4 — Swipe na Tela Útil
-    # =========================================================================
-    swipe_params = _build_swipe_params(homography_position, marker_infos, safe_zone_data)
+        _execute_swipe(robot, swipe_params)
 
-    _execute_swipe(robot, swipe_params)
+        # Pausa antes da verificação final (igual ao original)
+        time.sleep(3)
 
-    # Pausa antes da verificação final (igual ao original)
-    time.sleep(3)
+        # --- Verificação final de detecção ---
+        is_calibration_succeed = _check_calibration_success(camera, detector)
+        if is_calibration_succeed:
+            logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
+        else:
+            logging.error("Teste final de detecção de marcadores após o swipe: FALHA!")
 
-    # --- Verificação final de detecção ---
-    is_calibration_succeed = _check_calibration_success(camera, detector)
-    if is_calibration_succeed:
-        logging.info("Teste final de detecção de marcadores após o swipe: SUCESSO!")
-    else:
-        logging.error("Teste final de detecção de marcadores após o swipe: FALHA!")
-
-    # =========================================================================
-    # FASE 5 — Salvar mapa de calibração
-    # =========================================================================
-    _save_calibration_map(
-        args=args,
-        device_type=device_type,
-        frame=frame,
-        marker_infos=marker_infos,
-        swipe_params=swipe_params,
-        detector=detector,
-        session_recorder=session_recorder,
-        run_start_ts=run_start_ts,
-        is_calibration_succeed=is_calibration_succeed,
-    )
-
-    # =========================================================================
-    # FASE 6 — Cleanup
-    # =========================================================================
-    return _cleanup(device, camera, robot)
-
+        # =========================================================================
+        # FASE 5 — Salvar mapa de calibração
+        # =========================================================================
+        _save_calibration_map(
+            args=args,
+            device_type=device_type,
+            frame=frame,
+            marker_infos=marker_infos,
+            swipe_params=swipe_params,
+            detector=detector,
+            session_recorder=session_recorder,
+            run_start_ts=run_start_ts,
+            is_calibration_succeed=is_calibration_succeed,
+        )
+    finally:
+        # =========================================================================
+        # FASE 6 — Cleanup
+        # =========================================================================
+        return _cleanup(device, camera, robot)
+        
 
 if __name__ == "__main__":
     raise SystemExit(main())
