@@ -80,6 +80,10 @@ class Rta(GraphMachine):
         error = State(
             name='error',
         )
+        calibrate_z_touches = State(
+        name='calibrate_z_touches',
+        on_enter=['calibrate_z_touches_action'],
+        )   
 
         states = [
             idle,
@@ -88,15 +92,11 @@ class Rta(GraphMachine):
             move_to_roi,
             camera_on,
             detect_markers,
-            align_with_markers,
-            touch_marker,
-            check_touch,
-            reset_markers,
+            calibrate_z_touches,
             generate_map,
             swipe_borders,
             safe_pose,
             read_final_marker,
-            return_to_start,
             save_map,
             done,
             motor_off,
@@ -104,39 +104,45 @@ class Rta(GraphMachine):
         ]
 
         transitions = [
-            {'trigger': 'read_final_marker_to_error', 'source': 'read_final_marker', 'dest': 'error', 'conditions': ['final_result_failures_gte_fifteen']},
-            {'trigger': 'check_touch_to_error', 'source': 'check_touch', 'dest': 'error', 'conditions': ['error_touch_gte_fifteen']},
-            {'trigger': 'detect_markers_to_error', 'source': 'detect_markers', 'dest': 'error', 'conditions': ['detect_markers_attempts_gte_twenty']},
-            {'trigger': 'align_with_markers_to_error', 'source': 'align_with_markers', 'dest': 'error', 'conditions': ['align_with_markers_attempts_gte_max']},
             {'trigger': 'motor_off_to_done', 'source': 'motor_off', 'dest': 'done', 'after': ['set_motor_on_false']},
-            {'trigger': 'save_map_to_motor_off', 'source': 'save_map', 'dest': 'motor_off', 'conditions': ['always_true']},
-            {'trigger': 'read_final_marker_to_save_map', 'source': 'read_final_marker', 'dest': 'save_map', 'conditions': ['final_result_is_success'], 'after': ['always_true']},
-            {'trigger': 'return_to_start_to_move_to_roi', 'source': 'return_to_start', 'dest': 'move_to_roi', 'conditions': ['always_true'], 'after': ['set_markers_found_false', 'set_aligned_false', 'set_touch_ok_false', 'set_swipe_executed_false', 'set_final_result_none', 'set_marker_index_zero', 'set_align_with_markers_attempt_zero']},
-            {'trigger': 'read_final_marker_to_return_to_start', 'source': 'read_final_marker', 'dest': 'return_to_start', 'conditions': ['final_result_is_failure'], 'after': ['always_true', 'increment_final_result_failures']},
-            {'trigger': 'safe_pose_to_read_final_marker', 'source': 'safe_pose', 'dest': 'read_final_marker', 'conditions': ['swipe_executed'], 'after': ['always_true']},
-            {'trigger': 'swipe_borders_to_safe_pose', 'source': 'swipe_borders', 'dest': 'safe_pose', 'conditions': ['always_true'], 'after': ['set_swipe_executed_true']},
-            {'trigger': 'generate_map_to_swipe_borders', 'source': 'generate_map', 'dest': 'swipe_borders', 'conditions': ['marker_index_eq_num_markers'], 'after': ['set_swipe_executed_false']},
-            {'trigger': 'check_touch_to_generate_map', 'source': 'check_touch', 'dest': 'generate_map', 'conditions': ['touch_ok', 'marker_index_eq_num_markers_minus_one'], 'after': ['increment_marker_index']},
-            {'trigger': 'check_touch_to_touch_marker', 'source': 'check_touch', 'dest': 'touch_marker', 'conditions': ['touch_ok', 'marker_index_lt_num_markers_minus_one'], 'after': ['increment_marker_index']},
-            {'trigger': 'reset_markers_to_move_to_roi', 'source': 'reset_markers', 'dest': 'move_to_roi'},
-            {'trigger': 'check_touch_to_reset_markers', 'source': 'check_touch', 'dest': 'reset_markers', 'unless': ['touch_ok'], 'after': ['set_marker_index_zero', 'increment_error_touch']},
-            {'trigger': 'detect_markers_to_align_with_markers', 'source': 'detect_markers', 'dest': 'align_with_markers', 'conditions': ['camera_on', 'markers_ready_for_align'], 'after': ['set_marker_index_zero', 'set_align_with_markers_attempt_zero']},
-            {'trigger': 'detect_markers_to_detect_markers', 'source': 'detect_markers', 'dest': 'detect_markers', 'conditions': ['camera_on', 'markers_found'], 'unless': ['markers_ready_for_align']},
-            {'trigger': 'detect_markers_to_detect_markers', 'source': 'detect_markers', 'dest': 'detect_markers', 'conditions': ['camera_on', 'markers_not_found'], 'after': ['increment_detect_markers_attempts']},
-            {'trigger': 'touch_marker_to_check_touch', 'source': 'touch_marker', 'dest': 'check_touch', 'conditions': ['aligned', 'marker_index_lt_num_markers'], 'after': ['always_true']},
-            {'trigger': 'align_with_markers_to_detect_markers', 'source': 'align_with_markers', 'dest': 'detect_markers', 'unless': ['markers_found'], 'after': ['set_aligned_false', 'set_markers_found_false']},
-            {'trigger': 'align_with_markers_to_align_with_markers', 'source': 'align_with_markers', 'dest': 'align_with_markers', 'conditions': ['markers_found'], 'unless': ['aligned']},
-            {'trigger': 'align_with_markers_to_touch_marker', 'source': 'align_with_markers', 'dest': 'touch_marker', 'conditions': ['markers_found', 'aligned'], 'after': ['set_align_with_markers_attempt_zero']},
+
+            {'trigger': 'save_map_to_motor_off', 'source': 'save_map', 'dest': 'motor_off', 'conditions': ['save_map_ok']},
+            {'trigger': 'save_map_to_error', 'source': 'save_map', 'dest': 'error', 'unless': ['save_map_ok']},
+
+            {'trigger': 'read_final_marker_to_save_map', 'source': 'read_final_marker', 'dest': 'save_map', 'conditions': ['final_result_is_success']},
+            {'trigger': 'read_final_marker_to_error', 'source': 'read_final_marker', 'dest': 'error', 'conditions': ['final_result_is_failure']},
+
+            {'trigger': 'safe_pose_to_read_final_marker', 'source': 'safe_pose', 'dest': 'read_final_marker', 'conditions': ['safe_pose_ok']},
+            {'trigger': 'safe_pose_to_error', 'source': 'safe_pose', 'dest': 'error', 'unless': ['safe_pose_ok']},
+
+            {'trigger': 'swipe_borders_to_safe_pose', 'source': 'swipe_borders', 'dest': 'safe_pose', 'conditions': ['swipe_executed']},
+            {'trigger': 'swipe_borders_to_error', 'source': 'swipe_borders', 'dest': 'error', 'unless': ['swipe_executed']},
+
+            {'trigger': 'generate_map_to_swipe_borders', 'source': 'generate_map', 'dest': 'swipe_borders', 'conditions': ['map_generated']},
+            {'trigger': 'generate_map_to_error', 'source': 'generate_map', 'dest': 'error', 'unless': ['map_generated']},
+
+            {'trigger': 'calibrate_z_touches_to_generate_map', 'source': 'calibrate_z_touches', 'dest': 'generate_map', 'conditions': ['calibration_ok']},
+            {'trigger': 'calibrate_z_touches_to_error', 'source': 'calibrate_z_touches', 'dest': 'error', 'unless': ['calibration_ok']},
+
+            {'trigger': 'detect_markers_to_calibrate_z_touches', 'source': 'detect_markers', 'dest': 'calibrate_z_touches', 'conditions': ['markers_ready_for_align']},
+            {'trigger': 'detect_markers_to_error', 'source': 'detect_markers', 'dest': 'error', 'conditions': ['detect_markers_attempts_gte_twenty']},
+            {'trigger': 'detect_markers_to_detect_markers', 'source': 'detect_markers', 'dest': 'detect_markers', 'unless': ['markers_ready_for_align', 'detect_markers_attempts_gte_twenty']},
+
+            {'trigger': 'camera_on_to_detect_markers', 'source': 'camera_on', 'dest': 'detect_markers', 'conditions': ['camera_on']},
             {'trigger': 'camera_on_to_error', 'source': 'camera_on', 'dest': 'error', 'conditions': ['camera_on_attempts_gte_max']},
-            {'trigger': 'camera_on_to_detect_markers', 'source': 'camera_on', 'dest': 'detect_markers', 'conditions': ['camera_on'], 'after': ['set_camera_on_true']},
             {'trigger': 'camera_on_to_camera_on', 'source': 'camera_on', 'dest': 'camera_on', 'unless': ['camera_on', 'camera_on_attempts_gte_max']},
-            {'trigger': 'move_to_roi_to_camera_on', 'source': 'move_to_roi', 'dest': 'camera_on', 'conditions': ['motor_on'], 'after': ['set_aligned_false', 'set_markers_found_false', 'set_touch_ok_false']},
+
+            {'trigger': 'move_to_roi_to_camera_on', 'source': 'move_to_roi', 'dest': 'camera_on', 'conditions': ['move_to_roi_ok']},
+            {'trigger': 'move_to_roi_to_error', 'source': 'move_to_roi', 'dest': 'error', 'unless': ['move_to_roi_ok']},
+
+            {'trigger': 'motor_on_to_move_to_roi', 'source': 'motor_on', 'dest': 'move_to_roi', 'conditions': ['motor_on']},
             {'trigger': 'motor_on_to_error', 'source': 'motor_on', 'dest': 'error', 'conditions': ['motor_on_attempts_gte_max']},
             {'trigger': 'motor_on_to_motor_on', 'source': 'motor_on', 'dest': 'motor_on', 'unless': ['motor_on', 'motor_on_attempts_gte_max']},
-            {'trigger': 'motor_on_to_move_to_roi', 'source': 'motor_on', 'dest': 'move_to_roi', 'conditions': ['motor_on']},
+
+            {'trigger': 'connect_robot_to_motor_on', 'source': 'connect_robot', 'dest': 'motor_on', 'conditions': ['robot_connected']},
             {'trigger': 'connect_robot_to_error', 'source': 'connect_robot', 'dest': 'error', 'conditions': ['connect_robot_attempts_gte_max']},
             {'trigger': 'connect_robot_to_connect_robot', 'source': 'connect_robot', 'dest': 'connect_robot', 'unless': ['robot_connected', 'connect_robot_attempts_gte_max']},
-            {'trigger': 'connect_robot_to_motor_on', 'source': 'connect_robot', 'dest': 'motor_on', 'conditions': ['robot_connected']},
+
             {'trigger': 'idle_to_connect_robot', 'source': 'idle', 'dest': 'connect_robot'},
         ]
 
