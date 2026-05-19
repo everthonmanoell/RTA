@@ -1,4 +1,5 @@
 import logging
+import config
 
 from aether_rdk import DensoRobot
 from aether_rdk.datatypes import CartesianAxis, Joint, Offset3D, Pose
@@ -39,13 +40,14 @@ class Denso(AbstractRobot):
     # ROI_RZ = 179.27
     # DEFAULT_FIG = 5
 
-    ROI_X = 331.07
-    ROI_Y = 0.62
-    ROI_Z = 421.36
-    ROI_RX = 180.00
-    ROI_RY = 0.00
-    ROI_RZ = 180.00
-    DEFAULT_FIG = 5
+    ROI_POSITIONING_CONFIG = getattr(config, "ROI_POSITIONING_CONFIG", {})
+    ROI_X = ROI_POSITIONING_CONFIG.get("ROI_X", 331.07)
+    ROI_Y = ROI_POSITIONING_CONFIG.get("ROI_Y", 0.62)
+    ROI_Z = ROI_POSITIONING_CONFIG.get("ROI_Z", 421.36)
+    ROI_RX = ROI_POSITIONING_CONFIG.get("ROI_RX", 180.00)
+    ROI_RY = ROI_POSITIONING_CONFIG.get("ROI_RY", 0.00)
+    ROI_RZ = ROI_POSITIONING_CONFIG.get("ROI_RZ", 180.00)
+    DEFAULT_FIG = ROI_POSITIONING_CONFIG.get("DEFAULT_FIG", 5)
 
     # motorobot ROI
     # ROI_X = 366.83

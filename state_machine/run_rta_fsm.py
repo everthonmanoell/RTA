@@ -396,6 +396,7 @@ def _calibrate_z_touches(
     Z_TOUCH = config.Z_TOUCH
     Z_LIMIT = config.Z_LIMIT
     TOUCH_FINGER_OFFSET_X = config.TOUCH_FINGER_OFFSET_X
+    TOUCH_FINGER_OFFSET_Y = config.TOUCH_FINGER_OFFSET_Y
 
     max_interations = 400
 
@@ -453,6 +454,7 @@ def _calibrate_z_touches(
                     "down", touch_feedback_holder, touch_detected_event)
 
                 current_position.x += TOUCH_FINGER_OFFSET_X
+                current_position.y += TOUCH_FINGER_OFFSET_Y
                 # TODO this part 1 is causing double descent - fix the config.Z_OFFSET_BEFORE_TOUCH
                 current_position.z = Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH
                 ok = robot.move_cartesian(current_position)
