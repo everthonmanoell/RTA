@@ -19,18 +19,19 @@ import numpy as np
 import config
 from pathlib import Path
 
+
 class RobotCamera:
     """
     Manages image acquisition from the robot-mounted camera.
-    
+
     This camera provides a fixed perspective for fiducial marker detection
     and visual alignment, independent of mobile device screen orientation.
     """
-    
+
     def __init__(self, camera_id: int = 0, output_dir: str = "log_images", show_preview: bool = False):
         """
         Initialize RobotCamera with OpenCV camera source.
-        
+
         Args:
             camera_id (int): OpenCV camera index. Default 0 for primary camera.
             output_dir (str): Directory for storing captured images.
@@ -43,75 +44,83 @@ class RobotCamera:
         self.logger = logging.getLogger(__name__)
         self.show_preview = bool(show_preview)
         self.preview_window_name = "RTA Camera Preview"
-        self.preview_overlay_fn: Optional[Callable[[np.ndarray], np.ndarray]] = None
-        
+        self.preview_overlay_fn: Optional[Callable[[
+            np.ndarray], np.ndarray]] = None
+
         # Initialize camera on first use
         self._camera_opened = False
-    
-    def _ensure_camera_open(self) -> bool:
-            """
-            Ensure camera is open and ready to capture, applying hardware settings.
-            
-            Returns:
-                bool: True if camera is ready, False otherwise.
-            """
-            if not self._camera_opened:
-                # Tenta abrir com DirectShow primeiro (Melhor para injetar configs em Logitech no Windows)
-                self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_DSHOW)
-                
-                # Fallback seguro caso esteja rodando no Linux, Mac ou o DSHOW falhe
-                if not self.cap.isOpened():
-                    self.cap = cv2.VideoCapture(self.camera_id)
-                    
-                if not self.cap.isOpened():
-                    self.logger.error(f"Failed to open camera {self.camera_id}")
-                    return False
-                
-                # =================================================================
-                # APLICA CONFIGURAÇÕES DE HARDWARE DA BRIO (via config.py)
-                # =================================================================
-                try:
-                    import config
-                    calib = getattr(config, "CAMERA_CALIBRATION_CONFIG", None)
-                    
-                    if calib:
-                        self.logger.info("Injetando configurações de hardware na Brio...")
-                        
-                        # Foco
-                        if "auto_focus" in calib:
-                            self.cap.set(cv2.CAP_PROP_AUTOFOCUS, calib["auto_focus"])
-                        if "fixed_focus" in calib:
-                            self.cap.set(cv2.CAP_PROP_FOCUS, calib["fixed_focus"])
-                            
-                        # Exposição
-                        if "auto_exposure" in calib:
-                            self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, calib["auto_exposure"])
-                        if "fixed_exposure" in calib:
-                            self.cap.set(cv2.CAP_PROP_EXPOSURE, calib["fixed_exposure"])
-                            
-                        # Balanço de Branco
-                        if "auto_white_balance" in calib:
-                            self.cap.set(cv2.CAP_PROP_AUTO_WB, calib["auto_white_balance"])
-                        if "white_balance_temperature" in calib:
-                            self.cap.set(cv2.CAP_PROP_WB_TEMPERATURE, calib["white_balance_temperature"])
-                            
-                except ImportError:
-                    self.logger.warning("Arquivo 'config' não encontrado, ignorando calibração de hardware da câmera.")
 
-                self._camera_opened = True
-                
-            return True
-    
+    def _ensure_camera_open(self) -> bool:
+        """
+        Ensure camera is open and ready to capture, applying hardware settings.
+
+        Returns:
+            bool: True if camera is ready, False otherwise.
+        """
+        if not self._camera_opened:
+            # Tenta abrir com DirectShow primeiro (Melhor para injetar configs em Logitech no Windows)
+            self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_DSHOW)
+
+            # Fallback seguro caso esteja rodando no Linux, Mac ou o DSHOW falhe
+            if not self.cap.isOpened():
+                self.cap = cv2.VideoCapture(self.camera_id)
+
+            if not self.cap.isOpened():
+                self.logger.error(f"Failed to open camera {self.camera_id}")
+                return False
+
+            # =================================================================
+            # APLICA CONFIGURAÇÕES DE HARDWARE DA BRIO (via config.py)
+            # =================================================================
+            try:
+                import config
+                calib = getattr(config, "CAMERA_CALIBRATION_CONFIG", None)
+
+                if calib:
+                    self.logger.info(
+                        "Injetando configurações de hardware na Brio...")
+
+                    # Foco
+                    if "auto_focus" in calib:
+                        self.cap.set(cv2.CAP_PROP_AUTOFOCUS,
+                                     calib["auto_focus"])
+                    if "fixed_focus" in calib:
+                        self.cap.set(cv2.CAP_PROP_FOCUS, calib["fixed_focus"])
+
+                    # Exposição
+                    if "auto_exposure" in calib:
+                        self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE,
+                                     calib["auto_exposure"])
+                    if "fixed_exposure" in calib:
+                        self.cap.set(cv2.CAP_PROP_EXPOSURE,
+                                     calib["fixed_exposure"])
+
+                    # Balanço de Branco
+                    if "auto_white_balance" in calib:
+                        self.cap.set(cv2.CAP_PROP_AUTO_WB,
+                                     calib["auto_white_balance"])
+                    if "white_balance_temperature" in calib:
+                        self.cap.set(cv2.CAP_PROP_WB_TEMPERATURE,
+                                     calib["white_balance_temperature"])
+
+            except ImportError:
+                self.logger.warning(
+                    "Arquivo 'config' não encontrado, ignorando calibração de hardware da câmera.")
+
+            self._camera_opened = True
+
+        return True
+
     def capture_frame(self) -> Optional[np.ndarray]:
         """
         Capture a single frame from the robot's camera.
-        
+
         Returns:
             Optional[np.ndarray]: Frame as BGR image, or None if capture failed.
         """
         if not self._ensure_camera_open():
             return None
-        
+
         ret, frame = self.cap.read()
         if not ret:
             self.logger.error("Failed to capture frame")
@@ -126,37 +135,36 @@ class RobotCamera:
                 cv2.waitKey(1)
             except Exception as exc:
                 self.logger.debug("Camera preview unavailable: %s", exc)
-        
+
         return frame
-    
+
     def capture_and_save(self, filename: str) -> Optional[np.ndarray]:
         """
         Capture frame and save to disk with timestamp.
-        
+
         Args:
             filename (str): Image filename (without path).
-            
+
         Returns:
             Optional[np.ndarray]: Captured frame, or None if failed.
         """
         frame = self.capture_frame()
         if frame is None:
             return None
-        
+
         filepath = self.output_dir / filename
         success = cv2.imwrite(str(filepath), frame)
         if success:
             self.logger.info(f"Image saved: {filepath}")
         else:
             self.logger.error(f"Failed to save image: {filepath}")
-        
+
         return frame
 
-    
     def get_frame_shape(self) -> Optional[tuple]:
         """
         Get frame dimensions (height, width, channels).
-        
+
         Returns:
             Optional[tuple]: (height, width, channels) or None if failed.
         """
@@ -164,28 +172,28 @@ class RobotCamera:
         if frame is None:
             return None
         return frame.shape
-    
+
     def set_camera_property(self, prop_id: int, value: float) -> bool:
         """
         Set OpenCV camera property (brightness, contrast, etc).
-        
+
         Args:
             prop_id (int): OpenCV camera property ID (e.g., cv2.CAP_PROP_BRIGHTNESS).
             value (float): Property value.
-            
+
         Returns:
             bool: True if successful.
         """
         if not self._ensure_camera_open():
             return False
-        
+
         success = self.cap.set(prop_id, value)
         if success:
             self.logger.info(f"Set camera property {prop_id} = {value}")
         else:
             self.logger.error(f"Failed to set camera property {prop_id}")
         return success
-    
+
     def release(self):
         """Release camera resources."""
         if self.cap is not None:
@@ -201,7 +209,7 @@ class RobotCamera:
     def display_image(self, image_np: np.ndarray, window_name: str = "Image"):
         """
         Display an image in an OpenCV window.
-        
+
         Args:
             image (np.ndarray): Image to display (BGR format).
             window_name (str): Name of the display window.
@@ -212,11 +220,11 @@ class RobotCamera:
             cv2.destroyWindow(window_name)
         except Exception as exc:
             self.logger.debug("Image display unavailable: %s", exc)
-        
+
     def image_with_middle_point(self, image_np: np.ndarray) -> dict[str, object]:
         """
         Draw a red point in the middle of the image for debugging.
-        
+
         Args:
             image_np (np.ndarray): Input image (BGR format).
         returns:
@@ -224,10 +232,11 @@ class RobotCamera:
         """
         height, width = image_np.shape[:2]
         center_x, center_y = width // 2, height // 2
-        cv2.circle(image_np, (center_x, center_y), radius=10, color=(0, 0, 255), thickness=-1)
+        cv2.circle(image_np, (center_x, center_y), radius=10,
+                   color=(0, 0, 255), thickness=-1)
         return dict(image_np=image_np, center=(center_x, center_y))
 
-    def save_frame_with_timestamp(self, frame: np.ndarray,  prefix: str = "capture", filename = str ) -> Optional[np.ndarray]:
+    def save_frame_with_timestamp(self, frame: np.ndarray,  prefix: str = "capture", filename=str) -> Optional[np.ndarray]:
         """
         Save frame with a timestamped filename.
         """
@@ -241,25 +250,20 @@ class RobotCamera:
         else:
             self.logger.error(f"Failed to save image: {filepath}")
             return None
-        
 
     def center_point(self, image_np: np.ndarray) -> Tuple[int, int]:
         """
         Get the center point coordinates of the image.
-        
+
         Args:
             image_np (np.ndarray): Input image (BGR format).
-        
+
         Returns:
             Tuple[int, int]: (center_x, center_y) coordinates of the image center.
         """
         height, width = image_np.shape[:2]
         center_x, center_y = width // 2, height // 2
         return center_x, center_y
-        
-    
-                
-    
 
     def __del__(self):
         """Ensure camera is released on object destruction."""
@@ -313,8 +317,8 @@ if __name__ == "__main__":
         # Coordenadas: (x, y) como inteiros
         centro_imagem = (int(center_x_img), int(center_y_img))
         raio = 5
-        cor_azul = (255, 0, 0) # BGR
-        espessura_preenchido = -1 # -1 preenche o círculo
+        cor_azul = (255, 0, 0)  # BGR
+        espessura_preenchido = -1  # -1 preenche o círculo
 
         cv2.circle(frame, centro_imagem, raio, cor_azul, espessura_preenchido)
 
@@ -322,15 +326,15 @@ if __name__ == "__main__":
         # Coordenadas: (x, y) como inteiros
         centro_aruco = (int(center_aruco_x), int(center_aruco_y))
         raio = 5
-        cor_vermelha = (0, 0, 255) # BGR
-        
-        cv2.circle(frame, centro_aruco, raio, cor_vermelha, espessura_preenchido)
+        cor_vermelha = (0, 0, 255)  # BGR
+
+        cv2.circle(frame, centro_aruco, raio,
+                   cor_vermelha, espessura_preenchido)
 
         # Opcional: Desenhar uma linha unindo os dois centros (Ciano)
         cv2.line(frame, centro_imagem, centro_aruco, (255, 255, 0), 2)
 
-
-        pos_x_texto = int(center_aruco_x) + 15 
+        pos_x_texto = int(center_aruco_x) + 15
         pos_y_texto = int(center_aruco_y) - 15
 
         cv2.putText(
@@ -342,7 +346,7 @@ if __name__ == "__main__":
             (0, 255, 0),
             2
         )
-        
+
         # ... (resto do seu código) ...
 
         # 2. Texto do Centroide da Imagem
@@ -369,11 +373,5 @@ if __name__ == "__main__":
 
         camera.display_image(frame, window_name="Marker Detection Result")
 
-
     else:
-        print(f"Marcador {target_id} não encontrado!")
-
-
-
-    
-
+        print(f"Marker {target_id} not found!")

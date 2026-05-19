@@ -10,7 +10,7 @@ Uso:
 
     metrics = get_device_metrics_via_adb(device_type="flat")
     if metrics:
-        print(f"Resolução: {metrics['screen_width_px']}x{metrics['screen_height_px']}")
+        print(f"Resolution: {metrics['screen_width_px']}x{metrics['screen_height_px']}")
         print(f"DPI: {metrics['xdpi']:.1f} / {metrics['ydpi']:.1f}")
 """
 
@@ -66,25 +66,26 @@ def _run_adb_command(cmd: list[str]) -> str:
         #     print(f"   STDOUT: {result.stdout.strip()}")
         # if result.stderr:
         #     print(f"   STDERR: {result.stderr.strip()}")
-            
+
         return result.stdout.strip() if result.returncode == 0 else ""
     except Exception as exc:
-        print(f"[DEBUG] Falha fatal ao tentar executar o ADB no Windows: {exc}")
+        print(
+            f"[DEBUG] Falha fatal ao tentar executar o ADB no Windows: {exc}")
         return ""
 
 
 def _parse_display_metrics() -> Optional[dict]:
     """
     Extrai DisplayMetrics via `adb shell dumpsys display`.
-    
+
     Busca a resolução e os valores físicos reais de DPI (xdpi, ydpi) 
     para garantir cálculos milimétricos precisos no robô.
-    
+
     Returns:
         Dict com screen_width_px, screen_height_px, density_dpi, xdpi, ydpi.
         None se falhar.
     """
-    # Lemos direto do dumpsys display, pois é o único lugar onde 
+    # Lemos direto do dumpsys display, pois é o único lugar onde
     # o Android expõe os PPI físicos (xdpi e ydpi) com decimais.
     output = _run_adb_command(["shell", "dumpsys", "display"])
     if not output:
@@ -111,7 +112,7 @@ def _parse_display_metrics() -> Optional[dict]:
     # Padrão alvo para pegar tudo exato: "density 400 (393.5 x 394.2) dpi"
     physical_dpi_pattern = r"density\s+(\d+)\s*\(\s*([\d.]+)\s*x\s*([\d.]+)\s*\)\s*dpi"
     match_physical = re.search(physical_dpi_pattern, output)
-    
+
     density_dpi: Optional[int] = None
     xdpi: Optional[float] = None
     ydpi: Optional[float] = None
@@ -195,7 +196,7 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
     os payloads do socket.
     """
     metrics = _parse_display_metrics()
-    
+
     # Fator de correção do ArUco (Área preta vs Borda branca)
     # Baseado na calibração física com paquímetro (~15mm / ~19.16mm)
     ARUCO_FILL_RATIO = 0.782
@@ -210,7 +211,7 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
             f"ADB display metrics parsing failed. Usando fallback para device_type='{device_type}': "
             f"{fallback['screen_width_px']:.0f}x{fallback['screen_height_px']:.0f} @ {fallback['density_dpi']} dpi"
         )
-        
+
         # Calcular campos derivados mesmo no fallback
         width_px = fallback["screen_width_px"]
         height_px = fallback["screen_height_px"]
@@ -222,14 +223,15 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
         margin_dp = fallback["margin_dp"]
         tag_size_px = tag_size_dp * density
         margin_px = margin_dp * density
-        
+
         total_width_mm = tag_size_px / xdpi * 25.4 if xdpi > 0 else 0.0
         total_height_mm = tag_size_px / ydpi * 25.4 if ydpi > 0 else 0.0
-        
+
         marker_real_width_mm = total_width_mm * ARUCO_FILL_RATIO
         marker_real_height_mm = total_height_mm * ARUCO_FILL_RATIO
-        marker_x_distance_mm = (width_px - 2 * margin_px - tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
-        
+        marker_x_distance_mm = (
+            width_px - 2 * margin_px - tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
+
         return {
             "screen_width_px": width_px,
             "screen_height_px": height_px,
@@ -276,9 +278,10 @@ def get_device_metrics_via_adb(device_type: str = "flat") -> dict:
     # Aplicando o fator de correção para extrair apenas a área preta do ArUco
     marker_real_width_mm = total_width_mm * ARUCO_FILL_RATIO
     marker_real_height_mm = total_height_mm * ARUCO_FILL_RATIO
-    
+
     # A distância X usa o total da imagem, pois a borda branca ocupa espaço físico na tela
-    marker_x_distance_mm = (width_px - 2 * margin_px - tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
+    marker_x_distance_mm = (width_px - 2 * margin_px -
+                            tag_size_px) / xdpi * 25.4 if xdpi > 0 else 0.0
 
     result = {
         "screen_width_px": width_px,

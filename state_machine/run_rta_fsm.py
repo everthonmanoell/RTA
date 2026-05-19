@@ -45,6 +45,12 @@ logging.basicConfig(
 # =============================================================================
 
 def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments for RTA FSM execution.
+
+    Returns:
+        argparse.Namespace: Parsed arguments including workspace, control, device type,
+            and FSM execution parameters.
+    """
     parser = argparse.ArgumentParser(
         description="Run RTA state machine bootstrap")
     parser.add_argument("--workspace", required=True,
@@ -61,6 +67,12 @@ def parse_args() -> argparse.Namespace:
         "--device-type",
         default=os.getenv("RTA_DEVICE_TYPE", "flat"),
         help="Device layout profile (flat, foldable, one, two, three, six, seven, eight)",
+    )
+    parser.add_argument(
+        "--device-side",
+        type=str,
+        default="portrait",
+        help="Device side orientation (portrait/landscape) used for swipe ordering",
     )
     parser.add_argument("--loop-delay", type=float,
                         default=0.05, help="Delay between FSM steps")
@@ -91,13 +103,21 @@ def parse_args() -> argparse.Namespace:
 
 
 def _configure_tool_from_config(robot: Denso) -> bool:
+    """Configure the robot tool from configuration settings.
+
+    Args:
+        robot (Denso): The Denso robot instance to configure.
+
+    Returns:
+        bool: True if tool configuration succeeded or was disabled, False otherwise.
+    """
     tool_cfg = getattr(config, "TOOL_CONFIG", {})
     if not isinstance(tool_cfg, dict):
-        logging.error("TOOL_CONFIG inválido: esperado dict.")
+        logging.error("Invalid TOOL_CONFIG: expected dict.")
         return False
 
     if not tool_cfg.get("enabled", False):
-        logging.info("TOOL_CONFIG desabilitado; seguindo sem trocar tool.")
+        logging.info("TOOL_CONFIG disabled; proceeding without changing tool.")
         return True
 
     tag = str(tool_cfg.get("tag", "pen_tool"))
@@ -111,18 +131,26 @@ def _configure_tool_from_config(robot: Denso) -> bool:
     )
 
     if not robot.create_tool_reference(offset, tag):
-        logging.error("Falha ao criar referência de tool '%s'.", tag)
+        logging.error("Failed to create tool reference '%s'.", tag)
         return False
 
     if not robot.set_current_tool_by_tag(tag):
-        logging.error("Falha ao selecionar tool '%s'.", tag)
+        logging.error("Failed to select tool '%s'.", tag)
         return False
 
-    logging.info("Tool '%s' configurada e ativada com sucesso.", tag)
+    logging.info("Tool '%s' configured and activated successfully.", tag)
     return True
 
 
 def _build_operational_stack(robot: Denso):
+    """Build the operational stack with all required hardware and software components.
+
+    Args:
+        robot (Denso): The Denso robot instance.
+
+    Returns:
+        tuple: A tuple containing (device, camera, detector, auto_align, controller, transform).
+    """
     device = Mobile()
     camera = RobotCamera(
         camera_id=config.CAMERA_CONFIG["camera_id"],
@@ -161,22 +189,26 @@ def _build_operational_stack(robot: Denso):
 
 
 # =============================================================================
-# FASE 1 — CONEXÃO E POSICIONAMENTO INICIAL
+# PHASE 1 — CONNECTION AND INITIAL POSITIONING
 # =============================================================================
 
 def _connect_and_home(robot: Denso) -> bool:
+    """Connect robot, enable motor, and move to ROI.
+
+    Args:
+        robot (Denso): The Denso robot instance.
+
+    Returns:
+        bool: True if connection and homing succeeded, False otherwise.
     """
-    Conecta o robô, liga o motor e move para a ROI.
-    Retorna False em caso de falha.
-    """
-    logging.info("Conectando robô para teste isolado de centralização...")
+    logging.info("Connecting robot for isolated centralization test...")
 
     if not robot.connect():
-        logging.error("Falha ao conectar com o robô.")
+        logging.error("Failed to connect with the robot.")
         return False
 
     if not robot.motor_on():
-        logging.error("Falha ao ligar o motor do robô.")
+        logging.error("Failed to turn on the robot motor.")
         robot.disconnect()
         return False
 
@@ -188,18 +220,18 @@ def _connect_and_home(robot: Denso) -> bool:
         else:
             robot.move_to_roi()
     except Exception as exc:
-        logging.warning("Falha ao mover para ROI/safe pose: %s", exc)
+        logging.warning("Failed to move to ROI/safe pose: %s", exc)
 
-    logging.info("Teste manual de movimento cartesiano...")
+    logging.info("Manual Cartesian movement test...")
 
     pose0 = robot.get_cartesian_pose()
     if pose0 is None:
-        logging.error("Não foi possível ler pose inicial do robô.")
+        logging.error("Could not read initial robot pose.")
         robot.disconnect()
         return False
 
     logging.info(
-        "Pose inicial: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+        "Initial pose: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
         float(pose0.x), float(pose0.y), float(pose0.z),
         float(pose0.rx), float(pose0.ry), float(pose0.rz),
     )
@@ -210,7 +242,7 @@ def _connect_and_home(robot: Denso) -> bool:
     pose1 = robot.get_cartesian_pose()
     if pose1 is not None:
         logging.info(
-            "Pose após teste manual: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+            "Pose after manual test: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
             float(pose1.x), float(pose1.y), float(pose1.z),
             float(pose1.rx), float(pose1.ry), float(pose1.rz),
         )
@@ -219,19 +251,23 @@ def _connect_and_home(robot: Denso) -> bool:
 
 
 # =============================================================================
-# FASE 2 — VISÃO GLOBAL (ROBÔ NO ROI)
+# PHASE 2 — GLOBAL VISION (ROBOT AT ROI)
 # =============================================================================
 
 def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: MarkerDetector):
-    """
-    Move para a ROI, captura frame e detecta os 4 marcadores ArUco.
+    """Move to ROI, capture frame, and detect ArUco markers.
 
-    Retorna:
-        (frame, ids, corners, marker_infos, safe_zone_data)  — em caso de sucesso
-        None                                                  — em caso de falha
+    Args:
+        robot (Denso): The Denso robot instance.
+        camera (RobotCamera): The camera instance for frame capture.
+        detector (MarkerDetector): The marker detector instance.
+
+    Returns:
+        tuple: (frame, ids, corners, marker_infos, safe_zone_data) on success,
+               None on failure.
     """
     logging.info(
-        "Capturando imagem a partir da ROI para calcular área de swipe...")
+        "Capturing image from ROI to calculate swipe area...")
 
     robot.move_to_roi()
     current_roi_pose = robot.get_cartesian_pose()
@@ -246,7 +282,7 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
 
         if frame is None:
             logging.warning(
-                f"Tentativa {tentativa + 1}: Frame nulo retornado pela câmera.")
+                f"Attempt {tentativa + 1}: Null frame returned by camera.")
             time.sleep(0.5)
             continue
 
@@ -255,20 +291,20 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
 
         if ids is not None and len(ids) >= 4:
             logging.info(
-                f"Sucesso! Os 4 marcadores foram detectados na tentativa {tentativa + 1}.")
+                f"Success! The 4 markers were detected on attempt {tentativa + 1}.")
             detected_successfully = True
             break
         else:
             qtd_encontrada = len(ids) if ids is not None else 0
             logging.warning(
-                f"Tentativa {tentativa + 1}/{max_tentativas}: Encontrados apenas {qtd_encontrada} marcadores. "
-                "Aguardando a tela do app abrir..."
+                f"Attempt {tentativa + 1}/{max_tentativas}: Only {qtd_encontrada} markers found. "
+                "Waiting for the app screen to open..."
             )
             time.sleep(0.5)
 
     if not detected_successfully:
         logging.error(
-            "Erro Fatal: Não foi possível detectar os 4 marcadores na ROI após 10 tentativas.")
+            "Fatal Error: Could not detect 4 markers in ROI after 10 attempts.")
         return None
 
     marker_infos = [
@@ -278,24 +314,32 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
 
     safe_zone_data = detector.get_safe_interaction_zone(frame, marker_infos)
     if safe_zone_data is None:
-        logging.error("Erro ao calcular a zona segura de swipe.")
+        logging.error("Error calculating safe swipe zone.")
         return None
 
     return frame, ids, corners, marker_infos, safe_zone_data
 
 
 # =============================================================================
-# FASE 3 — CALIBRAÇÃO DO PLANO Z (TOQUE NOS 4 ARUCOS)
+# PHASE 3 — Z PLANE CALIBRATION (TOUCH ON 4 ARUCOS)
 # =============================================================================
 
 def _move_to_return_touched_place(robot: Denso, pose) -> bool:
-    """
-    Move o robô de volta para a posição de toque registrada, com offset de segurança no Z.
-    MÁGICA: Cria uma cópia da pose isolada na memória para não corromper a pose salva na lista de homografia.
+    """Move robot back to touched position with safety Z offset.
+
+    Creates a copy of the pose to avoid corrupting the original pose stored in the
+    interpolation position list.
+
+    Args:
+        robot (Denso): The Denso robot instance.
+        pose (Pose): The touch position pose to return to.
+
+    Returns:
+        bool: True if movement succeeded, False otherwise.
     """
     if pose is None:
         logging.error(
-            "Pose de toque é None. Não é possível mover para posição de toque.")
+            "Touch pose is None. Cannot move to touch position.")
         return False
 
     safe_pose = Pose(
@@ -309,14 +353,14 @@ def _move_to_return_touched_place(robot: Denso, pose) -> bool:
     )
 
     logging.info(
-        "Movendo para posição de recuo (com offset): x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+        "Moving to retreat position (with offset): x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
         safe_pose.x, safe_pose.y, safe_pose.z,
         safe_pose.rx, safe_pose.ry, safe_pose.rz,
     )
 
     success = robot.move_cartesian(safe_pose)
     if not success:
-        logging.error("Falha ao mover para posição de recuo.")
+        logging.error("Failed to move to retreat position.")
     return success
 
 
@@ -327,18 +371,23 @@ def _calibrate_z_touches(
     device: Mobile,
     session_recorder: TouchSessionRecorder,
 ) -> list | None:
-    """
-    Alinha o robô a cada um dos 4 ArUcos e registra a pose de toque.
+    """Align robot to each ArUco marker and record touch positions for Z calibration.
 
-    Usa o session_recorder (TouchSessionRecorder) para monitorar os eventos de toque
-    do dispositivo — exatamente como no fluxo original.
+    Uses session_recorder to monitor device touch events during the calibration process.
+    Performs controlled descent until touch is detected or Z limit is reached.
 
-    Retorna:
-        interpolation_position (list[Pose])  — lista com as 4 poses de toque
-        None                              — se não conseguiu tocar todos os 4 marcadores
+    Args:
+        robot (Denso): The Denso robot instance.
+        camera (RobotCamera): The camera instance for marker detection.
+        detector (MarkerDetector): The marker detector instance.
+        device (Mobile): The mobile device instance.
+        session_recorder (TouchSessionRecorder): The touch event recorder.
+
+    Returns:
+        list[Pose]: List of 4 touch position poses if successful, None if calibration failed.
     """
     logging.info(
-        "Iniciando rotina de toque nos ArUcos para mapear o Plano 3D (Z)...")
+        "Starting touch routine on ArUcos to map 3D Plane (Z)...")
 
     interpolation_position = []
     rotation_aligment = RotationAlignment(robot, camera, detector)
@@ -352,7 +401,7 @@ def _calibrate_z_touches(
 
     try:
         for id in range(1, 5):
-            logging.info(f"####### Alinhando para o ArUco ID {id}... #######")
+            logging.info(f"####### Aligning for ArUco ID {id}... #######")
             interation = 0
             first_valid_diff = False
 
@@ -367,15 +416,15 @@ def _calibrate_z_touches(
 
                 error_mm_x, error_mm_y = diff_error
 
-                # Se AMBOS os eixos estão alinhados, paramos. Está no centro exato!
+                # If BOTH axes are aligned, we stop. At exact center!
                 if abs(error_mm_x) < ALIGNMENT_TOLERANCE and abs(error_mm_y) < ALIGNMENT_TOLERANCE:
                     logging.info(
-                        f"ArUco {id} perfeitamente alinhado. Parando.")
+                        f"ArUco {id} perfectly aligned. Stopping.")
                     break
 
-                # Se QUALQUER UM dos eixos (X ou Y) estiver fora, ajusta.
+                # If ANY of the axes (X or Y) is out, adjust.
                 if abs(error_mm_x) >= ALIGNMENT_TOLERANCE or abs(error_mm_y) >= ALIGNMENT_TOLERANCE:
-                    # "first attempt" = primeira vez que recebemos um diff válido, não simplesmente iteração 1.
+                    # "first attempt" = first time we receive a valid diff, not just iteration 1.
                     is_first_attempt = not first_valid_diff
                     rotation_aligment.adjust_robot_to_marker_center(
                         (error_mm_x, error_mm_y),
@@ -390,7 +439,7 @@ def _calibrate_z_touches(
 
             if current_position is not None:
                 logging.info(
-                    "Pose final após alinhamento: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
+                    "Final pose after alignment: x=%.2f y=%.2f z=%.2f rx=%.2f ry=%.2f rz=%.2f",
                     float(current_position.x), float(
                         current_position.y), float(current_position.z),
                     float(current_position.rx), float(
@@ -404,13 +453,13 @@ def _calibrate_z_touches(
                     "down", touch_feedback_holder, touch_detected_event)
 
                 current_position.x += TOUCH_FINGER_OFFSET_X
-                # TODO essa parte 1 está dando duplo mergulho - fix the config.Z_OFFSET_BEFORE_TOUCH
+                # TODO this part 1 is causing double descent - fix the config.Z_OFFSET_BEFORE_TOUCH
                 current_position.z = Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH
                 ok = robot.move_cartesian(current_position)
                 logging.info(
-                    "Move para pré-toque (offset + z inicial): %s", ok)
+                    "Move to pre-touch (offset + initial z): %s", ok)
                 if not ok:
-                    logging.error("Falha ao mover para posição de pré-toque.")
+                    logging.error("Failed to move to pre-touch position.")
                     return None
 
                 step = 1
@@ -419,20 +468,20 @@ def _calibrate_z_touches(
                     current_position = robot.get_cartesian_pose()
                     if current_position is None:
                         logging.error(
-                            "Falha ao obter pose atual do robô durante descida para toque.")
+                            "Failed to get current robot pose during descent to touch.")
                         robot.move_to_roi()
                         break
 
-                    # 1) Disparo da Thread Global — prioridade máxima
+                    # 1) Global Thread trigger — maximum priority
                     if touch_detected_event.is_set():
                         logging.info(
-                            "Toque detectado pelo celular em %s. Parando descida do robô.",
+                            "Touch detected by phone at %s. Stopping robot descent.",
                             touch_feedback_holder["value"]
                         )
                         current_position = robot.get_cartesian_pose()
                         interpolation_position.append(current_position)
                         logging.info(
-                            "Pose registrada para interpolação: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
+                            "Pose registered for interpolation: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(
                                 current_position.y), float(current_position.z),
                             float(current_position.rx), float(
@@ -442,33 +491,33 @@ def _calibrate_z_touches(
                         robot.move_to_roi()
                         break
 
-                    # 2) Se chegou na faixa de toque desejada, para e salva posição
+                    # 2) If reached desired touch range, stop and save position
                     if current_position.z <= Z_LIMIT:
                         logging.info(
-                            "Faixa de toque atingida com o Z_TOUCH: %.2f mm. Parando o robô.",
+                            "Touch range reached with Z_TOUCH: %.2f mm. Stopping robot.",
                             float(current_position.z)
                         )
                         interpolation_position.append(current_position)
                         logging.info(
-                            "Pose registrada para interpolação: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
+                            "Pose registered for interpolation: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(
                                 current_position.y), float(current_position.z),
                             float(current_position.rx), float(
                                 current_position.ry), float(current_position.rz),
                         )
-                        # TODO essa parte2 está dando duplo mergulho
+                        # TODO this part 2 is causing double descent
                         _move_to_return_touched_place(robot, current_position)
                         robot.move_to_roi()
                         session_recorder.disarm_trigger()
                         break
 
                     logging.info(
-                        "Descendo para toque: passo %d, pose atual z=%.2f mm",
+                        "Descending to touch: step %d, current pose z=%.2f mm",
                         step,
                         float(current_position.z),
                     )
 
-                    # 3) Descida controlada até o Z_TOUCH
+                    # 3) Controlled descent until Z_TOUCH
                     if current_position.z > Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH:
                         current_position.z -= 5.0
                     elif current_position.z > Z_TOUCH + 5.0:
@@ -478,11 +527,11 @@ def _calibrate_z_touches(
 
                     ok = robot.move_cartesian(current_position)
                     logging.info(
-                        "Resultado do move_cartesian na descida: %s", ok)
+                        "Result of move_cartesian during descent: %s", ok)
 
                     if not ok:
                         logging.error(
-                            "Falha no move_cartesian durante descida para toque.")
+                            "Failure in move_cartesian during descent to touch.")
                         robot.move_to_roi()
                         session_recorder.disarm_trigger()
                         break
@@ -492,38 +541,46 @@ def _calibrate_z_touches(
 
     finally:
         logging.info(
-            "Alinhamento e toque finalizados. Realizando limpeza segura.")
+            "Alignment and touch completed. Performing safe cleanup.")
 
     if len(interpolation_position) < 4:
-        logging.error("O robô falhou em tocar todos os 4 marcadores.")
+        logging.error("The robot failed to touch all 4 markers.")
         return None
 
     return interpolation_position
 
 
 # =============================================================================
-# FASE 4 — SWIPE NA TELA ÚTIL
+# PHASE 4 — SWIPE ON USABLE SCREEN
 # =============================================================================
 
-def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_zone_data: dict) -> dict:
-    """
-    Calcula e retorna todos os parâmetros necessários para o swipe.
+def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_zone_data: dict, device_side: str = "portrait") -> dict:
+    """Build all swipe parameters from calibrated touch positions.
 
-    Pontos de swipe: quinas EXATAS da tela útil (sem tirar médias),
-    com offset de margem (OFF_SET_SWIPE) para entrar dentro da borda.
+    Calculates swipe points at the exact corners of the usable screen area with margin
+    offsets, using bilinear interpolation from the 4 calibrated touch positions.
+
+    Args:
+        interpolation_position (list): List of 4 calibrated Pose objects.
+        marker_infos (list): List of marker information objects.
+        safe_zone_data (dict): Dictionary containing safe zone screen rectangle.
+
+    Returns:
+        dict: Dictionary with touch_poses_dict, centroid_rect_px, perfect_swipe_points,
+              pose_referencia, safe rotations, and marker_infos.
     """
     touch_poses_dict = {}
     for idx, target_id in enumerate([1, 2, 3, 4]):
         touch_poses_dict[target_id] = interpolation_position[idx]
 
-    # Referência de escala: limite dos centros dos ArUcos (não a borda externa)
+    # Scale reference: limit of ArUco centers (not external border)
     c_x_min = min(m.centroid[0] for m in marker_infos)
     c_y_min = min(m.centroid[1] for m in marker_infos)
     c_x_max = max(m.centroid[0] for m in marker_infos)
     c_y_max = max(m.centroid[1] for m in marker_infos)
     centroid_rect_px = (c_x_min, c_y_min, c_x_max, c_y_max)
 
-    # Pontos de swipe: quinas exatas da tela útil com offset de margem
+    # Swipe points: exact corners of usable screen with margin offset
     u_x_min, u_y_min, u_x_max, u_y_max = safe_zone_data["screen_rect"]
 
     OFF_SET_SWIPE = 7
@@ -533,13 +590,13 @@ def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_z
     u_y_min += OFF_SET_SWIPE
 
     perfect_swipe_points = {
-        "pt_1": (u_x_min, u_y_max),  # Quina Inferior Esquerda da Tela Útil
-        "pt_4": (u_x_min, u_y_min),  # Quina Superior Esquerda da Tela Útil
-        "pt_2": (u_x_max, u_y_min),  # Quina Superior Direita da Tela Útil
-        "pt_3": (u_x_max, u_y_max),  # Quina Inferior Direita da Tela Útil
+        "pt_1": (u_x_min, u_y_max),  # Bottom-Left Corner of Usable Screen
+        "pt_4": (u_x_min, u_y_min),  # Top-Left Corner of Usable Screen
+        "pt_2": (u_x_max, u_y_min),  # Top-Right Corner of Usable Screen
+        "pt_3": (u_x_max, u_y_max),  # Bottom-Right Corner of Usable Screen
     }
 
-    # Congela a orientação do momento em que o Z foi medido (Anti-Pêndulo)
+    # Freeze orientation from the moment Z was measured (Anti-Pendulum)
     pose_referencia = touch_poses_dict[1]
     safe_rx = float(pose_referencia.rx)
     safe_ry = float(pose_referencia.ry)
@@ -555,17 +612,45 @@ def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_z
         "safe_ry":  safe_ry,
         "safe_rz":  safe_rz,
         "safe_fig": safe_fig,
-        "marker_infos": marker_infos,  # todo adicionei isso
+        "device_side": device_side,
+        "marker_infos": marker_infos,  # TODO added this
     }
 
 
-def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
+def _orientation_device(side: str) -> list[str]:
+    """Determine device orientation based on the device orientation.
+
+    Args:
+        side (str): The device orientation ("portrait" or "landscape").
+
+    Returns:
+        list[str]: List of orientation descriptors for the given orientation.
     """
-    Executa o swipe perimetral na tela útil usando breadcrumbs.
-    Retorna True em caso de sucesso.
+    if side == "landscape":
+        return ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"] #landscape orientation
+    elif side == "portrait":
+        return ["pt_3", "pt_1", "pt_4", "pt_2", "pt_3"] #portrait orientation
+    else:
+        logging.warning(
+            f"Invalid side {side} for device orientation. Defaulting to ['unknown'].")
+        return ["unknown"]
+
+
+def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
+    """Execute perimetral swipe on screen using bilinear interpolation.
+
+    Moves the robot along the perimeter of the usable screen area, calculating
+    X, Y via bilinear interpolation and Z via bilinear interpolation.
+
+    Args:
+        robot (Denso): The Denso robot instance.
+        swipe_params (dict): Dictionary containing swipe parameters from _build_swipe_params.
+
+    Returns:
+        bool: True if swipe execution succeeded, False otherwise.
     """
     logging.info(
-        "Calculando X,Y via Bilinear e Z via Bilinear na Tela Útil...")
+        "Calculating X,Y via bilinear interpolation and Z via bilinear interpolation on usable screen...")
 
     touch_poses_dict = swipe_params["touch_poses_dict"]
     centroid_rect_px = swipe_params["centroid_rect_px"]
@@ -580,9 +665,9 @@ def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
     PASSOS_POR_RETA = 15
     OFF_SET_SWIPE = 3
 
-    # TODO ajustar trajeto conforme a orientação do device. precisa deixar dinâmico
-    trajeto = ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
-    logging.info("Preparando para executar o Swipe na Zona Segura...")
+    # Determine swipe trajectory according to device orientation side
+    trajeto = _orientation_device(swipe_params.get("device_side", "portrait"))
+    logging.info("Preparing to execute Swipe in Safe Zone...")
 
     for i in range(len(trajeto) - 1):
         pt_start_name = trajeto[i]
@@ -592,7 +677,7 @@ def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
         px_end, py_end = perfect_swipe_points[pt_end_name]
 
         logging.info(
-            f"Traçando reta alinhada de {pt_start_name} para {pt_end_name}...")
+            f"Tracing aligned line from {pt_start_name} to {pt_end_name}...")
 
         for step in range(PASSOS_POR_RETA + 1):
             fraction = step / float(PASSOS_POR_RETA)
@@ -623,13 +708,13 @@ def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
 
             robot.move_cartesian(swipe_pose)
 
-    logging.info("Swipe perimetral finalizado com sucesso!")
+    logging.info("Perimetral swipe completed successfully!")
     robot.move_to_roi()
     return True
 
 
 # =============================================================================
-# VERIFICAÇÃO FINAL DE DETECÇÃO
+# FINAL DETECTION VERIFICATION
 # =============================================================================
 
 def _check_calibration_success(
@@ -638,10 +723,19 @@ def _check_calibration_success(
     max_attempts: int = 10,
     attempt_delay_s: float = 0.5,
 ) -> bool:
-    """
-    Verifica se a calibração foi bem-sucedida detectando o marcador de sucesso/falha na ROI.
-    Tenta até max_attempts vezes antes de desistir.
-    Replica exatamente a lógica de __is_marker_detection_successful_in_roi do original.
+    """Verify calibration success by detecting success/failure markers at ROI.
+
+    Attempts multiple times to capture and detect the success or failure markers.
+    Returns True if success marker detected, False if failure marker detected.
+
+    Args:
+        camera (RobotCamera): The camera instance for frame capture.
+        detector (MarkerDetector): The marker detector instance.
+        max_attempts (int): Maximum number of detection attempts. Defaults to 10.
+        attempt_delay_s (float): Delay between attempts in seconds. Defaults to 0.5.
+
+    Returns:
+        bool: True if success marker detected, False if failure marker or timeout.
     """
     success_marker_id = int(getattr(config, "FINAL_SUCCESS_MARKER_ID", 14))
     failure_marker_id = int(getattr(config, "FINAL_FAILURE_MARKER_ID", 15))
@@ -650,7 +744,7 @@ def _check_calibration_success(
         frame_ = camera.capture_frame()
         if frame_ is None:
             logging.warning(
-                "ROI final marker check attempt %d/%d: frame nulo.",
+                "ROI final marker check attempt %d/%d: null frame.",
                 attempt, max_attempts,
             )
             time.sleep(attempt_delay_s)
@@ -659,7 +753,7 @@ def _check_calibration_success(
         marker_ids, _ = detector.detect_markers(frame_, log_missing=False)
         if marker_ids is None or len(marker_ids) == 0:
             logging.warning(
-                "ROI final marker check attempt %d/%d: nenhum marcador detectado.",
+                "ROI final marker check attempt %d/%d: no marker detected.",
                 attempt, max_attempts,
             )
             time.sleep(attempt_delay_s)
@@ -672,19 +766,19 @@ def _check_calibration_success(
         )
 
         if success_marker_id in detected_ids:
-            logging.info("Marcador de sucesso detectado na ROI final.")
+            logging.info("Success marker detected in final ROI.")
             print(f'detected_ids [true]={detected_ids}')
             return True
 
         if failure_marker_id in detected_ids:
-            logging.error("Marcador de falha detectado na ROI final.")
+            logging.error("Failure marker detected in final ROI.")
             print(f'detected_ids [false]={detected_ids}')
             return False
 
         time.sleep(attempt_delay_s)
 
     logging.error(
-        "ROI final marker check esgotou %d tentativas sem detectar o marcador de sucesso (%d).",
+        "ROI final marker check exhausted %d attempts without detecting success marker (%d).",
         max_attempts, success_marker_id,
     )
     return False
@@ -694,12 +788,22 @@ def _is_marker_detection_successful_in_roi(
     camera: RobotCamera,
     detector: MarkerDetector,
 ) -> bool:
-    """Compatibility wrapper used by the FSM callback layer."""
+    """Check if calibration was successful (FSM callback wrapper).
+
+    Compatibility wrapper that calls _check_calibration_success for use in FSM callbacks.
+
+    Args:
+        camera (RobotCamera): The camera instance for frame capture.
+        detector (MarkerDetector): The marker detector instance.
+
+    Returns:
+        bool: True if success marker detected at ROI, False otherwise.
+    """
     return _check_calibration_success(camera, detector)
 
 
 # =============================================================================
-# FASE 5 — SALVAR MAPA DE CALIBRAÇÃO
+# PHASE 5 — SAVE CALIBRATION MAP
 # =============================================================================
 
 def _save_calibration_map(
@@ -713,16 +817,26 @@ def _save_calibration_map(
     run_start_ts: float,
     is_calibration_succeed: bool,
 ) -> None:
+    """Stop recorder, generate and save calibration map.
+
+    Stops the touch session recorder, extracts calibration data, and exports the
+    calibration map with touch interaction data and execution metrics.
+
+    Args:
+        args (argparse.Namespace): Parsed command-line arguments.
+        device_type (str): The device type (e.g., 'flat', 'foldable').
+        frame: The captured frame from camera.
+        marker_infos (list): List of marker information objects.
+        swipe_params (dict): Dictionary containing swipe parameters.
+        detector (MarkerDetector): The marker detector instance.
+        session_recorder (TouchSessionRecorder): The touch event recorder.
+        run_start_ts (float): Timestamp when execution started.
+        is_calibration_succeed (bool): Whether calibration was successful.
+
+    Returns:
+        None
     """
-    Para o gravador, gera e salva o mapa de calibração via CalibrationMapExporter.
-    Replica exatamente a Fase 5 do original, incluindo:
-      - session_recorder.stop()
-      - device_touch_interaction = session_recorder.get_interaction_data()
-      - execution_duration_s
-      - calibration_succeed
-      - dir_separation
-    """
-    # Para o gravador para não adicionar mais pontos
+    # Stop recorder to not add more points
     session_recorder.stop()
 
     touch_poses_dict = swipe_params["touch_poses_dict"]
@@ -747,15 +861,29 @@ def _save_calibration_map(
         dir_separation=True,
     )
     if not export_ok:
-        logging.error("Falha ao exportar o mapa de calibração.")
+        logging.error("Failed to export calibration map.")
 
 
 # =============================================================================
-# FASE 6 — CLEANUP
+# PHASE 6 — CLEANUP
 # =============================================================================
 
 def _cleanup(device: Mobile, camera: RobotCamera, robot: Denso, session_recorder=None) -> int:
-    """Para o device, libera a câmera e desconecta o robô. Sempre retorna 0."""
+    """Clean up hardware resources and gracefully disconnect.
+
+    Stops the mobile device, releases camera, and disconnects the robot.
+    Handles exceptions gracefully to ensure all resources are freed.
+
+    Args:
+        device (Mobile): The mobile device instance.
+        camera (RobotCamera): The camera instance.
+        robot (Denso): The Denso robot instance.
+        session_recorder (TouchSessionRecorder, optional): The touch recorder to stop.
+            Defaults to None.
+
+    Returns:
+        int: Always returns 0.
+    """
     try:
         if session_recorder is not None:
             session_recorder.stop()
@@ -781,10 +909,21 @@ def _cleanup(device: Mobile, camera: RobotCamera, robot: Denso, session_recorder
 
 
 # =============================================================================
-# MAIN — orquestra as fases na mesma ordem do fluxo original
+# MAIN — orchestrates phases in the same order as the original flow
 # =============================================================================
 
 def main() -> int:
+    """Main entry point for RTA state machine execution.
+
+    Orchestrates the complete RTA calibration workflow:
+    1. Parses arguments and initializes hardware stack
+    2. Creates FSM with callback-based architecture
+    3. Executes state transitions until completion or error
+    4. Cleans up resources and returns status
+
+    Returns:
+        int: 0 if FSM completed successfully, 1 if error or max steps reached.
+    """
     args = parse_args()
     run_start_ts = time.time()
 
@@ -806,7 +945,7 @@ def main() -> int:
         args.num_markers,
     )
 
-    # --- Instancia model e robot ---
+    # --- Initialize model and robot ---
     model = RtaModel(num_markers=args.num_markers)
     robot = Denso(
         workspace_name=args.workspace,
@@ -814,16 +953,25 @@ def main() -> int:
         options=args.options,
     )
 
-    # --- Desliga debugger de toque ---
+    # --- Disable touch debugger ---
     def __turn_on_or_turn_off_debugger_touch(enable: bool):
+        """Toggle Android touch debugging visualization.
+
+        Args:
+            enable (bool): Whether to enable or disable touch debugging.
+        """
         toggle_android_setting(setting_name="show_touches", enable=enable)
         toggle_android_setting(setting_name="pointer_location", enable=enable)
 
     __turn_on_or_turn_off_debugger_touch(enable=False)
 
-    # --- Injeta motor_on com tool no model ---
+    # --- Inject motor_on with tool into model ---
     def _turn_motor_on_action_with_tool(self):
-        """Liga motor e configura tool automaticamente ao entrar em operação."""
+        """Enable motor and configure tool automatically.
+
+        Injected callback that turns on the robot motor and configures the tool
+        from the TOOL_CONFIG settings. Resets attempt counter on success.
+        """
         self.motor_on_attempt += 1
         if not self.robot_connected_flag or self.denso_robot is None:
             self.motor_on_flag = False
@@ -843,11 +991,11 @@ def main() -> int:
     model.turn_motor_on_action = MethodType(
         _turn_motor_on_action_with_tool, model)
 
-    # --- Monta stack operacional ---
+    # --- Build operational stack ---
     device, camera, detector, auto_align, controller, transform = _build_operational_stack(
         robot)
 
-    # --- Inicializa o gravador global modular ---
+    # --- Initialize modular global recorder ---
     session_recorder = TouchSessionRecorder(device)
     session_recorder.start()
 
@@ -863,21 +1011,36 @@ def main() -> int:
     }
 
     def move_to_roi_fn() -> bool:
+        """FSM callback: Move robot to region of interest.
+
+        Returns:
+            bool: True if movement succeeded, False otherwise.
+        """
         try:
             return bool(robot.move_to_roi())
         except Exception as exc:
-            logging.error("Falha ao mover para ROI: %s", exc)
+            logging.error("Failed to move to ROI: %s", exc)
             return False
 
     def camera_on_fn() -> bool:
+        """FSM callback: Validate camera is operational.
+
+        Returns:
+            bool: True if camera capture succeeded, False otherwise.
+        """
         try:
             frame = camera.capture_frame()
             return frame is not None
         except Exception as exc:
-            logging.error("Falha ao validar camera: %s", exc)
+            logging.error("Failed to validate camera: %s", exc)
             return False
 
     def detect_markers_fn() -> bool:
+        """FSM callback: Detect markers and populate runtime data.
+
+        Returns:
+            bool: True if marker detection succeeded, False otherwise.
+        """
         result = _detect_markers_from_roi(robot, camera, detector)
         if result is None:
             model.markers_count = 0
@@ -895,6 +1058,11 @@ def main() -> int:
         return True
 
     def calibrate_z_touches_fn() -> bool:
+        """FSM callback: Calibrate Z positions via touch on markers.
+
+        Returns:
+            bool: True if all 4 markers were touched, False otherwise.
+        """
         interpolation_position = _calibrate_z_touches(
             robot=robot,
             camera=camera,
@@ -911,30 +1079,51 @@ def main() -> int:
         return True
 
     def generate_map_fn() -> bool:
+        """FSM callback: Generate swipe parameters from calibration data.
+
+        Returns:
+            bool: True if parameter generation succeeded, False otherwise.
+        """
         try:
             runtime["swipe_params"] = _build_swipe_params(
                 interpolation_position=runtime["interpolation_position"],
                 marker_infos=runtime["marker_infos"],
                 safe_zone_data=runtime["safe_zone_data"],
+                device_side=args.device_side,
             )
             return True
         except Exception as exc:
-            logging.error("Falha ao gerar parametros de mapa/swipe: %s", exc)
+            logging.error("Failed to generate map/swipe parameters: %s", exc)
             return False
 
     def swipe_borders_fn() -> bool:
+        """FSM callback: Execute perimetral swipe on screen.
+
+        Returns:
+            bool: True if swipe execution succeeded, False otherwise.
+        """
         return bool(_execute_swipe(robot, runtime["swipe_params"]))
 
     def safe_pose_fn() -> bool:
+        """FSM callback: Return robot to safe ROI position.
+
+        Returns:
+            bool: True if movement succeeded, False otherwise.
+        """
         try:
             robot.move_to_roi()
             time.sleep(3)
             return True
         except Exception as exc:
-            logging.error("Falha ao voltar para ROI/safe pose: %s", exc)
+            logging.error("Failed to return to ROI/safe pose: %s", exc)
             return False
 
     def read_final_marker_fn() -> str:
+        """FSM callback: Check final calibration success marker.
+
+        Returns:
+            str: model.RESULT_SUCCESS or model.RESULT_FAILURE.
+        """
         ok = _is_marker_detection_successful_in_roi(camera, detector)
         runtime["is_calibration_succeed"] = bool(ok)
 
@@ -944,6 +1133,11 @@ def main() -> int:
         return model.RESULT_FAILURE
 
     def save_map_fn() -> bool:
+        """FSM callback: Save calibration map and session data.
+
+        Returns:
+            bool: True if export succeeded, False otherwise.
+        """
         try:
             _save_calibration_map(
                 args=args,
@@ -958,7 +1152,7 @@ def main() -> int:
             )
             return True
         except Exception as exc:
-            logging.error("Falha ao salvar mapa de calibracao: %s", exc)
+            logging.error("Failed to save calibration map: %s", exc)
             return False
 
     model.denso_robot = robot

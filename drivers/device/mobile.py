@@ -159,7 +159,8 @@ def iter_getevent_lines(proc: subprocess.Popen) -> Iterator[str]:
 
 def adb_available() -> bool:
     try:
-        proc = subprocess.run(["adb", "version"], capture_output=True, text=True, timeout=5)
+        proc = subprocess.run(["adb", "version"],
+                              capture_output=True, text=True, timeout=5)
         return proc.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -167,11 +168,13 @@ def adb_available() -> bool:
 
 def adb_device_connected() -> bool:
     try:
-        proc = subprocess.run(["adb", "get-state"], capture_output=True, text=True, timeout=5)
+        proc = subprocess.run(["adb", "get-state"],
+                              capture_output=True, text=True, timeout=5)
         return proc.returncode == 0 and "device" in proc.stdout.strip().lower()
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
-    
+
+
 def list_adb_devices(retries: int = 3) -> list[str]:
     """
     Lista os dispositivos ADB conectados. 
@@ -188,10 +191,11 @@ def list_adb_devices(retries: int = 3) -> list[str]:
                 timeout=5,
             )
             break  # Sucesso! Sai do loop de tentativas.
-            
+
         except Exception as e:
             if attempt < retries - 1:
-                print(f"[ADB] Falha de comunicação (tentativa {attempt+1}/{retries}). Reiniciando servidor ADB...")
+                print(
+                    f"[ADB] Communication failure (attempt {attempt+1}/{retries}). Restarting ADB server...")
                 # Tenta matar o processo travado do Windows
                 subprocess.run(["adb", "kill-server"], check=False)
                 time.sleep(1.0)
@@ -200,7 +204,8 @@ def list_adb_devices(retries: int = 3) -> list[str]:
                 time.sleep(2.0)
             else:
                 # Se falhar todas as vezes, aí sim aborta.
-                raise AssertionError(f"Erro fatal no ADB após {retries} tentativas: {e}")
+                raise AssertionError(
+                    f"Erro fatal no ADB após {retries} tentativas: {e}")
 
     devices = []
     for line in output.splitlines():
@@ -213,6 +218,7 @@ def list_adb_devices(retries: int = 3) -> list[str]:
             devices.append(parts[0])
 
     return devices
+
 
 ADB_SERIAL: Optional[str] = None
 
@@ -251,7 +257,8 @@ def detect_touchscreen_device() -> str:
             line = line.strip()
 
             if line.startswith("add device"):
-                current_device = line.split("/dev/input/")[-1] if "/dev/input/" in line else ""
+                current_device = line.split(
+                    "/dev/input/")[-1] if "/dev/input/" in line else ""
                 has_touch_axis = False
             elif "ABS_MT_POSITION_X" in line or ("ABS_X" in line and "ABS" in line):
                 has_touch_axis = True
@@ -272,9 +279,9 @@ def get_screen_size() -> tuple[int, int]:
     3) adb shell dumpsys display
     """
     commands = [
-    adb_cmd("shell", "wm", "size"),
-    adb_cmd("shell", "dumpsys", "window"),
-    adb_cmd("shell", "dumpsys", "display"),
+        adb_cmd("shell", "wm", "size"),
+        adb_cmd("shell", "dumpsys", "window"),
+        adb_cmd("shell", "dumpsys", "display"),
     ]
 
     for cmd in commands:
@@ -330,7 +337,8 @@ def get_touch_axis_ranges(device_name: Optional[str] = None) -> tuple[tuple[int,
             line = raw_line.strip()
 
             if line.startswith("add device"):
-                current_device = line.split("/dev/input/")[-1] if "/dev/input/" in line else None
+                current_device = line.split(
+                    "/dev/input/")[-1] if "/dev/input/" in line else None
 
             if current_device != device_name:
                 continue
@@ -382,7 +390,8 @@ class MobileInputListener:
     def __init__(self, device_filter: Optional[str] = None) -> None:
         if device_filter is None:
             device_filter = detect_touchscreen_device()
-            print(f"[TouchListener] Auto-detected touchscreen: /dev/input/{device_filter}")
+            print(
+                f"[TouchListener] Auto-detected touchscreen: /dev/input/{device_filter}")
         self._device_filter = device_filter
         self._proc: Optional[subprocess.Popen] = None
 
@@ -523,7 +532,8 @@ class TouchRecording:
 
     @property
     def avg_pressure(self) -> float:
-        pts = [p.pressure for p in self.points if p.action != TouchAction.UP and p.pressure > 0]
+        pts = [p.pressure for p in self.points if p.action !=
+               TouchAction.UP and p.pressure > 0]
         return sum(pts) / len(pts) if pts else 0.0
 
     def to_dict(self) -> dict:
@@ -755,9 +765,9 @@ def run_rta_test(
 
     subprocess.run(
         adb_cmd(
-        "shell", "am", "start", "-n",
-        "com.example.rta/.MainActivity",
-        "--es", "device_type", device_type,
+            "shell", "am", "start", "-n",
+            "com.example.rta/.MainActivity",
+            "--es", "device_type", device_type,
         ),
         capture_output=True,
     )
@@ -844,11 +854,13 @@ class Mobile:
     def wait_for_touch_with_pressure(
         self, timeout: float = 3, max_pressure_threshold: int = 3000
     ) -> Optional[dict]:
-        recording = record_touch(self.listener, timeout=timeout, stop_on_up=True)
+        recording = record_touch(
+            self.listener, timeout=timeout, stop_on_up=True)
         if recording.total_points == 0:
             return None
 
-        last_non_up = next((p for p in reversed(recording.points) if p.action != TouchAction.UP), None)
+        last_non_up = next((p for p in reversed(
+            recording.points) if p.action != TouchAction.UP), None)
         if last_non_up is None:
             return None
 
@@ -873,7 +885,8 @@ class Mobile:
         }
 
     def monitor_swipe_for_signal_loss(self, timeout: float = 10.0) -> tuple[bool, str]:
-        recording = record_touch(self.listener, timeout=timeout, stop_on_up=True)
+        recording = record_touch(
+            self.listener, timeout=timeout, stop_on_up=True)
         if recording.total_points == 0:
             return False, "no_touch"
 
@@ -1014,7 +1027,8 @@ def validate_parse_getevent() -> dict:
 
 
 def validate_map_raw_touch_to_screen() -> dict:
-    px = map_raw_touch_to_screen(2048, 2048, (0, 4095), (0, 4095), (1080, 2400))
+    px = map_raw_touch_to_screen(
+        2048, 2048, (0, 4095), (0, 4095), (1080, 2400))
     _assert(px is not None, "map_raw_touch_to_screen retornou None")
     _assert(abs(px[0] - 539) <= 1, f"x inesperado: {px[0]}")
     _assert(abs(px[1] - 1199) <= 1, f"y inesperado: {px[1]}")
@@ -1030,9 +1044,12 @@ def validate_touch_tracker() -> dict:
             points.append(point)
 
     _assert(len(points) == 3, f"esperado 3 TouchPoints, veio {len(points)}")
-    _assert(points[0].action == TouchAction.DOWN, "primeiro ponto deveria ser DOWN")
-    _assert(points[1].action == TouchAction.MOVE, "segundo ponto deveria ser MOVE")
-    _assert(points[2].action == TouchAction.UP, "terceiro ponto deveria ser UP")
+    _assert(points[0].action == TouchAction.DOWN,
+            "primeiro ponto deveria ser DOWN")
+    _assert(points[1].action == TouchAction.MOVE,
+            "segundo ponto deveria ser MOVE")
+    _assert(points[2].action == TouchAction.UP,
+            "terceiro ponto deveria ser UP")
     return {
         "actions": [p.action.value for p in points],
         "points": [p.to_dict() for p in points],
@@ -1056,7 +1073,8 @@ def validate_touch_recording() -> dict:
 
 
 def validate_rta_result() -> dict:
-    result = RTAResult(status="success", hits=9, total=10, errors=1, reason="ok", device_type="flat")
+    result = RTAResult(status="success", hits=9, total=10,
+                       errors=1, reason="ok", device_type="flat")
     _assert(result.is_success is True, "is_success deveria ser True")
     _assert(abs(result.accuracy - 90.0) < 0.001, "accuracy incorreta")
     return result.to_dict()
@@ -1074,7 +1092,8 @@ def validate_adb_environment() -> dict:
     model = get_device_model()
 
     _assert(screen_size != (0, 0), "Não foi possível obter screen size")
-    _assert(x_range != (0, 0) and y_range != (0, 0), "Não foi possível obter os ranges do touch")
+    _assert(x_range != (0, 0) and y_range != (0, 0),
+            "Não foi possível obter os ranges do touch")
 
     return {
         "connected_devices": devices,
@@ -1089,7 +1108,8 @@ def validate_adb_environment() -> dict:
 def validate_live_touch_feedback(timeout: float = 8.0) -> dict:
     mobile = Mobile()
     try:
-        print(f"Toque na tela uma vez em até {timeout:.0f}s para validar wait_for_touch_feedback()...")
+        print(
+            f"Touch screen once within {timeout:.0f}s to validate wait_for_touch_feedback()...")
         touch = mobile.wait_for_touch_feedback(timeout=timeout)
         _assert(touch is not None, "Nenhum toque detectado")
         return {"touch_feedback_px": touch}
@@ -1100,7 +1120,8 @@ def validate_live_touch_feedback(timeout: float = 8.0) -> dict:
 def validate_live_touch_with_pressure(timeout: float = 10.0) -> dict:
     mobile = Mobile()
     try:
-        print(f"Faça um toque completo (down/up) em até {timeout:.0f}s para validar pressão...")
+        print(
+            f"Perform a complete touch (down/up) within {timeout:.0f}s to validate pressure...")
         data = mobile.wait_for_touch_with_pressure(timeout=timeout)
         _assert(data is not None, "Nenhum toque completo detectado")
         return data
@@ -1111,7 +1132,8 @@ def validate_live_touch_with_pressure(timeout: float = 10.0) -> dict:
 def validate_live_swipe(timeout: float = 12.0) -> dict:
     mobile = Mobile()
     try:
-        print(f"Faça um swipe completo em até {timeout:.0f}s para validar monitor_swipe_for_signal_loss()...")
+        print(
+            f"Perform a complete swipe within {timeout:.0f}s to validate monitor_swipe_for_signal_loss()...")
         ok, reason = mobile.monitor_swipe_for_signal_loss(timeout=timeout)
         _assert(ok, f"Swipe inválido: {reason}")
         return {"signal_ok": ok, "reason": reason}
@@ -1149,27 +1171,28 @@ def toggle_android_setting(setting_name: str, enable: bool) -> None:
     Toggles specific Android system settings via ADB.
     """
     value = "1" if enable else "0"
-    
+
     # Busca o Serial exato (ignora a conexão Wireless se estiver espelhada)
     serial = get_preferred_adb_serial()
-    
+
     # Injeta o -s <serial> para o ADB saber exatamente com quem falar
-    command = ["adb", "-s", serial, "shell", "settings", "put", "system", setting_name, value]
-    
+    command = ["adb", "-s", serial, "shell", "settings",
+               "put", "system", setting_name, value]
+
     try:
         result = subprocess.run(
-            command, 
-            check=True,          
-            capture_output=True, 
-            text=True            
+            command,
+            check=True,
+            capture_output=True,
+            text=True
         )
         status = "ON" if enable else "OFF"
         print(f"Successfully turned {status} {setting_name}.")
-        
+
     except subprocess.CalledProcessError as e:
         print(f"Failed to change {setting_name}.")
         print(f"Error details: {e.stderr}")
-        
+
     except FileNotFoundError:
         print("Error: ADB is not installed or not added to your system's PATH.")
 
@@ -1193,22 +1216,29 @@ def main() -> None:
     print("=" * 70)
 
     # Testes sintéticos: não dependem de device real.
-    report.steps.append(_run_step("parse_getevent_line", validate_parse_getevent))
-    report.steps.append(_run_step("map_raw_touch_to_screen", validate_map_raw_touch_to_screen))
+    report.steps.append(
+        _run_step("parse_getevent_line", validate_parse_getevent))
+    report.steps.append(_run_step("map_raw_touch_to_screen",
+                        validate_map_raw_touch_to_screen))
     report.steps.append(_run_step("TouchTracker.feed", validate_touch_tracker))
-    report.steps.append(_run_step("TouchRecording.metrics", validate_touch_recording))
+    report.steps.append(
+        _run_step("TouchRecording.metrics", validate_touch_recording))
     report.steps.append(_run_step("RTAResult.accuracy", validate_rta_result))
 
     # Testes com ADB/device real.
     report.steps.append(_run_step("ADB environment", validate_adb_environment))
 
     if mode in {"pipeline", "live"} and report.steps[-1].ok:
-        report.steps.append(_run_step("Mobile.wait_for_touch_feedback", lambda: validate_live_touch_feedback(8.0)))
-        report.steps.append(_run_step("Mobile.wait_for_touch_with_pressure", lambda: validate_live_touch_with_pressure(10.0)))
-        report.steps.append(_run_step("Mobile.monitor_swipe_for_signal_loss", lambda: validate_live_swipe(12.0)))
+        report.steps.append(_run_step(
+            "Mobile.wait_for_touch_feedback", lambda: validate_live_touch_feedback(8.0)))
+        report.steps.append(_run_step("Mobile.wait_for_touch_with_pressure",
+                            lambda: validate_live_touch_with_pressure(10.0)))
+        report.steps.append(_run_step(
+            "Mobile.monitor_swipe_for_signal_loss", lambda: validate_live_swipe(12.0)))
 
     if mode == "full" and report.steps[-1].ok:
-        report.steps.append(_run_step("run_rta_test smoke", lambda: validate_run_rta_test_smoke(device_type, 20.0)))
+        report.steps.append(_run_step(
+            "run_rta_test smoke", lambda: validate_run_rta_test_smoke(device_type, 20.0)))
 
     report.save()
 

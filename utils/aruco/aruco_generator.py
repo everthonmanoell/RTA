@@ -40,7 +40,7 @@ def gerar_aruco(tag_id: int, family: str = "tag36h11", size: int = 400,
             f"ID {tag_id} fora do intervalo para '{family}' (0–{max_id})."
         )
 
-    print(f"Gerando ArUco ID: {tag_id} (Família: {family})")
+    print(f"Generating ArUco ID: {tag_id} (Family: {family})")
 
     # Gera a imagem da tag
     tag_img = cv2.aruco.generateImageMarker(aruco_dict, tag_id, size)
@@ -74,5 +74,3 @@ if __name__ == "__main__":
 
     for i in range(8, 16):  # Gerar os primeiros 5 IDs para teste
         gerar_aruco(tag_id=i, family=FAMILIA, size=TAMANHO, output_dir=OUTPUT)
-
-   

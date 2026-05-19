@@ -40,7 +40,7 @@ def gerar_apriltag(tag_id: int, family: str = "tag36h11", size: int = 400,
             f"ID {tag_id} fora do intervalo para '{family}' (0–{max_id})."
         )
 
-    print(f"Gerando AprilTag ID: {tag_id} (Família: {family})")
+    print(f"Generating AprilTag ID: {tag_id} (Family: {family})")
 
     # Gera a imagem da tag
     tag_img = cv2.aruco.generateImageMarker(aruco_dict, tag_id, size)

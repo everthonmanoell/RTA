@@ -30,6 +30,10 @@ param(
     [string]$DeviceType = "flat",
 
     [Parameter(Mandatory = $false)]
+    [ValidateSet("portrait", "landscape")]
+    [string]$DeviceSide = "portrait",
+
+    [Parameter(Mandatory = $false)]
     # IP que o Android usa para conectar no listener Python (lado app -> Python)
     [string]$PythonServerIp = "127.0.0.1",
 
@@ -142,6 +146,7 @@ for ($i = 1; $i -le $RunCount; $i++) {
         "--control", $ControlName,
         "--device-type", $DeviceType,
         "--num-markers", "$numMarkers",
+        "--device-side", "$DeviceSide",
         "--options", "Server=$RobotServerIp",
         "--max-steps", "$MaxSteps",
         "--loop-delay", "$LoopDelay"
