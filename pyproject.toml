@@ -3,27 +3,31 @@ name = "rta"
 version = "0.1.0"
 description = "A module to calibrate a plan with touch robot feedback to use a smartphone freely in any plan."
 authors = [
-    {name = "Everthon Inácio",email = "everthonmanoell@gmail.com"}
+    { name = "Everthon Inácio", email = "everthonmanoell@gmail.com" }
 ]
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.12"
 dependencies = [
-    "numpy (>=2.0.0,<2.3.0)",
-    "opencv-python (>=4.10.0,<5.0.0.0)",
-    "pupil-apriltags (>=1.0.4.post11,<2.0.0)",
-    "pipx (>=1.11.0,<2.0.0)",
-    "transitions (>=0.9.3,<0.10.0)",
-    "scipy (>=1.17.1,<2.0.0)"
-    
-]
+    "aether-rdk @ file:./infra/aether_rdk-2.0.0-py3-none-any.whl",
 
+    "numpy ==1.26.4",
+    "pywin32 ==306",
+
+    "opencv-python ==4.10.0.84",
+    "pupil-apriltags ==1.0.4.post11",
+    "transitions ==0.9.3",
+    "scipy ==1.17.1",
+
+    "pandas ==2.3.3",
+    "matplotlib ==3.10.9",
+    "tabulate ==0.10.0"
+]
 
 [tool.poetry]
 packages = [
     { include = "drivers" },
     { include = "utils" }
 ]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
