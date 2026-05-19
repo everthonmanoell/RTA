@@ -326,7 +326,6 @@ def _calibrate_z_touches(
     detector: MarkerDetector,
     device: Mobile,
     session_recorder: TouchSessionRecorder,
-    safe_cleanup_fn,
 ) -> list | None:
     """
     Alinha o robô a cada um dos 4 ArUcos e registra a pose de toque.
@@ -335,13 +334,13 @@ def _calibrate_z_touches(
     do dispositivo — exatamente como no fluxo original.
 
     Retorna:
-        homography_position (list[Pose])  — lista com as 4 poses de toque
+        interpolation_position (list[Pose])  — lista com as 4 poses de toque
         None                              — se não conseguiu tocar todos os 4 marcadores
     """
     logging.info(
         "Iniciando rotina de toque nos ArUcos para mapear o Plano 3D (Z)...")
 
-    homography_position = []
+    interpolation_position = []
     rotation_aligment = RotationAlignment(robot, camera, detector)
 
     ALIGNMENT_TOLERANCE = config.ALIGMENT_TOLERANCE_MM
@@ -412,7 +411,7 @@ def _calibrate_z_touches(
                     "Move para pré-toque (offset + z inicial): %s", ok)
                 if not ok:
                     logging.error("Falha ao mover para posição de pré-toque.")
-                    return safe_cleanup_fn()
+                    return None
 
                 step = 1
 
@@ -431,9 +430,9 @@ def _calibrate_z_touches(
                             touch_feedback_holder["value"]
                         )
                         current_position = robot.get_cartesian_pose()
-                        homography_position.append(current_position)
+                        interpolation_position.append(current_position)
                         logging.info(
-                            "Pose registrada para homografia: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
+                            "Pose registrada para interpolação: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(
                                 current_position.y), float(current_position.z),
                             float(current_position.rx), float(
@@ -449,9 +448,9 @@ def _calibrate_z_touches(
                             "Faixa de toque atingida com o Z_TOUCH: %.2f mm. Parando o robô.",
                             float(current_position.z)
                         )
-                        homography_position.append(current_position)
+                        interpolation_position.append(current_position)
                         logging.info(
-                            "Pose registrada para homografia: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
+                            "Pose registrada para interpolação: x=%.2f, y=%.2f, z=%.2f, rx=%.2f, ry=%.2f, rz=%.2f",
                             float(current_position.x), float(
                                 current_position.y), float(current_position.z),
                             float(current_position.rx), float(
@@ -495,18 +494,18 @@ def _calibrate_z_touches(
         logging.info(
             "Alinhamento e toque finalizados. Realizando limpeza segura.")
 
-    if len(homography_position) < 4:
+    if len(interpolation_position) < 4:
         logging.error("O robô falhou em tocar todos os 4 marcadores.")
         return None
 
-    return homography_position
+    return interpolation_position
 
 
 # =============================================================================
 # FASE 4 — SWIPE NA TELA ÚTIL
 # =============================================================================
 
-def _build_swipe_params(homography_position: list, marker_infos: list, safe_zone_data: dict) -> dict:
+def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_zone_data: dict) -> dict:
     """
     Calcula e retorna todos os parâmetros necessários para o swipe.
 
@@ -515,7 +514,7 @@ def _build_swipe_params(homography_position: list, marker_infos: list, safe_zone
     """
     touch_poses_dict = {}
     for idx, target_id in enumerate([1, 2, 3, 4]):
-        touch_poses_dict[target_id] = homography_position[idx]
+        touch_poses_dict[target_id] = interpolation_position[idx]
 
     # Referência de escala: limite dos centros dos ArUcos (não a borda externa)
     c_x_min = min(m.centroid[0] for m in marker_infos)
@@ -852,25 +851,13 @@ def main() -> int:
     session_recorder = TouchSessionRecorder(device)
     session_recorder.start()
 
-    # --- Cleanup local (acessa camera e robot por closure) ---
-    def _safe_cleanup():
-        try:
-            camera.release()
-        except Exception:
-            pass
-        try:
-            robot.disconnect()
-        except Exception:
-            pass
-        return None
-
     runtime = {
         "frame": None,
         "ids": None,
         "corners": None,
         "marker_infos": None,
         "safe_zone_data": None,
-        "homography_position": None,
+        "interpolation_position": None,
         "swipe_params": None,
         "is_calibration_succeed": False,
     }
@@ -908,26 +895,25 @@ def main() -> int:
         return True
 
     def calibrate_z_touches_fn() -> bool:
-        homography_position = _calibrate_z_touches(
+        interpolation_position = _calibrate_z_touches(
             robot=robot,
             camera=camera,
             detector=detector,
             device=device,
             session_recorder=session_recorder,
-            safe_cleanup_fn=lambda: False,
         )
 
-        if homography_position is None:
-            runtime["homography_position"] = None
+        if interpolation_position is None:
+            runtime["interpolation_position"] = None
             return False
 
-        runtime["homography_position"] = homography_position
+        runtime["interpolation_position"] = interpolation_position
         return True
 
     def generate_map_fn() -> bool:
         try:
             runtime["swipe_params"] = _build_swipe_params(
-                homography_position=runtime["homography_position"],
+                interpolation_position=runtime["interpolation_position"],
                 marker_infos=runtime["marker_infos"],
                 safe_zone_data=runtime["safe_zone_data"],
             )

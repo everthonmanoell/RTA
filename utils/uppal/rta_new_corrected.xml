@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.6//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_6.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+// Runtime configuration
+const int NUM_MARKERS = 4;
+
+// Attempt limits equivalent to the Python RtaModel defaults
+const int MAX_CONNECT_ROBOT_ATTEMPTS = 3;
+const int MAX_MOTOR_ON_ATTEMPTS = 3;
+const int MAX_CAMERA_ON_ATTEMPTS = 5;
+const int MAX_DETECT_MARKERS_ATTEMPTS = 20;
+
+// Runtime flags updated by the Python action callbacks
+bool robot_connected = false;
+bool motor_on = false;
+bool move_to_roi_ok = false;
+bool camera_on = false;
+bool markers_found = false;
+int[0, NUM_MARKERS] markers_count = 0;
+bool calibration_ok = false;
+bool map_generated = false;
+bool swipe_executed = false;
+bool safe_pose_ok = false;
+bool save_map_ok = false;
+
+// Attempt counters
+int connect_robot_attempt = 0;
+int motor_on_attempt = 0;
+int camera_on_attempt = 0;
+int detect_markers_attempts = 0;
+
+// Final result
+const int RESULT_NONE = 0;
+const int RESULT_SUCCESS = 1;
+const int RESULT_FAILURE = 2;
+int[0,2] final_result = RESULT_NONE;</declaration>
+	<template>
+		<name>Rta</name>
+		<location id="id0" x="-600" y="0">
+			<name x="-617" y="-34">Idle</name>
+		</location>
+		<location id="id1" x="-400" y="0">
+			<name x="-459" y="-34">ConnectRobot</name>
+		</location>
+		<location id="id2" x="-150" y="0">
+			<name x="-184" y="-34">MotorOn</name>
+		</location>
+		<location id="id3" x="100" y="0">
+			<name x="58" y="-34">MoveToROI</name>
+		</location>
+		<location id="id4" x="350" y="0">
+			<name x="316" y="-34">CameraOn</name>
+		</location>
+		<location id="id5" x="600" y="0">
+			<name x="549" y="-34">DetectMarkers</name>
+		</location>
+		<location id="id6" x="1111" y="0">
+			<name x="1035" y="-42">CalibrateZTouches</name>
+		</location>
+		<location id="id7" x="1411" y="0">
+			<name x="1369" y="-34">GenerateMap</name>
+		</location>
+		<location id="id8" x="1711" y="0">
+			<name x="1668" y="-34">SwipeBorders</name>
+		</location>
+		<location id="id9" x="2011" y="0">
+			<name x="1977" y="-34">SafePose</name>
+		</location>
+		<location id="id10" x="2311" y="0">
+			<name x="2243" y="-34">ReadFinalMarker</name>
+		</location>
+		<location id="id11" x="2611" y="0">
+			<name x="2585" y="-34">SaveMap</name>
+		</location>
+		<location id="id12" x="2911" y="0">
+			<name x="2877" y="-34">MotorOff</name>
+		</location>
+		<location id="id13" x="3211" y="0">
+			<name x="3194" y="-34">Done</name>
+		</location>
+		<location id="id14" x="600" y="-300">
+			<name x="583" y="-334">Error</name>
+		</location>
+		<init ref="id0"/>
+		<transition id="id15">
+			<source ref="id0"/>
+			<target ref="id1"/>
+		</transition>
+		<transition id="id16">
+			<source ref="id1"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-331" y="-25">robot_connected</label>
+			<label kind="assignment" x="-331" y="0">connect_robot_attempt = 0</label>
+		</transition>
+		<transition id="id17">
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="guard" x="-74" y="-25">motor_on</label>
+			<label kind="assignment" x="-74" y="0">motor_on_attempt = 0</label>
+		</transition>
+		<transition id="id18">
+			<source ref="id3"/>
+			<target ref="id4"/>
+			<label kind="guard" x="166" y="-25">move_to_roi_ok</label>
+		</transition>
+		<transition id="id19">
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="guard" x="421" y="-25">camera_on</label>
+			<label kind="assignment" x="421" y="0">camera_on_attempt = 0</label>
+		</transition>
+		<transition id="id20">
+			<source ref="id5"/>
+			<target ref="id6"/>
+			<label kind="guard" x="663" y="-25">markers_found &amp;&amp; markers_count &gt;= NUM_MARKERS</label>
+			<label kind="assignment" x="674" y="0">detect_markers_attempts = 0</label>
+		</transition>
+		<transition id="id21">
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="guard" x="1205" y="0">calibration_ok</label>
+		</transition>
+		<transition id="id22">
+			<source ref="id7"/>
+			<target ref="id8"/>
+			<label kind="guard" x="1518" y="-25">map_generated</label>
+			<label kind="assignment" x="1487" y="0">swipe_executed = false</label>
+		</transition>
+		<transition id="id23">
+			<source ref="id8"/>
+			<target ref="id9"/>
+			<label kind="guard" x="1810" y="-25">swipe_executed</label>
+		</transition>
+		<transition id="id24">
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="guard" x="2112" y="-25">safe_pose_ok</label>
+		</transition>
+		<transition id="id25">
+			<source ref="id10"/>
+			<target ref="id11"/>
+			<label kind="guard" x="2337" y="8">final_result == RESULT_SUCCESS</label>
+		</transition>
+		<transition id="id26">
+			<source ref="id11"/>
+			<target ref="id12"/>
+			<label kind="guard" x="2720" y="-25">save_map_ok</label>
+		</transition>
+		<transition id="id27">
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="assignment" x="3009" y="-25">motor_on = false</label>
+		</transition>
+		<transition id="id28">
+			<source ref="id1"/>
+			<target ref="id1"/>
+			<label kind="guard" x="-858" y="59">!robot_connected &amp;&amp; connect_robot_attempt &lt; MAX_CONNECT_ROBOT_ATTEMPTS</label>
+			<label kind="assignment" x="-493" y="93">connect_robot_attempt++</label>
+			<nail x="-340" y="85"/>
+			<nail x="-460" y="85"/>
+		</transition>
+		<transition id="id29">
+			<source ref="id1"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-569" y="-246">connect_robot_attempt &gt;= MAX_CONNECT_ROBOT_ATTEMPTS</label>
+			<nail x="-400" y="-300"/>
+		</transition>
+		<transition id="id30">
+			<source ref="id2"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-314" y="110">!motor_on &amp;&amp; motor_on_attempt &lt; MAX_MOTOR_ON_ATTEMPTS</label>
+			<label kind="assignment" x="-212" y="93">motor_on_attempt++</label>
+			<nail x="-90" y="85"/>
+			<nail x="-210" y="85"/>
+		</transition>
+		<transition id="id31">
+			<source ref="id2"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-289" y="-204">motor_on_attempt &gt;= MAX_MOTOR_ON_ATTEMPTS</label>
+			<nail x="-150" y="-300"/>
+		</transition>
+		<transition id="id32">
+			<source ref="id3"/>
+			<target ref="id14"/>
+			<label kind="guard" x="51" y="-229">!move_to_roi_ok</label>
+			<nail x="100" y="-300"/>
+		</transition>
+		<transition id="id33">
+			<source ref="id4"/>
+			<target ref="id4"/>
+			<label kind="guard" x="59" y="42">!camera_on &amp;&amp; camera_on_attempt &lt; MAX_CAMERA_ON_ATTEMPTS</label>
+			<label kind="assignment" x="255" y="85">camera_on_attempt++</label>
+			<nail x="410" y="85"/>
+			<nail x="290" y="85"/>
+		</transition>
+		<transition id="id34">
+			<source ref="id4"/>
+			<target ref="id14"/>
+			<label kind="guard" x="178" y="-272">camera_on_attempt &gt;= MAX_CAMERA_ON_ATTEMPTS</label>
+			<nail x="350" y="-300"/>
+		</transition>
+		<transition id="id35">
+			<source ref="id5"/>
+			<target ref="id5"/>
+			<label kind="guard" x="493" y="85">!(markers_found &amp;&amp; markers_count &gt;= NUM_MARKERS) &amp;&amp; detect_markers_attempts &lt; MAX_DETECT_MARKERS_ATTEMPTS</label>
+			<label kind="assignment" x="518" y="102">detect_markers_attempts++</label>
+			<nail x="660" y="85"/>
+			<nail x="540" y="85"/>
+		</transition>
+		<transition id="id36">
+			<source ref="id5"/>
+			<target ref="id14"/>
+			<label kind="guard" x="408" y="-187">detect_markers_attempts &gt;= MAX_DETECT_MARKERS_ATTEMPTS</label>
+		</transition>
+		<transition id="id37">
+			<source ref="id6"/>
+			<target ref="id14"/>
+			<label kind="guard" x="1052" y="-229">!calibration_ok</label>
+			<nail x="1111" y="-300"/>
+		</transition>
+		<transition id="id38">
+			<source ref="id7"/>
+			<target ref="id14"/>
+			<label kind="guard" x="1350" y="-221">!map_generated</label>
+			<nail x="1411" y="-300"/>
+		</transition>
+		<transition id="id39">
+			<source ref="id8"/>
+			<target ref="id14"/>
+			<label kind="guard" x="1651" y="-238">!swipe_executed</label>
+			<nail x="1711" y="-300"/>
+		</transition>
+		<transition id="id40">
+			<source ref="id9"/>
+			<target ref="id14"/>
+			<label kind="guard" x="1960" y="-238">!safe_pose_ok</label>
+			<nail x="2011" y="-300"/>
+		</transition>
+		<transition id="id41">
+			<source ref="id10"/>
+			<target ref="id14"/>
+			<label kind="guard" x="2234" y="-238">final_result == RESULT_FAILURE</label>
+			<nail x="2311" y="-300"/>
+		</transition>
+		<transition id="id42">
+			<source ref="id11"/>
+			<target ref="id14"/>
+			<label kind="guard" x="2569" y="-238">!save_map_ok</label>
+			<nail x="2611" y="-300"/>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+rta = Rta();
+// List one or more processes to be composed into a system.
+system rta;
+</system>
+	<queries>
+		<query>
+			<formula/>
+			<comment/>
+		</query>
+	</queries>
+</nta>
