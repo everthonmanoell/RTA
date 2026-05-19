@@ -58,10 +58,10 @@ class RobotCamera:
             bool: True if camera is ready, False otherwise.
         """
         if not self._camera_opened:
-            # Tenta abrir com DirectShow primeiro (Melhor para injetar configs em Logitech no Windows)
+            # Try to open with DirectShow first (Better for injecting configs in Logitech on Windows)
             self.cap = cv2.VideoCapture(self.camera_id, cv2.CAP_DSHOW)
 
-            # Fallback seguro caso esteja rodando no Linux, Mac ou o DSHOW falhe
+            # Safe fallback in case running on Linux, Mac or DSHOW fails
             if not self.cap.isOpened():
                 self.cap = cv2.VideoCapture(self.camera_id)
 
@@ -70,7 +70,7 @@ class RobotCamera:
                 return False
 
             # =================================================================
-            # APLICA CONFIGURAÇÕES DE HARDWARE DA BRIO (via config.py)
+            # APPLY BRIO HARDWARE SETTINGS (via config.py)
             # =================================================================
             try:
                 import config
@@ -78,16 +78,16 @@ class RobotCamera:
 
                 if calib:
                     self.logger.info(
-                        "Injetando configurações de hardware na Brio...")
+                        "Injecting hardware settings into Brio...")
 
-                    # Foco
+                    # Focus
                     if "auto_focus" in calib:
                         self.cap.set(cv2.CAP_PROP_AUTOFOCUS,
                                      calib["auto_focus"])
                     if "fixed_focus" in calib:
                         self.cap.set(cv2.CAP_PROP_FOCUS, calib["fixed_focus"])
 
-                    # Exposição
+                    # Exposure
                     if "auto_exposure" in calib:
                         self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE,
                                      calib["auto_exposure"])
@@ -95,7 +95,7 @@ class RobotCamera:
                         self.cap.set(cv2.CAP_PROP_EXPOSURE,
                                      calib["fixed_exposure"])
 
-                    # Balanço de Branco
+                    # White Balance
                     if "auto_white_balance" in calib:
                         self.cap.set(cv2.CAP_PROP_AUTO_WB,
                                      calib["auto_white_balance"])
@@ -105,7 +105,7 @@ class RobotCamera:
 
             except ImportError:
                 self.logger.warning(
-                    "Arquivo 'config' não encontrado, ignorando calibração de hardware da câmera.")
+                    "File 'config' not found, ignoring camera hardware calibration.")
 
             self._camera_opened = True
 
@@ -281,66 +281,66 @@ if __name__ == "__main__":
     frame = cv2.imread(str(image_path))
     target_id = 1
 
-    # 1. Detectar o aruco com id 1
+    # 1. Detect aruco with id 1
     id_found, corners = md.detect_single_marker_by_id(frame, target_id)
 
     # print(f"corners from id_target {target_id}: {corners}")
 
     if id_found is not None:
-        # 2. Pegar informações (Largura, Altura, Centroide)
+        # 2. Get information (Width, Height, Centroid)
         marker_info = md.get_marker_info(target_id, corners)
 
         width_aruco_pixel = marker_info.width_px
         height_aruco_pixel = marker_info.height_px
 
-        # 3. Escala mm/px (Quanto cada pixel vale em milímetros)
+        # 3. Scale mm/px (How much each pixel is worth in millimeters)
         scale_x = aruco_width_real_mm / width_aruco_pixel
         scale_y = aruco_height_real_mm / height_aruco_pixel
 
-        # 4. Centroides e Erro
+        # 4. Centroids and Error
         center_x_img, center_y_img = camera.center_point(frame)
         center_aruco_x, center_aruco_y = marker_info.centroid
 
         error_px_x = center_aruco_x - center_x_img
         error_px_y = center_aruco_y - center_y_img
 
-        # 5. Converter erro para mm
+        # 5. Convert error to mm
         error_mm_x = error_px_x * scale_x
         error_mm_y = error_px_y * scale_y
 
-        # ... (seu código anterior até o cálculo de erro_mm_y) ...
+        # ... (your previous code up to error_mm_y calculation) ...
 
-        print(f"Erro X: {error_mm_x:.2f} mm")
-        print(f"Erro Y: {error_mm_y:.2f} mm")
+        print(f"Error X: {error_mm_x:.2f} mm")
+        print(f"Error Y: {error_mm_y:.2f} mm")
 
-        # 1. Bolinha no Centro da Imagem (Azul)
-        # Coordenadas: (x, y) como inteiros
-        centro_imagem = (int(center_x_img), int(center_y_img))
-        raio = 5
-        cor_azul = (255, 0, 0)  # BGR
-        espessura_preenchido = -1  # -1 preenche o círculo
+        # 1. Circle at Image Center (Blue)
+        # Coordinates: (x, y) as integers
+        center_image = (int(center_x_img), int(center_y_img))
+        radius = 5
+        color_blue = (255, 0, 0)  # BGR
+        thickness_filled = -1  # -1 fills the circle
 
-        cv2.circle(frame, centro_imagem, raio, cor_azul, espessura_preenchido)
+        cv2.circle(frame, center_image, radius, color_blue, thickness_filled)
 
-        # 2. Bolinha no Centro do ArUco (Vermelha)
-        # Coordenadas: (x, y) como inteiros
-        centro_aruco = (int(center_aruco_x), int(center_aruco_y))
-        raio = 5
-        cor_vermelha = (0, 0, 255)  # BGR
+        # 2. Circle at ArUco Center (Red)
+        # Coordinates: (x, y) as integers
+        center_aruco = (int(center_aruco_x), int(center_aruco_y))
+        radius = 5
+        color_red = (0, 0, 255)  # BGR
 
-        cv2.circle(frame, centro_aruco, raio,
-                   cor_vermelha, espessura_preenchido)
+        cv2.circle(frame, center_aruco, radius,
+                   color_red, thickness_filled)
 
-        # Opcional: Desenhar uma linha unindo os dois centros (Ciano)
-        cv2.line(frame, centro_imagem, centro_aruco, (255, 255, 0), 2)
+        # Optional: Draw a line connecting the two centers (Cyan)
+        cv2.line(frame, center_image, center_aruco, (255, 255, 0), 2)
 
-        pos_x_texto = int(center_aruco_x) + 15
-        pos_y_texto = int(center_aruco_y) - 15
+        pos_x_text = int(center_aruco_x) + 15
+        pos_y_text = int(center_aruco_y) - 15
 
         cv2.putText(
             frame,
-            f"Erro: X={error_mm_x:.1f} Y={error_mm_y:.1f} mm",
-            (pos_x_texto, pos_y_texto),
+            f"Error: X={error_mm_x:.1f} Y={error_mm_y:.1f} mm",
+            (pos_x_text, pos_y_text),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,
             (0, 255, 0),

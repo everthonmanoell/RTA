@@ -21,27 +21,27 @@ from utils.coordinate_transform import CoordinateTransform
 class AutoAlignment:
     """
     Manages automatic XYZ alignment of the robot towards fiducial markers.
-    
+
     Uses visual feedback from the robot-mounted camera to:
     1. Keep markers centered in the image (XY plane)
     2. Maintain a target distance from the markers (Z axis)
     3. Approach markers for interaction (touching screen)
     """
-    
+
     # Control parameters
     CENTRALIZE_TOLERANCE = 5.0  # mm
     DEPTH_TOLERANCE = 10.0  # mm
     TARGET_DISTANCE_MM = 200.0  # Default approach distance
-    
+
     # Safety limits
     Z_MAX = 600.0  # Maximum Z position (mm)
     Z_MIN = 100.0  # Minimum Z position (mm)
     APPROACH_SPEED = 5.0  # mm per iteration
-    
+
     # Control gains
     XY_GAIN = 0.03  # Proportional gain for XY correction
     Z_GAIN = 0.2   # Proportional gain for Z correction
-    
+
     MAX_ITERATIONS = 20
     ITERATION_DELAY = 0.5  # seconds
     MAX_XY_STEP_MM = 5.0
@@ -49,13 +49,13 @@ class AutoAlignment:
     MAX_XY_DRIFT_MM = 120.0
     MAX_NO_IMPROVEMENT_ITERS = 4
     MIN_IMPROVEMENT_MM = 1.0
-    
-    def __init__(self, robot_arm, camera: RobotCamera, 
+
+    def __init__(self, robot_arm, camera: RobotCamera,
                  detector: Optional[MarkerDetector] = None,
                  transform: Optional[CoordinateTransform] = None):
         """
         Initialize AutoAlignment controller.
-        
+
         Args:
             robot_arm: Robot interface (must have get_cartesian_pose, move_cartesian).
             camera (RobotCamera): Robot camera interface.
@@ -67,7 +67,7 @@ class AutoAlignment:
         self.detector = detector or MarkerDetector()
         self.transform = transform or CoordinateTransform()
         self.logger = logging.getLogger(__name__)
-        
+
         # State tracking
         self.reference_marker_area = None
         self.reference_marker_perimeter = None
@@ -93,11 +93,10 @@ class AutoAlignment:
                 best_dist = dist
                 best = marker
         return best
-    
+
     def set_target_marker_id(self, marker_id: int) -> None:
         self.target_marker_id = int(marker_id)
-        self.logger.info("Target marker definido para ID=%d", self.target_marker_id)
-
+        self.logger.info("Target marker set to ID=%d", self.target_marker_id)
 
     def _select_target_marker(
         self,
@@ -105,9 +104,10 @@ class AutoAlignment:
         marker_infos: list[MarkerInfo],
     ) -> Optional[MarkerInfo]:
         """
-        Seleciona o marcador-alvo.
-        Se target_marker_id estiver definido, usa esse ID.
-        Caso contrário, usa o mais próximo do centro.
+        Select the target marker.
+
+        If target_marker_id is set, use that ID.
+        Otherwise, use the marker closest to the center.
         """
         if not marker_infos:
             return None
@@ -118,19 +118,18 @@ class AutoAlignment:
                     return marker
 
             self.logger.warning(
-                "Marcador alvo ID=%d não encontrado no frame atual",
+                "Target marker ID=%d not found in the current frame",
                 self.target_marker_id,
             )
             return None
 
         return self.detector.find_closest_to_center(frame, marker_infos)
 
-
     def compute_adaptive_gain(self, error_px: float) -> float:
         """
-        Ganho adaptativo simples:
-        - erro grande -> ganho maior
-        - erro pequeno -> ganho menor
+        Simple adaptive gain:
+        - large error -> larger gain
+        - small error -> smaller gain
         """
         if error_px > 40.0:
             return 0.35
@@ -143,9 +142,9 @@ class AutoAlignment:
     def calibrate_distance(self) -> bool:
         """
         Calibrate reference distance by capturing current marker area.
-        
+
         Establishes the reference area used for inverse square law calculations.
-        
+
         Returns:
             bool: True if calibration successful.
         """
@@ -153,23 +152,24 @@ class AutoAlignment:
         if frame is None:
             self.logger.error("Failed to capture frame for calibration")
             return False
-        
+
         ids, corners = self.detector.detect_markers(frame)
         if ids is None or len(ids) == 0:
             self.logger.error("No markers detected for calibration")
             return False
-        
+
         # Refine and get info
         corners = self.detector.refine_corners(frame, corners)
         marker_infos = []
         for i, marker_id in enumerate(ids):
-            marker_infos.append(self.detector.get_marker_info(int(marker_id[0]), corners[i]))
+            marker_infos.append(self.detector.get_marker_info(
+                int(marker_id[0]), corners[i]))
 
         marker_info = self.detector.find_closest_to_center(frame, marker_infos)
         if marker_info is None:
             self.logger.error("No valid marker for calibration")
             return False
-        
+
         self.reference_marker_area = marker_info.area
         self.reference_marker_perimeter = marker_info.perimeter
         self.logger.info(
@@ -177,16 +177,16 @@ class AutoAlignment:
             self.reference_marker_area,
             self.reference_marker_perimeter,
         )
-        
+
         return True
-    
+
     def get_markers_from_frame(self, frame: np.ndarray) -> Optional[list]:
         """
         Detect and process markers in a frame.
-        
+
         Args:
             frame (np.ndarray): Input frame.
-            
+
         Returns:
             Optional[list]: List of MarkerInfo objects, or None if detection failed.
         """
@@ -194,27 +194,27 @@ class AutoAlignment:
         if ids is None or len(ids) == 0:
             self.logger.warning("No markers detected")
             return None
-        
+
         # Refine corners
         corners = self.detector.refine_corners(frame, corners)
-        
+
         # Build marker info list
         marker_infos = []
         for i, marker_id in enumerate(ids):
             info = self.detector.get_marker_info(int(marker_id[0]), corners[i])
             marker_infos.append(info)
-        
+
         return marker_infos
-    
-    def calculate_centering_correction(self, frame: np.ndarray, 
-                                      marker_info: MarkerInfo) -> Tuple[float, float]:
+
+    def calculate_centering_correction(self, frame: np.ndarray,
+                                       marker_info: MarkerInfo) -> Tuple[float, float]:
         """
         Calculate XY correction to center a single marker.
-        
+
         Args:
             frame (np.ndarray): Current frame.
             marker_info (MarkerInfo): Detected marker.
-            
+
         Returns:
             Tuple[float, float]: (offset_x_mm, offset_y_mm)
         """
@@ -228,28 +228,29 @@ class AutoAlignment:
             marker_info.height_px,
         )
         return offset_x_mm, offset_y_mm
-    
+
     def calculate_homography_centering_correction(self, frame: np.ndarray, marker_infos: list) -> Tuple[float, float]:
         """
         Calculate XY correction using homography from 4 markers to center screen.
-        
+
         Maps screen device coordinates to image coordinates using the 4 markers as reference points.
-        
+
         Args:
             frame (np.ndarray): Current frame.
             marker_infos (list): List of detected markers (expects 4+ markers).
-            
+
         Returns:
             Tuple[float, float]: (offset_x_mm, offset_y_mm) to screen center
         """
         if len(marker_infos) < 4:
             # Fallback to closest marker if less than 4 markers
             if marker_infos:
-                closest = self.detector.find_closest_to_center(frame, marker_infos)
+                closest = self.detector.find_closest_to_center(
+                    frame, marker_infos)
                 if closest:
                     return self.calculate_centering_correction(frame, closest)
             return 0.0, 0.0
-        
+
         # Import config to get screen dimensions
         try:
             import config
@@ -259,27 +260,29 @@ class AutoAlignment:
             # Fallback if config not available
             screen_width_px = 0.0
             screen_height_px = 0.0
-        
+
         # If we don't have screen dimensions, fallback
         if screen_width_px <= 0 or screen_height_px <= 0:
             if marker_infos:
-                closest = self.detector.find_closest_to_center(frame, marker_infos)
+                closest = self.detector.find_closest_to_center(
+                    frame, marker_infos)
                 if closest:
                     return self.calculate_centering_correction(frame, closest)
             return 0.0, 0.0
-        
+
         height, width = frame.shape[:2]
-        marker_centers = np.array([m.centroid for m in marker_infos], dtype=np.float32)
-        
+        marker_centers = np.array(
+            [m.centroid for m in marker_infos], dtype=np.float32)
+
         # Find the 4 corners: top-left, top-right, bottom-left, bottom-right
         sums = marker_centers[:, 0] + marker_centers[:, 1]
         diffs = marker_centers[:, 1] - marker_centers[:, 0]
-        
+
         idx_tl = int(np.argmin(sums))    # top-left: min(x+y)
         idx_br = int(np.argmax(sums))    # bottom-right: max(x+y)
         idx_tr = int(np.argmin(diffs))   # top-right: min(y-x)
         idx_bl = int(np.argmax(diffs))   # bottom-left: max(y-x)
-        
+
         # Verify we found 4 distinct indices
         if len({idx_tl, idx_tr, idx_bl, idx_br}) != 4:
             # Fallback
@@ -287,7 +290,7 @@ class AutoAlignment:
             if closest:
                 return self.calculate_centering_correction(frame, closest)
             return 0.0, 0.0
-        
+
         # Marker positions in image space
         img_corners = np.array([
             marker_centers[idx_tl],
@@ -295,7 +298,7 @@ class AutoAlignment:
             marker_centers[idx_bl],
             marker_centers[idx_br]
         ], dtype=np.float32)
-        
+
         # **CRITICAL**: Device (screen) corners - NOT frame corners!
         # These are in the actual device/screen coordinate system
         dev_corners = np.array([
@@ -304,7 +307,7 @@ class AutoAlignment:
             [0.0, screen_height_px],         # bottom-left (USE SCREEN HEIGHT)
             [screen_width_px, screen_height_px]  # bottom-right
         ], dtype=np.float32)
-        
+
         # Calculate homography: from device coords to image coords
         H, _ = cv2.findHomography(dev_corners, img_corners, method=0)
         if H is None:
@@ -313,14 +316,15 @@ class AutoAlignment:
             if closest:
                 return self.calculate_centering_correction(frame, closest)
             return 0.0, 0.0
-        
+
         # The true screen center in device coordinates
         # This is the actual center of the device screen
-        dev_center = np.array([[[screen_width_px/2.0, screen_height_px/2.0]]], dtype=np.float32)
-        
+        dev_center = np.array(
+            [[[screen_width_px/2.0, screen_height_px/2.0]]], dtype=np.float32)
+
         # Transform device screen center to image coordinates
         img_center = cv2.perspectiveTransform(dev_center, H)[0][0]
-        
+
         # Calculate offset from screen center to image center
         offset_x_mm, offset_y_mm = self.transform.image_center_offset_mm(
             img_center[0],
@@ -330,7 +334,7 @@ class AutoAlignment:
             np.mean([m.width_px for m in marker_infos]),
             np.mean([m.height_px for m in marker_infos]),
         )
-        
+
         self.logger.debug(
             "Homography centering: screen_center_device=(%.1f, %.1f), img_center=(%.1f, %.1f), offset=(%.2f, %.2f)mm",
             screen_width_px/2.0,
@@ -340,18 +344,18 @@ class AutoAlignment:
             offset_x_mm,
             offset_y_mm,
         )
-        
+
         return offset_x_mm, offset_y_mm
-    
+
     def calculate_depth_correction(self, marker_info: MarkerInfo) -> float:
         """
         Calculate Z correction to reach target distance.
-        
+
         Uses inverse square law: distance ∝ sqrt(reference_area / current_area)
-        
+
         Args:
             marker_info (MarkerInfo): Detected marker.
-            
+
         Returns:
             float: Z correction in mm (positive = move closer).
         """
@@ -366,16 +370,16 @@ class AutoAlignment:
         if self.reference_marker_area is None:
             self.logger.warning("Reference marker not calibrated")
             return 0.0
-        
+
         estimated_distance = self.transform.marker_size_to_depth(
             marker_info.area,
             self.reference_marker_area,
             self.current_target_distance
         )
-        
+
         error = estimated_distance - self.current_target_distance
         return error
-    
+
     def apply_correction(
         self,
         correction_x: float,
@@ -383,9 +387,9 @@ class AutoAlignment:
         correction_z: float,
     ) -> bool:
         """
-        Aplica correção XYZ na pose atual do robô.
+        Apply XYZ correction to the robot's current pose.
 
-        Neste modo, correction_x / correction_y já são passos do robô em mm.
+        In this mode, correction_x / correction_y are already robot steps in mm.
         """
         pose_before = self.robot_arm.get_cartesian_pose()
         if pose_before is None:
@@ -396,7 +400,7 @@ class AutoAlignment:
         current_y = float(pose_before.y)
         current_z = float(pose_before.z)
 
-        # correction_x / correction_y JÁ são passos em mm
+        # correction_x / correction_y are already steps in mm
         delta_x = correction_x
         delta_y = correction_y
         delta_z = correction_z
@@ -446,7 +450,8 @@ class AutoAlignment:
 
         pose_after = self.robot_arm.get_cartesian_pose()
         if pose_after is None:
-            self.logger.warning("Move command sent, but could not read pose after move")
+            self.logger.warning(
+                "Move command sent, but could not read pose after move")
             return True
 
         after_x = float(pose_after.x)
@@ -464,20 +469,23 @@ class AutoAlignment:
         )
 
         return True
-    
+
     def run_centering_loop(self, max_iterations: int = None) -> bool:
         """
-        Loop de centralização em malha fechada usando 1 marcador.
-        Tira foto, detecta o marcador alvo, calcula erro até o centro da imagem,
-        move o robô e repete até convergir.
+        Closed-loop centering using one marker.
+
+        Captures a frame, detects the target marker, computes the error to the
+        image center, moves the robot, and repeats until convergence.
         """
-        resolved_max_iterations = int(max_iterations) if max_iterations is not None else int(self.MAX_ITERATIONS)
+        resolved_max_iterations = int(
+            max_iterations) if max_iterations is not None else int(self.MAX_ITERATIONS)
         best_error_px = float("inf")
         no_improvement_iters = 0
 
         start_pose = self.robot_arm.get_cartesian_pose()
         if start_pose is None:
-            self.logger.error("Failed to get initial robot pose for centering loop")
+            self.logger.error(
+                "Failed to get initial robot pose for centering loop")
             return False
 
         start_x = float(start_pose.x)
@@ -505,8 +513,10 @@ class AutoAlignment:
                 self.logger.warning("No target marker available for centering")
                 return False
 
-            error_x_px, error_y_px = self.calculate_centering_error_pixels(frame, target)
-            corr_x, corr_y = self.pixel_error_to_robot_step(error_x_px, error_y_px)
+            error_x_px, error_y_px = self.calculate_centering_error_pixels(
+                frame, target)
+            corr_x, corr_y = self.pixel_error_to_robot_step(
+                error_x_px, error_y_px)
             error_px = math.hypot(error_x_px, error_y_px)
 
             self.logger.info(
@@ -562,7 +572,8 @@ class AutoAlignment:
 
             moved = self.apply_correction(corr_x, corr_y, 0.0)
             if not moved:
-                self.logger.warning("Failed to apply correction at iteration %d", iteration)
+                self.logger.warning(
+                    "Failed to apply correction at iteration %d", iteration)
                 return False
 
             self.last_error_px = error_px
@@ -574,31 +585,32 @@ class AutoAlignment:
             self.last_error_px if self.last_error_px is not None else -1.0,
         )
         return False
-    
-    def run_depth_loop(self, target_distance_mm: float = None, 
-                      max_iterations: int = None) -> bool:
+
+    def run_depth_loop(self, target_distance_mm: float = None,
+                       max_iterations: int = None) -> bool:
         """
         Run Z depth control loop.
-        
+
         Approaches/maintains target distance from markers.
-        
+
         Args:
             target_distance_mm (float): Target distance in mm (uses default if None).
             max_iterations (int): Maximum iterations.
-            
+
         Returns:
             bool: True if depth control successful.
         """
         if target_distance_mm is None:
             target_distance_mm = self.current_target_distance
-        
+
         self.current_target_distance = target_distance_mm
         max_iterations = max_iterations or self.MAX_ITERATIONS
         iteration = 0
         recenter_iters = max(1, min(5, max_iterations))
-        
-        self.logger.info(f"Starting depth control loop (target={target_distance_mm}mm)")
-        
+
+        self.logger.info(
+            f"Starting depth control loop (target={target_distance_mm}mm)")
+
         # Ensure we have reference
         if self.reference_marker_area is None:
             if not self.calibrate_distance():
@@ -608,98 +620,101 @@ class AutoAlignment:
         if not self.run_centering_loop(max_iterations=recenter_iters):
             self.logger.error("Depth loop aborted: pre-centering failed")
             return False
-        
+
         while iteration < max_iterations:
             frame = self.camera.capture_frame()
             if frame is None:
                 return False
-            
+
             marker_infos = self.get_markers_from_frame(frame)
             if not marker_infos:
                 return False
-            
+
             # Depth uses the most stable marker near the image center.
             target = self.detector.find_closest_to_center(frame, marker_infos)
             if target is None:
                 return False
-            
+
             # Calculate correction
             corr_z = self.calculate_depth_correction(target)
-            
-            self.logger.info(f"Iteration {iteration}: Depth error={corr_z:.2f}mm")
-            
+
+            self.logger.info(
+                f"Iteration {iteration}: Depth error={corr_z:.2f}mm")
+
             # Check convergence
             if abs(corr_z) < self.DEPTH_TOLERANCE:
                 self.logger.info("Depth control successful")
                 return True
-            
+
             # Apply correction
             if not self.apply_correction(0.0, 0.0, corr_z):
                 return False
 
             # FOV-like strategy: recenter after each depth step to avoid drift.
             if not self.run_centering_loop(max_iterations=recenter_iters):
-                self.logger.error("Depth loop aborted: re-centering failed after depth step")
+                self.logger.error(
+                    "Depth loop aborted: re-centering failed after depth step")
                 return False
-            
+
             time.sleep(self.ITERATION_DELAY)
             iteration += 1
-        
+
         self.logger.warning("Depth control reached max iterations")
         return False
-    
+
     def approach_marker(self, target_distance_mm: float) -> bool:
         """
         Approach markers to a specific distance.
-        
+
         Runs combined centering and depth control to position for interaction.
-        
+
         Args:
             target_distance_mm (float): Distance to approach to.
-            
+
         Returns:
             bool: True if approach successful.
         """
         self.logger.info(f"Approaching markers to {target_distance_mm}mm")
-        
+
         # First center the markers
         if not self.run_centering_loop():
             self.logger.error("Centering failed")
             return False
-        
+
         # Then adjust depth
         if not self.run_depth_loop(target_distance_mm):
             self.logger.error("Depth control failed")
             return False
-        
+
         self.logger.info("Approach successful")
         return True
-    
+
     def get_touch_z(self) -> float:
         """
-        Retorna a altura Z ideal para o toque, baseada na posição atual do robô após alinhamento.
-        Pode ser ajustado conforme a lógica de segurança/calibração do seu sistema.
+        Return the ideal Z height for touch based on the robot's current post-alignment pose.
+
+        This can be adjusted according to your system's safety/calibration logic.
         """
-        # Usa a posição Z atual do robô como referência de toque
+        # Use the robot's current Z position as the touch reference
         pose = self.robot_arm.get_cartesian_pose()
         if pose is not None:
             return pose.z
-        # Fallback para altura padrão de aproximação
+        # Fallback to the default approach height
         return self.TARGET_DISTANCE_MM
 
     def get_current_pose(self) -> Optional[tuple]:
         """
-        Retorna a pose cartesiana atual do robô como tupla (x, y, z, rx, ry, rz).
-        Útil para guardar a pose exata após alinhamento bem-sucedido.
+        Return the robot's current Cartesian pose as a tuple (x, y, z, rx, ry, rz).
+
+        Useful for storing the exact pose after a successful alignment.
 
         Returns:
-            Optional[tuple]: (x, y, z, rx, ry, rz) ou None se falhar
+            Optional[tuple]: (x, y, z, rx, ry, rz) or None if retrieval fails.
         """
         pose = self.robot_arm.get_cartesian_pose()
         if pose is not None:
             return (pose.x, pose.y, pose.z, pose.rx, pose.ry, pose.rz)
         return None
-    
 
     def calculate_centering_error_pixels(
         self,
@@ -707,8 +722,9 @@ class AutoAlignment:
         marker_info: MarkerInfo,
     ) -> tuple[float, float]:
         """
-        Calcula o erro entre o centro da imagem e o centro do marcador, em pixels.
-        Retorna (error_x_px, error_y_px).
+        Calculate the error in pixels between the image center and the marker center.
+
+        Returns (error_x_px, error_y_px).
         """
         frame_h, frame_w = frame.shape[:2]
         image_cx = frame_w / 2.0
@@ -721,15 +737,16 @@ class AutoAlignment:
         error_y_px = image_cy - marker_cy
 
         return error_x_px, error_y_px
-    
+
     def pixel_error_to_robot_step(
         self,
         error_x_px: float,
         error_y_px: float,
     ) -> tuple[float, float]:
         """
-        Converte erro em pixel para passo do robô em mm.
-        Ganhos pequenos para evitar overshoot.
+        Convert pixel error into robot step values in mm.
+
+        Small gains are used to avoid overshoot.
         """
         gain_x = 0.03
         gain_y = 0.03

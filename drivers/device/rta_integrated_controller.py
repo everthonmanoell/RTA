@@ -1,12 +1,12 @@
 """
-RTA_IntegratedController: Orquestrador completo do sistema RTA.
+RTA_IntegratedController: Complete orchestrator for the RTA system.
 
-Integra:
-- RTA_app (app Android com markers)
-- Câmera do robô
-- Alinhamento visual (XYZ + RZ)
-- Toque em markers
-- Feedback visual
+Integrates:
+- RTA_app (Android app with markers)
+- Robot camera
+- Visual alignment (XYZ + RZ)
+- Marker touch interactions
+- Visual feedback
 """
 
 import logging
@@ -25,17 +25,17 @@ from utils.coordinate_transform import CoordinateTransform
 
 class RTAIntegratedController:
     """
-    Orquestrador completo do sistema RTA.
-    
-    Fluxo:
-    1. Iniciar RTA_app com configuração
-    2. Detectar markers via câmera do robô
-    3. Alinhar robô (RZ + XYZ)
-    4. Tocar sequencialmente em cada marker
-    5. Verificar feedback visual (marker desaparece)
-    6. Repetir ou avançar
+    Complete orchestrator for the RTA system.
+
+    Flow:
+    1. Start RTA_app with configuration
+    2. Detect markers through the robot camera
+    3. Align the robot (RZ + XYZ)
+    4. Touch each marker sequentially
+    5. Verify visual feedback (marker disappears)
+    6. Repeat or continue
     """
-    
+
     def __init__(self, robot_arm, device_interface, camera: RobotCamera,
                  app_manager: Optional[DeviceAppManager] = None,
                  auto_align: Optional[AutoAlignment] = None,
@@ -43,243 +43,255 @@ class RTAIntegratedController:
                  detector: Optional[MarkerDetector] = None):
         """
         Initialize RTAIntegratedController.
-        
+
         Args:
-            robot_arm: Interface com robô Denso.
-            device_interface: Interface com dispositivo (ADB).
-            camera (RobotCamera): Câmera acoplada ao robô.
-            app_manager (Optional[DeviceAppManager]): Gerenciador do app.
-            auto_align (Optional[AutoAlignment]): Controlador XYZ.
-            rot_align (Optional[RotationAlignment]): Controlador RZ.
-            detector (Optional[MarkerDetector]): Detector de markers.
+            robot_arm: Denso robot interface.
+            device_interface: Device interface (ADB).
+            camera (RobotCamera): Camera mounted on the robot.
+            app_manager (Optional[DeviceAppManager]): App manager.
+            auto_align (Optional[AutoAlignment]): XYZ controller.
+            rot_align (Optional[RotationAlignment]): RZ controller.
+            detector (Optional[MarkerDetector]): Marker detector.
         """
         self.robot_arm = robot_arm
         self.device = device_interface
         self.camera = camera
-        
+
         self.app_manager = app_manager or DeviceAppManager(device_interface)
         self.detector = detector or MarkerDetector()
-        self.auto_align = auto_align or AutoAlignment(robot_arm, camera, self.detector)
-        self.rot_align = rot_align or RotationAlignment(robot_arm, camera, self.detector)
-        
+        self.auto_align = auto_align or AutoAlignment(
+            robot_arm, camera, self.detector)
+        self.rot_align = rot_align or RotationAlignment(
+            robot_arm, camera, self.detector)
+
         self.logger = logging.getLogger(__name__)
-        
+
         # Configuration
         self.approach_distance_mm = 150.0
         self.touch_delay = 0.5
         self.verification_delay = 1.0
         self.max_retries_per_marker = 3
-        
+
         # State tracking
         self.touched_markers = set()
         self.current_session_id = None
-    
+
     def setup_session(self, device_type: str = "flat", install_if_needed: bool = False) -> bool:
         """
-        Configura uma nova sessão.
-        
+        Set up a new session.
+
         Args:
-            device_type (str): Tipo de dispositivo (flat, foldable, etc.)
-            install_if_needed (bool): Instalar app se não estiver.
-            
+            device_type (str): Device type (flat, foldable, etc.).
+            install_if_needed (bool): Install the app if it is not available.
+
         Returns:
-            bool: True se sessão configurada com sucesso.
+            bool: True if the session is configured successfully.
         """
-        self.logger.info(f"Configurando sessão com device_type='{device_type}'")
-        
-        # Verificar/instalar app
+        self.logger.info(
+            f"Setting up session with device_type='{device_type}'")
+
+        # Check/install app
         if not self.app_manager.is_app_running():
             if install_if_needed:
-                self.logger.info("App não instalado, instalando...")
+                self.logger.info("App not installed, installing...")
                 if not self.app_manager.install_app():
-                    self.logger.error("Falha ao instalar app")
+                    self.logger.error("Failed to install app")
                     return False
             else:
-                self.logger.error("App não está em execução")
+                self.logger.error("App is not running")
                 return False
-        
-        # Parar app anterior se estava rodando
+
+        # Stop any previous app instance if it was running
         self.app_manager.stop_app()
         time.sleep(1)
-        
-        # Iniciar nova sessão
+
+        # Start a new session
         if not self.app_manager.start_app(device_type):
-            self.logger.error("Falha ao iniciar app")
+            self.logger.error("Failed to start app")
             return False
-        
-        # Aguardar app ficar pronto
+
+        # Wait for the app to be ready
         if not self.app_manager.wait_for_app_ready():
-            self.logger.warning("App pode não estar totalmente pronto")
-        
+            self.logger.warning("App may not be fully ready")
+
         self.current_session_id = f"{device_type}_{int(time.time())}"
         self.touched_markers = set()
-        
-        self.logger.info(f"Sessão configurada: {self.current_session_id}")
+
+        self.logger.info(f"Session configured: {self.current_session_id}")
         return True
-    
+
     def detect_markers_from_app_screen(self) -> Optional[List[MarkerInfo]]:
         """
-        Detecta markers na tela do app via câmera do robô.
-        
+        Detect markers on the app screen using the robot camera.
+
         Returns:
-            Optional[List[MarkerInfo]]: Lista de markers detectados.
+            Optional[List[MarkerInfo]]: List of detected markers.
         """
         frame = self.camera.capture_frame()
         if frame is None:
-            self.logger.error("Falha ao capturar frame")
+            self.logger.error("Failed to capture frame")
             return None
-        
+
         ids, corners = self.detector.detect_markers(frame)
         if ids is None or len(ids) == 0:
-            self.logger.warning("Nenhum marker detectado")
+            self.logger.warning("No markers detected")
             return None
-        
+
         corners = self.detector.refine_corners(frame, corners)
         marker_infos = [
             self.detector.get_marker_info(int(ids[i][0]), corners[i])
             for i in range(len(ids))
         ]
-        
-        self.logger.info(f"Detectados {len(marker_infos)} markers")
+
+        self.logger.info(f"Detected {len(marker_infos)} markers")
         return marker_infos
-    
+
     def perform_full_alignment(self) -> bool:
         """
-        Realiza alinhamento completo (RZ + XYZ).
-        
+        Perform full alignment (RZ + XYZ).
+
         Returns:
-            bool: True se alinhamento bem-sucedido.
+            bool: True if alignment succeeds.
         """
-        self.logger.info("Iniciando alinhamento completo")
-        
-        # 1. Alinhamento de rotação (RZ)
-        self.logger.info("Etapa 1: Alinhamento de rotação")
+        self.logger.info("Starting full alignment")
+
+        # 1. Rotation alignment (RZ)
+        self.logger.info("Step 1: Rotation alignment")
         if not self.rot_align.run_alignment_loop(max_iterations=10):
-            self.logger.error("Falha no alinhamento RZ")
+            self.logger.error("RZ alignment failed")
             return False
-        
+
         time.sleep(1)
-        
-        # 2. Calibração de distância (se necessário)
+
+        # 2. Distance calibration (if needed)
         if self.auto_align.reference_marker_area is None:
-            self.logger.info("Etapa 2a: Calibração de distância")
+            self.logger.info("Step 2a: Distance calibration")
             if not self.auto_align.calibrate_distance():
-                self.logger.error("Falha na calibração")
+                self.logger.error("Calibration failed")
                 return False
-        
-        # 3. Alinhamento XYZ
-        self.logger.info("Etapa 2b: Alinhamento XYZ")
+
+        # 3. XYZ alignment
+        self.logger.info("Step 2b: XYZ alignment")
         if not self.auto_align.approach_marker(self.approach_distance_mm):
-            self.logger.error("Falha no alinhamento XYZ")
+            self.logger.error("XYZ alignment failed")
             return False
-        
-        self.logger.info("Alinhamento completo bem-sucedido")
+
+        self.logger.info("Full alignment completed successfully")
         return True
-    
+
     def verify_marker_touched(self, marker_id: int, retries: int = 2) -> bool:
         """
-        Verifica se um marker foi efetivamente tocado (visual feedback).
-        
-        Captura nova imagem e verifica se o marker desapareceu.
-        
+        Verify whether a marker was actually touched (visual feedback).
+
+        Captures a new image and checks whether the marker disappeared.
+
         Args:
-            marker_id (int): ID do marker tocado.
-            retries (int): Número de tentativas de verificação.
-            
+            marker_id (int): ID of the touched marker.
+            retries (int): Number of verification attempts.
+
         Returns:
-            bool: True se marker desapareceu (foi tocado).
+            bool: True if the marker disappeared (was touched).
         """
         for attempt in range(retries):
             time.sleep(self.verification_delay)
-            
-            # Capturar nova imagem
+
+            # Capture a new image
             frame = self.camera.capture_frame()
             if frame is None:
                 continue
-            
-            # Detectar markers
+
+            # Detect markers
             ids, _ = self.detector.detect_markers(frame)
             if ids is None:
-                return True  # Sem markers pode significar sucesso
-            
-            # Verificar se marker foi tocado
+                return True  # No markers may mean success
+
+            # Check whether the marker was touched
             id_list = [int(id_val[0]) for id_val in ids]
             if marker_id not in id_list:
-                self.logger.info(f"Marker {marker_id} confirmado tocado (visual feedback)")
+                self.logger.info(
+                    f"Marker {marker_id} confirmed touched (visual feedback)")
                 return True
-            
+
             if attempt < retries - 1:
-                self.logger.debug(f"Verificação: marker ainda visível, tentativa {attempt + 1}/{retries}")
-        
-        self.logger.warning(f"Marker {marker_id} ainda visível após toque")
+                self.logger.debug(
+                    f"Verification: marker still visible, attempt {attempt + 1}/{retries}")
+
+        self.logger.warning(f"Marker {marker_id} still visible after touch")
         return False
-    
+
     def touch_marker_sequence(self, markers: List[MarkerInfo]) -> dict:
         """
-        Toca markers sequencialmente com feedback visual.
-        
+        Touch markers sequentially with visual feedback.
+
         Args:
-            markers (List[MarkerInfo]): Markers a tocar.
-            
+            markers (List[MarkerInfo]): Markers to touch.
+
         Returns:
             dict: { marker_id: (success, details) }
         """
         results = {}
-        
+
         for i, marker in enumerate(markers):
-            self.logger.info(f"Tocando marker {i + 1}/{len(markers)} (ID: {marker.marker_id})")
-            
-            # Pular se já tocado
+            self.logger.info(
+                f"Touching marker {i + 1}/{len(markers)} (ID: {marker.marker_id})")
+
+            # Skip if already touched
             if marker.marker_id in self.touched_markers:
-                self.logger.debug(f"Marker {marker.marker_id} já foi tocado, pulando")
+                self.logger.debug(
+                    f"Marker {marker.marker_id} was already touched, skipping")
                 results[marker.marker_id] = (True, "already_touched")
                 continue
-            
+
             success = False
             retries = 0
-            
-            # Tentar tocar com retries
+
+            # Try touching with retries
             while retries < self.max_retries_per_marker:
-                # Toque
-                touch_x, touch_y = int(marker.centroid[0]), int(marker.centroid[1])
+                # Touch
+                touch_x, touch_y = int(
+                    marker.centroid[0]), int(marker.centroid[1])
                 try:
                     self.device.touch(touch_x, touch_y)
-                    self.logger.info(f"Toque executado em ({touch_x}, {touch_y})")
+                    self.logger.info(
+                        f"Touch executed at ({touch_x}, {touch_y})")
                 except Exception as e:
-                    self.logger.error(f"Erro ao tocar: {e}")
+                    self.logger.error(f"Error while touching: {e}")
                     retries += 1
                     continue
-                
+
                 time.sleep(self.touch_delay)
-                
-                # Verificar feedback visual
+
+                # Verify visual feedback
                 if self.verify_marker_touched(marker.marker_id):
                     self.touched_markers.add(marker.marker_id)
                     results[marker.marker_id] = (True, "verified")
                     success = True
                     break
-                
+
                 retries += 1
-                self.logger.warning(f"Toque não confirmado, tentativa {retries}/{self.max_retries_per_marker}")
-            
+                self.logger.warning(
+                    f"Touch not confirmed, attempt {retries}/{self.max_retries_per_marker}")
+
             if not success:
-                results[marker.marker_id] = (False, f"failed_after_{retries}_retries")
-                self.logger.error(f"Falha ao tocar marker {marker.marker_id}")
-        
+                results[marker.marker_id] = (
+                    False, f"failed_after_{retries}_retries")
+                self.logger.error(f"Failed to touch marker {marker.marker_id}")
+
         return results
-    
+
     def run_complete_session(self, device_type: str = "flat") -> dict:
         """
-        Executa sessão completa: setup → detect → align → touch.
-        
+        Run a complete session: setup → detect → align → touch.
+
         Args:
-            device_type (str): Tipo de dispositivo.
-            
+            device_type (str): Device type.
+
         Returns:
-            dict: Resultado da sessão { 'session_id': ..., 'markers_touched': {...}, ... }
+            dict: Session result { 'session_id': ..., 'markers_touched': {...}, ... }
         """
-        self.logger.info(f"Iniciando sessão completa com device_type='{device_type}'")
-        
+        self.logger.info(
+            f"Starting complete session with device_type='{device_type}'")
+
         result = {
             "session_id": None,
             "status": "failed",
@@ -289,61 +301,64 @@ class RTAIntegratedController:
             "markers_touched": {},
             "errors": []
         }
-        
+
         try:
             # 1. Setup
             if not self.setup_session(device_type, install_if_needed=True):
                 result["errors"].append("Failed to setup session")
                 return result
-            
+
             result["session_id"] = self.current_session_id
             result["markers_expected"] = self.app_manager.get_expected_marker_count()
-            
-            # 2. Detectar markers
+
+            # 2. Detect markers
             markers = self.detect_markers_from_app_screen()
             if not markers:
                 result["errors"].append("No markers detected")
                 return result
-            
+
             result["markers_detected"] = len(markers)
-            
-            # 3. Alinhamento
+
+            # 3. Alignment
             if not self.perform_full_alignment():
                 result["errors"].append("Alignment failed")
                 return result
-            
-            # 4. Tocar markers
+
+            # 4. Touch markers
             touch_results = self.touch_marker_sequence(markers)
             result["markers_touched"] = touch_results
-            
-            # 5. Validação
-            successful_touches = sum(1 for success, _ in touch_results.values() if success)
+
+            # 5. Validation
+            successful_touches = sum(
+                1 for success, _ in touch_results.values() if success)
             if successful_touches == len(markers):
                 result["status"] = "success"
-                self.logger.info(f"Sessão completada com sucesso: {successful_touches}/{len(markers)}")
+                self.logger.info(
+                    f"Session completed successfully: {successful_touches}/{len(markers)}")
             else:
                 result["status"] = "partial"
-                self.logger.warning(f"Sessão parcial: {successful_touches}/{len(markers)} markers tocados")
-        
+                self.logger.warning(
+                    f"Partial session: {successful_touches}/{len(markers)} markers touched")
+
         except Exception as e:
-            self.logger.error(f"Erro na sessão: {e}")
+            self.logger.error(f"Session error: {e}")
             result["errors"].append(str(e))
-        
+
         finally:
-            # Limpeza
+            # Cleanup
             try:
                 self.app_manager.stop_app()
             except:
                 pass
-        
+
         return result
-    
+
     def cleanup(self):
-        """Limpa recursos."""
-        self.logger.info("Limpando recursos")
+        """Clean up resources."""
+        self.logger.info("Cleaning up resources")
         try:
             self.app_manager.stop_app()
             self.camera.release()
-            self.logger.info("Recursos liberados")
+            self.logger.info("Resources released")
         except Exception as e:
-            self.logger.error(f"Erro na limpeza: {e}")
+            self.logger.error(f"Cleanup error: {e}")

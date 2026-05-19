@@ -8,29 +8,29 @@ from abstract.abstract_robot import AbstractRobot
 
 class Denso(AbstractRobot):
     """
-    Adaptador do robô Denso para o projeto.
+    Denso robot adapter for the project.
 
-    Responsabilidades:
-    - conexão e liberação do braço
-    - movimentação cartesiana e por juntas
-    - consulta de pose
-    - movimentação para safe pose
+    Responsibilities:
+    - connection and arm release
+    - Cartesian and joint movement
+    - pose query
+    - movement to safe pose
     """
 
-    # TODO PRECISA AJUSTAR OS VALORES REAIS
-    # Ajuste com os valores REAIS da sua pose segura
+    # TODO NEED TO ADJUST REAL VALUES
+    # Adjust with REAL values of your safe pose
     SAFE_X = 316.87
     SAFE_Y = 14.56
     SAFE_Z = 542.34
 
-    # Se você souber a orientação segura exata, mantenha aqui.
-    # Se preferir preservar a orientação atual, veja o método move_safe().
+    # If you know the exact safe orientation, keep it here.
+    # If you prefer to preserve the current orientation, see move_safe() method.
     SAFE_RX = -179.75
     SAFE_RY = -3.88
     SAFE_RZ = 178.94
 
-    # ROI (region of interest): pose para a camera enxergar a tela alvo.
-    # Ajuste esses valores para o setup real (suporte, distancia e inclinacao).
+    # ROI (region of interest): pose for camera to see target screen.
+    # Adjust these values for real setup (support, distance and inclination).
     # ROI_X = 236.12
     # ROI_Y = 7.47
     # ROI_Z = 172.85
@@ -47,7 +47,7 @@ class Denso(AbstractRobot):
     ROI_RZ = 180.00
     DEFAULT_FIG = 5
 
-    #motorobot ROI
+    # motorobot ROI
     # ROI_X = 366.83
     # ROI_Y = 5.64
     # ROI_Z = 446.20
@@ -56,29 +56,48 @@ class Denso(AbstractRobot):
     # ROI_RZ = -180.00
     # DEFAULT_FIG = 5
 
-
-    joint_pose_roi = [1.184635, 34.15339, 103.8132, -178.8901, -43.63271, -180.2519]
+    joint_pose_roi = [1.184635, 34.15339,
+                      103.8132, -178.8901, -43.63271, -180.2519]
 
     def __init__(self, workspace_name: str, control_name: str, options: str):
+        """Initialize Denso robot adapter.
+
+        Args:
+            workspace_name (str): Name of the Denso workspace.
+            control_name (str): Name of the Denso control.
+            options (str): Additional options string for Denso robot initialization.
+        """
         self.denso_robot = DensoRobot(workspace_name, control_name, options)
         self._motor_on_state = False
         self._logger = logging.getLogger(__name__)
 
     def connect(self) -> bool:
+        """Connect to the Denso robot.
+
+        Returns:
+            bool: True if connection successful, False otherwise.
+        """
         connected = self.denso_robot.connect()
         if not connected:
             self._motor_on_state = False
         return connected
 
     def disconnect(self) -> bool:
+        """Disconnect from the Denso robot.
+
+        Returns:
+            bool: True if disconnection successful, False otherwise.
+        """
         disconnected = self.denso_robot.disconnect()
         if disconnected:
             self._motor_on_state = False
         return disconnected
 
     def motor_on(self) -> bool:
-        """
-        Toma posse do braço e liga o motor.
+        """Take arm control and enable motor.
+
+        Returns:
+            bool: True if motor enabled successfully, False otherwise.
         """
         try:
             self.denso_robot.take_arm()
@@ -90,8 +109,10 @@ class Denso(AbstractRobot):
             return False
 
     def motor_off(self) -> bool:
-        """
-        Desliga o motor e devolve o braço.
+        """Disable motor and release arm.
+
+        Returns:
+            bool: True if motor disabled successfully, False otherwise.
         """
         try:
             self.denso_robot.robot.motor_off()
@@ -102,6 +123,11 @@ class Denso(AbstractRobot):
             return False
 
     def is_motor_on(self) -> bool:
+        """Check if robot motor is currently enabled.
+
+        Returns:
+            bool: True if motor is enabled, False otherwise.
+        """
         try:
             robot_api = self.denso_robot.robot
 
@@ -124,12 +150,39 @@ class Denso(AbstractRobot):
         accel: int | float,
         decel: int | float
     ) -> bool:
+        """Set arm movement speed parameters.
+
+        Args:
+            speed (int | float): Target arm speed.
+            accel (int | float): Acceleration rate.
+            decel (int | float): Deceleration rate.
+
+        Returns:
+            bool: True if speed parameters set successfully, False otherwise.
+        """
         return self.denso_robot.robot.set_arm_speed(speed, accel, decel)
 
     def create_tool_reference(self, offset_base: Offset3D, tag: str) -> bool:
+        """Create a tool reference frame.
+
+        Args:
+            offset_base (Offset3D): The offset of the tool from the robot base.
+            tag (str): Identifier tag for the tool reference.
+
+        Returns:
+            bool: True if tool reference created successfully, False otherwise.
+        """
         return self.denso_robot.reference_frames.create_tool_reference(offset_base, tag)
 
     def set_current_tool_by_tag(self, tag: str) -> bool:
+        """Set the current tool by its reference tag.
+
+        Args:
+            tag (str): Identifier tag of the tool reference to activate.
+
+        Returns:
+            bool: True if tool activated successfully, False otherwise.
+        """
         return self.denso_robot.reference_frames.set_current_tool_by_tag(tag)
 
     def rotate_in_tool_reference(
@@ -137,17 +190,42 @@ class Denso(AbstractRobot):
         axis: CartesianAxis,
         angle_step: int | float
     ) -> bool:
+        """Rotate the robot in tool reference frame.
+
+        Args:
+            axis (CartesianAxis): The axis to rotate around.
+            angle_step (int | float): The rotation angle in degrees.
+
+        Returns:
+            bool: True if rotation executed successfully, False otherwise.
+        """
         return self.denso_robot.reference_frames.rotate_in_tool_reference(axis, angle_step)
 
     def move_joints(self, command: Joint) -> bool:
+        """Move robot to specified joint positions.
+
+        Args:
+            command (Joint): Target joint positions.
+
+        Returns:
+            bool: True if movement executed successfully, False otherwise.
+        """
         return self.denso_robot.robot.move_joints(command)
 
     def move_cartesian(self, command: Pose) -> bool:
+        """Move robot to specified Cartesian pose.
+
+        Args:
+            command (Pose): Target pose with x, y, z, rx, ry, rz coordinates.
+
+        Returns:
+            bool: True if movement executed successfully, False otherwise.
+        """
         try:
             return self.denso_robot.robot.move_pose(command)
         except Exception as e:
             self._logger.error(
-                "Falha em move_cartesian para pose x=%.3f y=%.3f z=%.3f rx=%.3f ry=%.3f rz=%.3f: %s",
+                "Failure in move_cartesian for pose x=%.3f y=%.3f z=%.3f rx=%.3f ry=%.3f rz=%.3f: %s",
                 command.x,
                 command.y,
                 command.z,
@@ -159,22 +237,30 @@ class Denso(AbstractRobot):
             return False
 
     def get_cartesian_pose(self) -> Pose | None:
+        """Get current robot Cartesian pose.
+
+        Returns:
+            Pose | None: Current pose or None if unable to retrieve.
+        """
         return self.denso_robot.robot.get_pose()
 
     def get_joints_pose(self) -> Joint | None:
+        """Get current robot joint positions.
+
+        Returns:
+            Joint | None: Current joint positions or None if unable to retrieve.
+        """
         return self.denso_robot.robot.get_joints()
 
     def move_safe(self, preserve_orientation: bool = False) -> bool:
-        """
-        Move o robô para a safe pose.
+        """Move robot to safe pose.
 
         Args:
-            preserve_orientation:
-                - False: usa SAFE_RX, SAFE_RY, SAFE_RZ
-                - True: preserva a orientação atual e só muda x, y, z
+            preserve_orientation (bool): If True, preserves current orientation.
+                If False, uses predefined safe orientation. Defaults to False.
 
         Returns:
-            bool
+            bool: True if movement executed successfully, False otherwise.
         """
         try:
             self.move_to_roi()
@@ -209,15 +295,14 @@ class Denso(AbstractRobot):
             return self.move_cartesian(safe_pose)
 
         except Exception as e:
-            self._logger.error("Falha em move_safe: %s", e)
+            self._logger.error("Failure in move_safe: %s", e)
             return False
 
     def move_to_roi(self) -> bool:
-        """
-        Move o robô para a pose de ROI (camera apontada para o dispositivo).
+        """Move robot to ROI pose (camera pointed at device).
 
         Returns:
-            bool
+            bool: True if movement executed successfully, False otherwise.
         """
         try:
             # current_pose = self.get_cartesian_pose()
@@ -236,5 +321,5 @@ class Denso(AbstractRobot):
             # self.set_arm_speed(50, 50, 50)
             # return self.move_joints(Joint(*self.joint_pose_roi))
         except Exception as e:
-            self._logger.error("Falha em move_to_roi: %s", e)
+            self._logger.error("Failure in move_to_roi: %s", e)
             return False

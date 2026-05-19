@@ -177,9 +177,10 @@ def adb_device_connected() -> bool:
 
 def list_adb_devices(retries: int = 3) -> list[str]:
     """
-    Lista os dispositivos ADB conectados. 
-    Possui sistema de auto-cura: se o servidor ADB travar no Windows, 
-    ele reinicia o daemon automaticamente antes de falhar.
+    List connected ADB devices.
+
+    Includes a self-healing mechanism: if the ADB server hangs on Windows,
+    it automatically restarts the daemon before failing.
     """
     output = ""
     for attempt in range(retries):
@@ -190,22 +191,22 @@ def list_adb_devices(retries: int = 3) -> list[str]:
                 stderr=subprocess.STDOUT,
                 timeout=5,
             )
-            break  # Sucesso! Sai do loop de tentativas.
+            break  # Success! Exit the retry loop.
 
         except Exception as e:
             if attempt < retries - 1:
                 print(
                     f"[ADB] Communication failure (attempt {attempt+1}/{retries}). Restarting ADB server...")
-                # Tenta matar o processo travado do Windows
+                # Try to terminate the stuck Windows process
                 subprocess.run(["adb", "kill-server"], check=False)
                 time.sleep(1.0)
-                # Inicia o servidor novamente limpo
+                # Start the server again from a clean state
                 subprocess.run(["adb", "start-server"], check=False)
                 time.sleep(2.0)
             else:
-                # Se falhar todas as vezes, aí sim aborta.
+                # If all attempts fail, abort.
                 raise AssertionError(
-                    f"Erro fatal no ADB após {retries} tentativas: {e}")
+                    f"Fatal ADB error after {retries} attempts: {e}")
 
     devices = []
     for line in output.splitlines():
@@ -226,9 +227,9 @@ ADB_SERIAL: Optional[str] = None
 def get_preferred_adb_serial() -> str:
     devices = list_adb_devices()
     if not devices:
-        raise AssertionError("Nenhum dispositivo Android conectado via ADB")
+        raise AssertionError("No Android device connected via ADB")
 
-    # Prefere conexão USB em vez da conexão wireless adb-..._tcp
+    # Prefer USB connection over wireless adb-..._tcp connection
     for serial in devices:
         if not serial.startswith("adb-"):
             return serial
@@ -273,7 +274,7 @@ def detect_touchscreen_device() -> str:
 
 def get_screen_size() -> tuple[int, int]:
     """
-    Tenta obter a resolução da tela por múltiplas estratégias:
+    Try to obtain the screen resolution using multiple strategies:
     1) adb shell wm size
     2) adb shell dumpsys window
     3) adb shell dumpsys display
@@ -296,14 +297,14 @@ def get_screen_size() -> tuple[int, int]:
             for line in output.splitlines():
                 line = line.strip()
 
-                # Caso clássico: Physical size: 1080x2400
+                # Classic case: Physical size: 1080x2400
                 if "Physical size:" in line:
                     size_str = line.split("Physical size:")[-1].strip()
                     if "x" in size_str:
                         width_str, height_str = size_str.split("x")
                         return int(width_str), int(height_str)
 
-                # Procura padrões como 1080x2400 em outras saídas
+                # Search for patterns like 1080x2400 in other outputs
                 import re
                 match = re.search(r"\b(\d{3,5})x(\d{3,5})\b", line)
                 if match:
@@ -1013,10 +1014,10 @@ def _sample_touch_events() -> list[GetEvent]:
 
 def validate_parse_getevent() -> dict:
     evt = parse_getevent_line("/dev/input/event9: 0003 0035 000001f4")
-    _assert(evt is not None, "parse_getevent_line retornou None")
-    _assert(evt.device == "/dev/input/event9", "device incorreto")
-    _assert(evt.is_axis_x, "evento deveria ser axis x")
-    _assert(evt.valor_decimal == 500, "valor_decimal deveria ser 500")
+    _assert(evt is not None, "parse_getevent_line returned None")
+    _assert(evt.device == "/dev/input/event9", "incorrect device")
+    _assert(evt.is_axis_x, "event should be axis x")
+    _assert(evt.valor_decimal == 500, "valor_decimal should be 500")
     return {"parsed_event": evt.to_dict() if hasattr(evt, 'to_dict') else {
         "device": evt.device,
         "tipo": evt.tipo,
@@ -1029,7 +1030,7 @@ def validate_parse_getevent() -> dict:
 def validate_map_raw_touch_to_screen() -> dict:
     px = map_raw_touch_to_screen(
         2048, 2048, (0, 4095), (0, 4095), (1080, 2400))
-    _assert(px is not None, "map_raw_touch_to_screen retornou None")
+    _assert(px is not None, "map_raw_touch_to_screen returned None")
     _assert(abs(px[0] - 539) <= 1, f"x inesperado: {px[0]}")
     _assert(abs(px[1] - 1199) <= 1, f"y inesperado: {px[1]}")
     return {"mapped_pixel": px}
@@ -1043,13 +1044,13 @@ def validate_touch_tracker() -> dict:
         if point:
             points.append(point)
 
-    _assert(len(points) == 3, f"esperado 3 TouchPoints, veio {len(points)}")
-    _assert(points[0].action == TouchAction.DOWN,
-            "primeiro ponto deveria ser DOWN")
-    _assert(points[1].action == TouchAction.MOVE,
-            "segundo ponto deveria ser MOVE")
-    _assert(points[2].action == TouchAction.UP,
-            "terceiro ponto deveria ser UP")
+        _assert(len(points) == 3, f"expected 3 TouchPoints, got {len(points)}")
+        _assert(points[0].action == TouchAction.DOWN,
+                "first point should be DOWN")
+        _assert(points[1].action == TouchAction.MOVE,
+                "second point should be MOVE")
+        _assert(points[2].action == TouchAction.UP,
+                "third point should be UP")
     return {
         "actions": [p.action.value for p in points],
         "points": [p.to_dict() for p in points],
@@ -1064,36 +1065,36 @@ def validate_touch_recording() -> dict:
         if point:
             recording.points.append(point)
 
-    _assert(recording.total_points == 3, "total_points incorreto")
-    _assert(len(recording.down_points) == 1, "down_points incorreto")
-    _assert(len(recording.move_points) == 1, "move_points incorreto")
-    _assert(len(recording.up_points) == 1, "up_points incorreto")
-    _assert(recording.avg_pressure > 0, "avg_pressure deveria ser > 0")
+    _assert(recording.total_points == 3, "incorrect total_points")
+    _assert(len(recording.down_points) == 1, "incorrect down_points")
+    _assert(len(recording.move_points) == 1, "incorrect move_points")
+    _assert(len(recording.up_points) == 1, "incorrect up_points")
+    _assert(recording.avg_pressure > 0, "avg_pressure should be > 0")
     return recording.to_dict()
 
 
 def validate_rta_result() -> dict:
     result = RTAResult(status="success", hits=9, total=10,
                        errors=1, reason="ok", device_type="flat")
-    _assert(result.is_success is True, "is_success deveria ser True")
-    _assert(abs(result.accuracy - 90.0) < 0.001, "accuracy incorreta")
+    _assert(result.is_success is True, "is_success should be True")
+    _assert(abs(result.accuracy - 90.0) < 0.001, "incorrect accuracy")
     return result.to_dict()
 
 
 def validate_adb_environment() -> dict:
-    _assert(adb_available(), "ADB não está disponível no PATH")
+    _assert(adb_available(), "ADB is not available in PATH")
 
     devices = list_adb_devices()
-    _assert(devices, "Nenhum dispositivo Android conectado via ADB")
+    _assert(devices, "No Android device connected via ADB")
 
     device_name = detect_touchscreen_device()
     screen_size = get_screen_size()
     x_range, y_range = get_touch_axis_ranges(device_name)
     model = get_device_model()
 
-    _assert(screen_size != (0, 0), "Não foi possível obter screen size")
+    _assert(screen_size != (0, 0), "Unable to obtain screen size")
     _assert(x_range != (0, 0) and y_range != (0, 0),
-            "Não foi possível obter os ranges do touch")
+            "Unable to obtain touch ranges")
 
     return {
         "connected_devices": devices,
@@ -1109,9 +1110,9 @@ def validate_live_touch_feedback(timeout: float = 8.0) -> dict:
     mobile = Mobile()
     try:
         print(
-            f"Touch screen once within {timeout:.0f}s to validate wait_for_touch_feedback()...")
+            f"Touch the screen once within {timeout:.0f}s to validate wait_for_touch_feedback()...")
         touch = mobile.wait_for_touch_feedback(timeout=timeout)
-        _assert(touch is not None, "Nenhum toque detectado")
+        _assert(touch is not None, "No touch detected")
         return {"touch_feedback_px": touch}
     finally:
         mobile.stop()
@@ -1123,7 +1124,7 @@ def validate_live_touch_with_pressure(timeout: float = 10.0) -> dict:
         print(
             f"Perform a complete touch (down/up) within {timeout:.0f}s to validate pressure...")
         data = mobile.wait_for_touch_with_pressure(timeout=timeout)
-        _assert(data is not None, "Nenhum toque completo detectado")
+        _assert(data is not None, "No complete touch detected")
         return data
     finally:
         mobile.stop()
@@ -1135,16 +1136,16 @@ def validate_live_swipe(timeout: float = 12.0) -> dict:
         print(
             f"Perform a complete swipe within {timeout:.0f}s to validate monitor_swipe_for_signal_loss()...")
         ok, reason = mobile.monitor_swipe_for_signal_loss(timeout=timeout)
-        _assert(ok, f"Swipe inválido: {reason}")
+        _assert(ok, f"Invalid swipe: {reason}")
         return {"signal_ok": ok, "reason": reason}
     finally:
         mobile.stop()
 
 
 def validate_run_rta_test_smoke(device_type: str, timeout: float = 20.0) -> dict:
-    _assert(adb_available(), "ADB não está disponível")
+    _assert(adb_available(), "ADB is not available")
     devices = list_adb_devices()
-    _assert(devices, "Nenhum device conectado")
+    _assert(devices, "No device connected")
     result = run_rta_test(
         output_dir="test_results",
         device_type=device_type,
@@ -1172,10 +1173,10 @@ def toggle_android_setting(setting_name: str, enable: bool) -> None:
     """
     value = "1" if enable else "0"
 
-    # Busca o Serial exato (ignora a conexão Wireless se estiver espelhada)
+    # Fetch the exact serial (ignore the wireless connection if mirrored)
     serial = get_preferred_adb_serial()
 
-    # Injeta o -s <serial> para o ADB saber exatamente com quem falar
+    # Inject -s <serial> so ADB knows exactly which device to target
     command = ["adb", "-s", serial, "shell", "settings",
                "put", "system", setting_name, value]
 
@@ -1215,7 +1216,7 @@ def main() -> None:
     print(f"RTA Validation Pipeline | mode={mode} | device_type={device_type}")
     print("=" * 70)
 
-    # Testes sintéticos: não dependem de device real.
+    # Synthetic tests: do not depend on a real device.
     report.steps.append(
         _run_step("parse_getevent_line", validate_parse_getevent))
     report.steps.append(_run_step("map_raw_touch_to_screen",
@@ -1225,7 +1226,7 @@ def main() -> None:
         _run_step("TouchRecording.metrics", validate_touch_recording))
     report.steps.append(_run_step("RTAResult.accuracy", validate_rta_result))
 
-    # Testes com ADB/device real.
+    # Tests with a real ADB device.
     report.steps.append(_run_step("ADB environment", validate_adb_environment))
 
     if mode in {"pipeline", "live"} and report.steps[-1].ok:
