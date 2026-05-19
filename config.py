@@ -182,6 +182,7 @@ Z_LIMIT = 260.98
 # Z_TOUCH = 221.56
 
 TOUCH_FINGER_OFFSET_X = -30.1
+TOUCH_FINGER_OFFSET_Y = 0.0
 Z_OFFSET_BEFORE_TOUCH = 20.0
 
 # routine swipe with 15 degrees inclination
@@ -259,6 +260,21 @@ TOUCH_CONFIG = {
     # Timings de toque
     "offset_z": 75.0,
     "touch_delay_after_touch": 0.5,  # segundos (aguardar resposta)
+}
+
+
+# ============================================================================
+# ROI POSITIONING CONFIG
+# ============================================================================
+
+ROI_POSITIONING_CONFIG = {
+    "ROI_X": 331.07,
+    "ROI_Y": 0.62,
+    "ROI_Z": 421.36,
+    "ROI_RX": 180.00,
+    "ROI_RY": 0.00,
+    "ROI_RZ": 180.00,
+    "DEFAULT_FIG": 5,
 }
 
 # ============================================================================
