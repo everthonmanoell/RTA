@@ -38,8 +38,8 @@ param(
     [int]$PythonServerPort = 50605,
 
     [Parameter(Mandatory = $false)]
-    [ValidateSet("connect_robot", "motor_on", "move_to_roi", "camera_on", "detect_markers", "align_with_markers", "touch_marker", "check_touch", "generate_map")]
-    [string]$StopAtState = "align_with_markers",
+    [ValidateSet("connect_robot", "motor_on", "move_to_roi", "camera_on", "detect_markers", "calibrate_z_touches", "generate_map", "swipe_borders", "safe_pose", "read_final_marker", "save_map")]
+    [string]$StopAtState = "",
 
     [Parameter(Mandatory = $false)]
     [int]$MaxSteps = 120,
@@ -143,13 +143,16 @@ for ($i = 1; $i -le $RunCount; $i++) {
         "--device-type", $DeviceType,
         "--num-markers", "$numMarkers",
         "--options", "Server=$RobotServerIp",
-        "--stop-at-state", $StopAtState,
         "--max-steps", "$MaxSteps",
         "--loop-delay", "$LoopDelay"
     )
 
     if ($ShowCameraPreview) {
         $cmd += "--show-camera-preview"
+    }
+
+    if ($StopAtState -ne "") {
+        $cmd += @("--stop-at-state", $StopAtState)
     }
 
     & poetry @cmd

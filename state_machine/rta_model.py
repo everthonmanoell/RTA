@@ -11,6 +11,14 @@ class RtaModel:
         self.marker_index = 0
         self.markers_count = 0
 
+        self.move_to_roi_ok_flag = False
+        self.calibration_ok_flag = False
+        self.map_generated_flag = False
+        self.safe_pose_ok_flag = False
+        self.save_map_ok_flag = False
+
+        self.calibrate_z_touches_fn = None
+
         self.max_connect_robot_attempts = 3
         self.max_motor_on_attempts = 3
         self.max_camera_on_attempts = 5
@@ -169,7 +177,22 @@ class RtaModel:
     def set_marker_index_zero(self):
         self.marker_index = 0
 
-    #=======================================
+    def move_to_roi_ok(self):
+        return self.move_to_roi_ok_flag
+
+    def calibration_ok(self):
+        return self.calibration_ok_flag
+
+    def map_generated(self):
+        return self.map_generated_flag
+
+    def safe_pose_ok(self):
+        return self.safe_pose_ok_flag
+
+    def save_map_ok(self):
+        return self.save_map_ok_flag
+
+    # =======================================
     def connect_robot_action(self):
         """Try to connect using the injected robot adapter.
 
@@ -217,8 +240,28 @@ class RtaModel:
         self.motor_on_flag = False
 
     def move_to_roi_action(self):
+        self.move_to_roi_ok_flag = False
+
         if callable(self.move_to_roi_fn):
-            self.move_to_roi_fn()
+            try:
+                self.move_to_roi_ok_flag = bool(self.move_to_roi_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] move_to_roi_action error: {exc}")
+
+        self.move_to_roi_ok_flag = False
+
+    def calibrate_z_touches_action(self):
+        self.calibration_ok_flag = False
+
+        if callable(self.calibrate_z_touches_fn):
+            try:
+                self.calibration_ok_flag = bool(self.calibrate_z_touches_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] calibrate_z_touches_action error: {exc}")
+
+        self.calibration_ok_flag = False
 
     def camera_on_action(self):
         self.camera_on_attempt += 1
@@ -236,6 +279,8 @@ class RtaModel:
 
     def detect_markers_action(self):
         """Try marker detection and update markers_found flag."""
+        self.markers_found_flag = False
+
         if callable(self.detect_markers_fn):
             try:
                 result = self.detect_markers_fn()
@@ -275,7 +320,8 @@ class RtaModel:
     def touch_marker_action(self):
         if callable(self.touch_marker_fn):
             try:
-                self.touch_ok_flag = bool(self.touch_marker_fn(self.marker_index))
+                self.touch_ok_flag = bool(
+                    self.touch_marker_fn(self.marker_index))
                 return
             except Exception:
                 pass
@@ -285,7 +331,8 @@ class RtaModel:
     def check_touch_action(self):
         if callable(self.check_touch_fn):
             try:
-                self.touch_ok_flag = bool(self.check_touch_fn(self.marker_index))
+                self.touch_ok_flag = bool(
+                    self.check_touch_fn(self.marker_index))
                 return
             except Exception:
                 pass
@@ -298,13 +345,20 @@ class RtaModel:
                 pass
 
     def generate_map_action(self):
+        self.map_generated_flag = False
+
         if callable(self.generate_map_fn):
             try:
-                self.generate_map_fn()
-            except Exception:
-                pass
+                self.map_generated_flag = bool(self.generate_map_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] generate_map_action error: {exc}")
+
+        self.map_generated_flag = False
 
     def swipe_borders_action(self):
+        self.swipe_executed_flag = False
+
         if callable(self.swipe_borders_fn):
             try:
                 self.swipe_executed_flag = bool(self.swipe_borders_fn())
@@ -313,11 +367,16 @@ class RtaModel:
                 pass
 
     def safe_pose_action(self):
+        self.safe_pose_ok_flag = False
+
         if callable(self.safe_pose_fn):
             try:
-                self.safe_pose_fn()
-            except Exception:
-                pass
+                self.safe_pose_ok_flag = bool(self.safe_pose_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] safe_pose_action error: {exc}")
+
+        self.safe_pose_ok_flag = False
 
     def read_final_marker_action(self):
         if callable(self.read_final_marker_fn):
@@ -346,8 +405,13 @@ class RtaModel:
                 pass
 
     def save_map_action(self):
+        self.save_map_ok_flag = False
+
         if callable(self.save_map_fn):
             try:
-                self.save_map_fn()
-            except Exception:
-                pass
+                self.save_map_ok_flag = bool(self.save_map_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] save_map_action error: {exc}")
+
+        self.save_map_ok_flag = False
