@@ -1,61 +1,61 @@
 import subprocess
 
-# Inicia o processo em segundo plano
-# bufsize=1 significa que o Python vai ler linha por linha (sem esperar encher um buffer gigante)
+# Start the process in the background
+# bufsize=1 means Python will read line by line (without waiting for a huge buffer to fill)
 processo = subprocess.Popen(
     ["adb", "shell", "getevent"],
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,
     text=True,
-    bufsize=1 
+    bufsize=1
 )
 
-print("--- Iniciando escuta do ADB (Pressione Ctrl+C para parar) ---")
+print("--- Starting ADB listening (Press Ctrl+C to stop) ---")
 
 try:
-    # Loop infinito para ler enquanto o processo estiver vivo
+    # Infinite loop to read while the process is alive
     while True:
-        # Lê a próxima linha disponível
+        # Read the next available line
         linha = processo.stdout.readline()
-        
-        # Se a linha vier vazia e o processo tiver morrido, paramos o loop
+
+        # If the line is empty and the process has exited, stop the loop
         if not linha and processo.poll() is not None:
             break
 
         if linha:
-            linha = linha.strip() # Remove espaços extras e quebras de linha
-            
-            # --- SUA LÓGICA AQUI ---
-            # O output do getevent geralmente é: "/dev/input/eventX: TIPO CODIGO VALOR"
-            
-            # Exemplo 1: Apenas imprimir tudo que chega
-            # print(f"Recebido: {linha}")
+            linha = linha.strip()  # Remove extra spaces and line breaks
 
-            # Exemplo 2: Filtrar apenas o evento de toque (geralmente event3 ou event4 dependendo do celular)
+            # --- YOUR LOGIC HERE ---
+            # getevent output is usually: "/dev/input/eventX: TYPE CODE VALUE"
+
+            # Example 1: Just print everything that arrives
+            # print(f"Received: {linha}")
+
+            # Example 2: Filter only touch events (usually event3 or event4 depending on the phone)
             if "/dev/input/event3" in linha:
-                
-                # Vamos quebrar a linha nos espaços para pegar os códigos Hexadecimais
+
+                # Split the line by spaces to extract the hexadecimal codes
                 partes = linha.split()
-                # partes[0] -> dispositivo (/dev/input/event3:)
-                # partes[1] -> tipo (ex: 0003)
-                # partes[2] -> código (ex: 0035 para X ou 0036 para Y)
-                # partes[3] -> valor (coordenada em hex)
-                
+                # partes[0] -> device (/dev/input/event3:)
+                # partes[1] -> type (e.g. 0003)
+                # partes[2] -> code (e.g. 0035 for X or 0036 for Y)
+                # partes[3] -> value (coordinate in hex)
+
                 tipo = partes[1]
                 codigo = partes[2]
                 valor = partes[3]
 
-                # Exemplo: Detectar coordenada X (0035 é comum para ABS_MT_POSITION_X)
+                # Example: Detect X coordinate (0035 is common for ABS_MT_POSITION_X)
                 if codigo == "0035":
-                    valor_decimal = int(valor, 16) # Converte Hex para Inteiro
-                    print(f"Movimento no Eixo X detectado! Valor: {valor_decimal}")
-                
-                # Exemplo: Detectar "Touch Up" (dedo levantou)
-                # O código específico varia, mas BTN_TOUCH UP costuma ter valor 00000000 num tipo EV_KEY (0001)
+                    valor_decimal = int(valor, 16)  # Convert hex to integer
+                    print(f"X-axis movement detected! Value: {valor_decimal}")
+
+                # Example: Detect "Touch Up" (finger lifted)
+                # The exact code varies, but BTN_TOUCH UP usually has value 00000000 in an EV_KEY (0001) event
                 elif tipo == "0001" and valor == "00000000":
-                    print("--> O dedo foi levantado da tela!")
+                    print("--> The finger was lifted from the screen!")
 
 except KeyboardInterrupt:
-    # Garante que o processo ADB seja morto se você parar o script com Ctrl+C
-    print("\nParando o listener...")
+    # Ensure the ADB process is terminated if you stop the script with Ctrl+C
+    print("\nStopping the listener...")
     processo.terminate()

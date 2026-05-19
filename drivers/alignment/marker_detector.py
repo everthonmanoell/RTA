@@ -30,15 +30,15 @@ class MarkerInfo:
 class MarkerDetector:
     """
     Detects and processes ArUco markers in images.
-    
+
     Provides methods for marker detection, refinement, filtering, and
     geometric calculations.
     """
-    
+
     def __init__(self, marker_dict=None, fallback_dicts: Optional[Sequence] = None):
         """
         Initialize MarkerDetector.
-        
+
         Args:
             marker_dict: ArUco dictionary to use for detection.
             fallback_dicts: Optional additional dictionaries to try when
@@ -46,7 +46,8 @@ class MarkerDetector:
         """
         marker_dict = None
         if marker_dict is None:
-            marker_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_APRILTAG_36h11)
+            marker_dict = cv2.aruco.getPredefinedDictionary(
+                cv2.aruco.DICT_APRILTAG_36h11)
 
         self.detector = cv2.aruco.ArucoDetector(marker_dict)
         self.fallback_detectors = [
@@ -54,7 +55,7 @@ class MarkerDetector:
             for curr_dict in (fallback_dicts or [])
         ]
         self.logger = logging.getLogger(__name__)
-    
+
     def detect_markers(
         self,
         image: np.ndarray,
@@ -63,10 +64,10 @@ class MarkerDetector:
     ) -> Tuple[Optional[np.ndarray], Optional[List]]:
         """
         Detect all ArUco markers in image.
-        
+
         Args:
             image (np.ndarray): Input image (BGR or Grayscale).
-            
+
         Returns:
             Tuple[Optional[np.ndarray], Optional[List]]: 
                 - marker_ids: Detected marker IDs (Nx1)
@@ -75,52 +76,52 @@ class MarkerDetector:
         """
         # 1. Tentativa no detector principal
         corners, ids, _ = self.detector.detectMarkers(image)
-        
+
         # 2. Se falhar, tenta nos fallbacks
         if ids is None or len(ids) == 0:
             for idx, fallback_detector in enumerate(self.fallback_detectors, start=1):
                 corners, ids, _ = fallback_detector.detectMarkers(image)
                 if ids is not None and len(ids) > 0:
-                    self.logger.info("Markers detected using fallback dictionary #%s", idx)
+                    self.logger.info(
+                        "Markers detected using fallback dictionary #%s", idx)
                     break
-        
+
         if ids is None or len(ids) == 0:
             if log_missing:
                 self.logger.warning("No markers detected")
             return None, None
 
         return ids, corners
-    
+
     def detect_single_marker_by_id(
-        self, 
-        image: np.ndarray, 
+        self,
+        image: np.ndarray,
         target_id: int
     ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """
-        Busca um marcador específico pelo ID em toda a imagem.
+        Search for a specific marker by ID across the entire image.
         """
         ids, corners = self.detect_markers(image)
 
         if ids is not None:
             ids_flat = ids.flatten()
             indices = np.where(ids_flat == target_id)[0]
-            
+
             if len(indices) > 0:
                 idx = indices[0]
-                # Retorna o ID e os cantos específicos daquele marcador
+# Returns the ID and corners for that specific marker
                 return ids[idx], corners[idx]
-        
+
         return None, None
-    
-    
+
     def refine_corners(self, image: np.ndarray, corners: List[np.ndarray]) -> List[np.ndarray]:
         """
         Refine marker corners to sub-pixel accuracy.
-        
+
         Args:
             image (np.ndarray): Input image.
             corners (List[np.ndarray]): Detected corner arrays.
-            
+
         Returns:
             List[np.ndarray]: Refined corners.
         """
@@ -128,24 +129,25 @@ class MarkerDetector:
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         else:
             gray = image
-        
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
+
+        criteria = (cv2.TERM_CRITERIA_EPS +
+                    cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
         refined = []
-        
+
         for corner in corners:
             corner_2d = corner[0].astype(np.float32)
             cv2.cornerSubPix(gray, corner_2d, (5, 5), (-1, -1), criteria)
             refined.append(corner_2d)
-        
+
         return refined
-    
+
     def calculate_perimeter(self, corners: np.ndarray) -> float:
         """
         Calculate marker perimeter from corners.
-        
+
         Args:
             corners (np.ndarray): 4x2 array of corner coordinates.
-            
+
         Returns:
             float: Perimeter in pixels.
         """
@@ -155,42 +157,42 @@ class MarkerDetector:
         d3 = np.linalg.norm(p2 - p3)
         d4 = np.linalg.norm(p3 - p0)
         return d1 + d2 + d3 + d4
-    
+
     def calculate_centroid(self, corners: np.ndarray) -> np.ndarray:
         """
         Calculate marker centroid from corners.
-        
+
         Args:
             corners (np.ndarray): 4x2 array of corner coordinates.
-            
+
         Returns:
             np.ndarray: (x, y) centroid position.
         """
         return np.mean(corners, axis=0)
-    
+
     def get_marker_info(self, marker_id: int, corners: np.ndarray) -> MarkerInfo:
         """
         Extract full marker information.
-        
+
         Args:
             marker_id (int): Marker ID.
             corners (np.ndarray): 4x2 corner array.
-            
+
         Returns:
             MarkerInfo: Complete marker information object.
         """
-    
+
         if corners.ndim == 3:
             corners = corners[0]
 
         centroid = self.calculate_centroid(corners)
         area = cv2.contourArea(corners)
         perimeter = self.calculate_perimeter(corners)
-        
+
         # Calculate width and height
         width = np.linalg.norm(corners[0] - corners[1])
         height = np.linalg.norm(corners[1] - corners[2])
-        
+
         return MarkerInfo(
             marker_id=marker_id,
             corners=corners,
@@ -200,79 +202,81 @@ class MarkerDetector:
             width_px=width,
             height_px=height
         )
-    
-    def filter_closest_n_markers(self, image: np.ndarray, marker_infos: List[MarkerInfo], 
-                                  n: int = 4) -> List[MarkerInfo]:
+
+    def filter_closest_n_markers(self, image: np.ndarray, marker_infos: List[MarkerInfo],
+                                 n: int = 4) -> List[MarkerInfo]:
         """
         Filter to keep n markers closest to image center by area consistency.
-        
+
         Args:
             image (np.ndarray): Input image (for dimension reference).
             marker_infos (List[MarkerInfo]): List of detected markers.
             n (int): Number of markers to keep.
-            
+
         Returns:
             List[MarkerInfo]: Filtered markers.
         """
         if len(marker_infos) <= n:
             return marker_infos
-        
+
         # Get median area
         areas = [m.area for m in marker_infos]
         median_area = np.median(areas)
-        
+
         # Sort by closeness to median area
-        discrepancies = [(abs(m.area - median_area), i) for i, m in enumerate(marker_infos)]
+        discrepancies = [(abs(m.area - median_area), i)
+                         for i, m in enumerate(marker_infos)]
         discrepancies.sort(key=lambda x: x[0])
-        
+
         best_indices = [idx for _, idx in discrepancies[:n]]
         return [marker_infos[i] for i in best_indices]
-    
-    def split_markers_by_image_center(self, image: np.ndarray, 
-                                     marker_infos: List[MarkerInfo]) -> Tuple[List[MarkerInfo], List[MarkerInfo]]:
+
+    def split_markers_by_image_center(self, image: np.ndarray,
+                                      marker_infos: List[MarkerInfo]) -> Tuple[List[MarkerInfo], List[MarkerInfo]]:
         """
         Split markers into left and right groups by image center.
-        
+
         Args:
             image (np.ndarray): Input image.
             marker_infos (List[MarkerInfo]): List of markers to split.
-            
+
         Returns:
             Tuple[List[MarkerInfo], List[MarkerInfo]]: (left_markers, right_markers)
         """
         height, width = image.shape[:2]
         center_x = width / 2
-        
+
         left_markers = [m for m in marker_infos if m.centroid[0] < center_x]
         right_markers = [m for m in marker_infos if m.centroid[0] >= center_x]
-        
+
         return left_markers, right_markers
-    
-    def find_closest_to_center(self, image: np.ndarray, 
+
+    def find_closest_to_center(self, image: np.ndarray,
                                marker_infos: List[MarkerInfo]) -> Optional[MarkerInfo]:
         """
         Find marker closest to image center.
-        
+
         Args:
             image (np.ndarray): Input image.
             marker_infos (List[MarkerInfo]): List of markers.
-            
+
         Returns:
             Optional[MarkerInfo]: Closest marker or None.
         """
         if not marker_infos:
             return None
-        
+
         height, width = image.shape[:2]
         image_center = np.array([width / 2, height / 2])
-        
-        distances = [np.linalg.norm(m.centroid - image_center) for m in marker_infos]
+
+        distances = [np.linalg.norm(m.centroid - image_center)
+                     for m in marker_infos]
         closest_idx = np.argmin(distances)
-        
+
         return marker_infos[closest_idx]
-    
+
     def rectangle_from_aruco_detection(self, image: np.ndarray,
-                                         ) -> tuple[float, float, list] | tuple[None, None, None]:
+                                       ) -> tuple[float, float, list] | tuple[None, None, None]:
         """
             Detects the ArUco marker closest to the image top left and extracts its geometric properties.
 
@@ -300,10 +304,9 @@ class MarkerDetector:
         #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         #     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
 
-            # for corner in corners:
-            #     cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
+        # for corner in corners:
+        #     cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
 
-        
         top_left, top_right, bottom_right, bottom_left = corners[0]
         rec_width = np.linalg.norm(top_left - top_right)
         rec_height = np.linalg.norm(bottom_right - top_right)
@@ -311,13 +314,16 @@ class MarkerDetector:
         return rec_width, rec_height, [top_left, top_right, bottom_right, bottom_left]
 
 
-## TODO doing the detector aruco and util area
+# TODO doing the detector aruco and util area
+
+
     def get_aruco_union_rectangle(self, marker_infos: List[MarkerInfo]) -> Optional[Tuple[int, int, int, int]]:
         """Return the bounding rectangle that encloses all detected markers."""
         if not marker_infos:
             return None
 
-        all_corners = np.vstack([np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
+        all_corners = np.vstack(
+            [np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
         x_min = int(np.floor(np.min(all_corners[:, 0])))
         y_min = int(np.floor(np.min(all_corners[:, 1])))
         x_max = int(np.ceil(np.max(all_corners[:, 0])))
@@ -357,11 +363,14 @@ class MarkerDetector:
         if image is None or len(marker_infos) < 4:
             return None
 
-        all_corners = np.vstack([np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
+        all_corners = np.vstack(
+            [np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
         x_min = max(0, int(np.floor(np.min(all_corners[:, 0])) - 120))
         y_min = max(0, int(np.floor(np.min(all_corners[:, 1])) - 120))
-        x_max = min(image.shape[1], int(np.ceil(np.max(all_corners[:, 0])) + 120))
-        y_max = min(image.shape[0], int(np.ceil(np.max(all_corners[:, 1])) + 120))
+        x_max = min(image.shape[1], int(
+            np.ceil(np.max(all_corners[:, 0])) + 120))
+        y_max = min(image.shape[0], int(
+            np.ceil(np.max(all_corners[:, 1])) + 120))
 
         if x_max <= x_min or y_max <= y_min:
             return None
@@ -369,7 +378,7 @@ class MarkerDetector:
         roi = image[y_min:y_max, x_min:x_max]
         if roi.size == 0:
             return None
-        
+
         # cv2.imshow("ROI", roi)
 
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
@@ -378,7 +387,8 @@ class MarkerDetector:
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         if not contours:
             return None
 
@@ -466,7 +476,8 @@ class MarkerDetector:
             dtype=np.float32,
         ).reshape((-1, 1, 2))
 
-        projected = cv2.perspectiveTransform(usable_device_quad, h_mat).reshape((-1, 2))
+        projected = cv2.perspectiveTransform(
+            usable_device_quad, h_mat).reshape((-1, 2))
         return projected
 
     def useful_quad_to_bbox(self, useful_quad: np.ndarray) -> Tuple[int, int, int, int]:
@@ -488,86 +499,88 @@ class MarkerDetector:
         }
 
     def get_safe_interaction_zone(
-        self, 
-        image: np.ndarray, 
+        self,
+        image: np.ndarray,
         marker_infos: List[MarkerInfo]
     ) -> Optional[dict]:
         """
-        Calcula a zona segura para movimentação (swipe) do robô.
-        A zona segura é o retângulo intermediário entre a borda externa
-        dos ArUcos e a borda da área útil da tela.
-        
+        Calculate safe zone for robot movement (swipe).
+        The safe zone is the intermediate rectangle between the external edge
+        of ArUcos and the edge of the screen's useful area.
+
         Args:
-            image: Imagem da câmera.
-            marker_infos: Lista de marcadores detectados.
-            
+            image: Camera image.
+            marker_infos: List of detected markers.
+
         Returns:
-            Dict com os retângulos originais e os 4 pontos de swipe seguro,
-            ou None se falhar.
+            Dict with original rectangles and 4 safe swipe points,
+            or None if calculation fails.
         """
         if len(marker_infos) < 4:
-            self.logger.warning("Menos de 4 marcadores detectados. Impossível calcular zona segura.")
+            self.logger.warning(
+                "Less than 4 markers detected. Unable to calculate safe zone.")
             return None
 
-        # 1. Pega o retângulo que engloba os 4 ArUcos
+        # 1. Get rectangle enclosing all 4 ArUcos
         union_rect = self.get_aruco_union_rectangle(marker_infos)
         if union_rect is None:
             return None
 
-        # 2. Pega o retângulo da área útil brilhante da tela
+        # 2. Get rectangle of bright useful screen area
         useful_rect = self.get_useful_screen_rectangle(image, marker_infos)
         if useful_rect is None:
-            self.logger.warning("Área útil não detectada por brilho.")
+            self.logger.warning(
+                "Useful screen area not detected by brightness.")
             return None
 
-        # Desempacota as coordenadas
+        # Unpack coordinates
         x_min, y_min, x_max, y_max = union_rect
         u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
 
-        # 3. Calcula o Retângulo Médio (Gap entre ArUco e Borda da Tela)
+        # 3. Calculate Middle Rectangle (Gap between ArUco and Screen Edge)
         mid_x_min = (x_min + u_x_min) / 2.0
         mid_y_min = (y_min + u_y_min) / 2.0
         mid_x_max = (x_max + u_x_max) / 2.0
         mid_y_max = (y_max + u_y_max) / 2.0
 
-        # 4. Empacota os pontos na sua sequência alvo: 1 -> 4 -> 2 -> 3
+        # 4. Pack points in target sequence: 1 -> 4 -> 2 -> 3
         return {
-            "aruco_rect": union_rect,      
-            "screen_rect": useful_rect,    
-            "safe_swipe_points": {         
-                "pt_1": (mid_x_min, mid_y_max), # Perto do ID 1 (Inferior Esq)
-                "pt_4": (mid_x_min, mid_y_min), # Perto do ID 4 (Superior Esq)
-                "pt_2": (mid_x_max, mid_y_min), # Perto do ID 2 (Superior Dir)
-                "pt_3": (mid_x_max, mid_y_max)  # Perto do ID 3 (Inferior Dir)
+            "aruco_rect": union_rect,
+            "screen_rect": useful_rect,
+            "safe_swipe_points": {
+                "pt_1": (mid_x_min, mid_y_max),  # Near ID 1 (Bottom-Left)
+                "pt_4": (mid_x_min, mid_y_min),  # Near ID 4 (Top-Left)
+                "pt_2": (mid_x_max, mid_y_min),  # Near ID 2 (Top-Right)
+                "pt_3": (mid_x_max, mid_y_max)  # Near ID 3 (Bottom-Right)
             }
         }
-    
+
     def is_alignment_passed(
         self,
         image: np.ndarray,
 
     ) -> bool:
-        
+
         marker_success_id = 14
         marker_failed_id = 15
-        
+
         id, corners = self.detect_markers(image)
         if id is None or corners is None:
-            self.logger.warning("Nenhum marcador detectado para avaliação de alinhamento.")
+            self.logger.warning(
+                "No markers detected for alignment evaluation.")
             return False
         marker_info = self.get_marker_info(int(id[0]), corners[0])
         if marker_info is None:
-            self.logger.warning("Não foi possível extrair informações do marcador para avaliação de alinhamento.")
+            self.logger.warning(
+                "Unable to extract marker information for alignment evaluation.")
             return False
-        
+
         if marker_info.marker_id == marker_success_id:
-            self.logger.info("Marcador de sucesso detectado. Alinhamento aprovado.")
+            self.logger.info("Success marker detected. Alignment passed.")
             return True
         else:
-            self.logger.info("Marcador de falha detectado. Alinhamento reprovado.")
+            self.logger.info("Failure marker detected. Alignment failed.")
             return False
-        
-
 
 
 def _draw_rect(image: np.ndarray, rect: Tuple[int, int, int, int], color: Tuple[int, int, int], thickness: int) -> np.ndarray:
@@ -584,13 +597,15 @@ def _draw_union_rectangle(image: np.ndarray, union_rect: Tuple[int, int, int, in
 def _draw_quad(image: np.ndarray, quad: np.ndarray, color: Tuple[int, int, int], thickness: int) -> np.ndarray:
     annotated = image.copy()
     polygon = np.round(quad).astype(np.int32).reshape((-1, 1, 2))
-    cv2.polylines(annotated, [polygon], isClosed=True, color=color, thickness=thickness)
+    cv2.polylines(annotated, [polygon], isClosed=True,
+                  color=color, thickness=thickness)
     return annotated
-    
 
-#TODO MAIN    
+
+# TODO MAIN
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Debug ArUco union rectangle detection")
+    parser = argparse.ArgumentParser(
+        description="Debug ArUco union rectangle detection")
     parser.add_argument(
         "--image",
         default=str(Path(__file__).resolve().parents[2] / "tags" / "tag1.png"),
@@ -601,10 +616,14 @@ if __name__ == "__main__":
         default=None,
         help="Optional path to save the annotated image",
     )
-    parser.add_argument("--screen-width", type=float, default=0.0, help="Device screen width in pixels")
-    parser.add_argument("--screen-height", type=float, default=0.0, help="Device screen height in pixels")
-    parser.add_argument("--margin-px", type=float, default=0.0, help="Marker margin in pixels")
-    parser.add_argument("--tag-size-px", type=float, default=0.0, help="Marker tag size in pixels")
+    parser.add_argument("--screen-width", type=float,
+                        default=0.0, help="Device screen width in pixels")
+    parser.add_argument("--screen-height", type=float,
+                        default=0.0, help="Device screen height in pixels")
+    parser.add_argument("--margin-px", type=float,
+                        default=0.0, help="Marker margin in pixels")
+    parser.add_argument("--tag-size-px", type=float,
+                        default=0.0, help="Marker tag size in pixels")
     args = parser.parse_args()
 
     try:
@@ -615,12 +634,12 @@ if __name__ == "__main__":
     image_path = Path(args.image)
     image = cv2.imread(str(image_path))
     if image is None:
-        raise SystemExit(f"Nao foi possivel ler a imagem: {image_path}")
+        raise SystemExit(f"Unable to read image: {image_path}")
 
     detector = MarkerDetector()
     ids, corners = detector.detect_markers(image)
     if ids is None or corners is None:
-        print("Nenhum ArUco detectado.")
+        print("No ArUco detected.")
         raise SystemExit(1)
 
     marker_infos = [
@@ -629,17 +648,17 @@ if __name__ == "__main__":
     ]
     union_rect = detector.get_aruco_union_rectangle(marker_infos)
     if union_rect is None:
-        print("Nao foi possivel calcular o retangulo unificado.")
+        print("Unable to calculate unified rectangle.")
         raise SystemExit(1)
 
     useful_rect = detector.get_useful_screen_rectangle(image, marker_infos)
     if useful_rect is None:
-        print("Nao foi possivel detectar a area util clara da tela.")
+        print("Unable to detect bright useful screen area.")
         raise SystemExit(1)
 
     useful_quad = detector.get_useful_screen_quad(image, marker_infos)
     if useful_quad is None:
-        print("Nao foi possivel calcular o quadrilatero da area util.")
+        print("Unable to calculate useful area quadrilateral.")
         raise SystemExit(1)
 
     useful_rect = detector.useful_quad_to_bbox(useful_quad)
@@ -650,32 +669,35 @@ if __name__ == "__main__":
     annotated = _draw_quad(annotated, useful_quad, (255, 255, 0), 3)
 
     # ==========================================
-    # SIMULAÇÃO DO TRAJETO DE SWIPE (OPENCV)
+    # SWIPE PATH SIMULATION (OPENCV)
     # ==========================================
-    # O useful_quad retorna 4 pontos. Se a ordem padrão for Top-Left, Top-Right, Bottom-Right, Bottom-Left:
+    # The useful_quad returns 4 points. If the default order is Top-Left, Top-Right, Bottom-Right, Bottom-Left:
     pt_tl = useful_quad[0]
     pt_tr = useful_quad[1]
     pt_br = useful_quad[2]
     pt_bl = useful_quad[3]
 
-    # Calcula o ponto médio superior e inferior
+    # Calculate top and bottom midpoints
     top_mid_x = (pt_tl[0] + pt_tr[0]) / 2
     top_mid_y = (pt_tl[1] + pt_tr[1]) / 2
     bottom_mid_x = (pt_bl[0] + pt_br[0]) / 2
     bottom_mid_y = (pt_bl[1] + pt_br[1]) / 2
 
-    # Define o início e fim do Swipe (com uma pequena margem interna para não bater na borda)
-    start_swipe = (int(top_mid_x), int(top_mid_y + 40)) # +40 pixels para baixo
-    end_swipe = (int(bottom_mid_x), int(bottom_mid_y - 40)) # -40 pixels para cima
+    # Define start and end of Swipe (with small internal margin to not hit edge)
+    start_swipe = (int(top_mid_x), int(top_mid_y + 40))  # +40 pixels down
+    end_swipe = (int(bottom_mid_x), int(bottom_mid_y - 40))  # -40 pixels up
 
-    # Desenha uma seta laranja mostrando o trajeto
-    cv2.arrowedLine(annotated, start_swipe, end_swipe, (0, 165, 255), 4, tipLength=0.05)
-    cv2.putText(annotated, "Trajeto Swipe", (start_swipe[0] + 10, start_swipe[1]), 
+    # Draw orange arrow showing the path
+    cv2.arrowedLine(annotated, start_swipe, end_swipe,
+                    (0, 165, 255), 4, tipLength=0.05)
+    cv2.putText(annotated, "Swipe Path", (start_swipe[0] + 10, start_swipe[1]),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
 
     for marker_info in marker_infos:
-        marker_corners = np.asarray(marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
-        cv2.polylines(annotated, [marker_corners], isClosed=True, color=(0, 255, 0), thickness=2)
+        marker_corners = np.asarray(
+            marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(annotated, [marker_corners],
+                      isClosed=True, color=(0, 255, 0), thickness=2)
         centroid_x, centroid_y = map(int, marker_info.centroid)
         cv2.circle(annotated, (centroid_x, centroid_y), 5, (0, 0, 255), -1)
         cv2.putText(
@@ -691,24 +713,25 @@ if __name__ == "__main__":
 
     x_min, y_min, x_max, y_max = union_rect
     u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
-    print(f"Imagem: {image_path}")
-    print(f"Markers detectados: {len(marker_infos)}")
-    print(f"Retangulo unificado: x={x_min}, y={y_min}, w={x_max - x_min}, h={y_max - y_min}")
-    print(f"Area util estimada: x={u_x_min}, y={u_y_min}, w={u_x_max - u_x_min}, h={u_y_max - u_y_min}")
+    print(f"Image: {image_path}")
+    print(f"Detected markers: {len(marker_infos)}")
     print(
-        "Offsets do retangulo unificado ate as bordas da imagem: "
+        f"Unified rectangle: x={x_min}, y={y_min}, w={x_max - x_min}, h={y_max - y_min}")
+    print(
+        f"Estimated useful area: x={u_x_min}, y={u_y_min}, w={u_x_max - u_x_min}, h={u_y_max - u_y_min}")
+    print(
+        "Offsets from unified rectangle to image borders: "
         f"left={offsets['left']:.1f}px, top={offsets['top']:.1f}px, "
         f"right={offsets['right']:.1f}px, bottom={offsets['bottom']:.1f}px"
     )
     print(
-        "Gap entre o retangulo dos ArUcos e a area util: "
+        "Gap between ArUco rectangle and useful area: "
         f"left={gap['left']:.1f}px, top={gap['top']:.1f}px, "
         f"right={gap['right']:.1f}px, bottom={gap['bottom']:.1f}px"
     )
-    print("Area util detectada pela regiao clara interna da tela.")
+    print("Useful area detected by internal bright screen region.")
 
-    output_path = Path(args.output) if args.output else image_path.with_name(f"{image_path.stem}_aruco_rect{image_path.suffix}")
+    output_path = Path(args.output) if args.output else image_path.with_name(
+        f"{image_path.stem}_aruco_rect{image_path.suffix}")
     cv2.imwrite(str(output_path), annotated)
-    print(f"Imagem anotada salva em: {output_path}")
-
-
+    print(f"Annotated image saved to: {output_path}")
