@@ -130,12 +130,12 @@ class RobotFSM:
             return
 
         if self.current_marker_index >= len(self.marker_infos):
-            logging.error("Índice de marcador fora do limite em TOUCH_MARKERS")
+            logging.error("Marker index out of bounds in TOUCH_MARKERS")
             self.state = State.ERROR
             return
 
         if self.z_touch is None:
-            logging.error("z_touch não definido em TOUCH_MARKERS")
+            logging.error("z_touch not defined in TOUCH_MARKERS")
             self.state = State.ERROR
             return
 
@@ -144,12 +144,14 @@ class RobotFSM:
 
         logging.info(f"Tocando marcador {marker.marker_id} em ({cx}, {cy})")
 
-        success = self.controller.touch_marker_center(marker, z_touch=self.z_touch)
+        success = self.controller.touch_marker_center(
+            marker, z_touch=self.z_touch)
 
         if success:
             self.state = State.VALIDATE_TOUCH
         else:
-            logging.error(f"Falha ao executar toque no marcador {marker.marker_id}")
+            logging.error(
+                f"Falha ao executar toque no marcador {marker.marker_id}")
             self.state = State.ERROR
 
     # -------------------------------------------------
@@ -158,7 +160,7 @@ class RobotFSM:
 
     def validate_touch(self):
         if self.current_marker_index >= len(self.marker_infos):
-            logging.error("Índice de marcador fora do limite em VALIDATE_TOUCH")
+            logging.error("Marker index out of bounds in VALIDATE_TOUCH")
             self.state = State.ERROR
             return
 
@@ -193,7 +195,7 @@ class RobotFSM:
 
     def reset(self):
         if self.z_touch is None:
-            logging.error("z_touch não definido no RESET")
+            logging.error("z_touch not defined in RESET")
             self.state = State.ERROR
             return
 
@@ -206,9 +208,10 @@ class RobotFSM:
         btn = self.detect_red_button(frame)
 
         if btn:
-            logging.info(f"Tocando botão vermelho em {btn}")
+            logging.info(f"Touching red button at {btn}")
 
-            success = self.controller.touch_pixel(btn[0], btn[1], z_touch=self.z_touch)
+            success = self.controller.touch_pixel(
+                btn[0], btn[1], z_touch=self.z_touch)
 
             if success:
                 time.sleep(1)
@@ -217,11 +220,11 @@ class RobotFSM:
                 self.z_touch = None
                 self.state = State.DETECT_MARKERS
             else:
-                logging.error("Falha ao tocar no botão vermelho")
+                logging.error("Failed to touch red button")
                 self.state = State.ERROR
 
         else:
-            logging.warning("Botão vermelho não encontrado")
+            logging.warning("Red button not found")
             self.state = State.ERROR
 
     # -------------------------------------------------
@@ -230,7 +233,7 @@ class RobotFSM:
 
     def swipe_test(self):
         if self.z_touch is None:
-            logging.error("z_touch não definido no SWIPE_TEST")
+            logging.error("z_touch not defined in SWIPE_TEST")
             self.state = State.ERROR
             return
 
@@ -239,7 +242,7 @@ class RobotFSM:
         grid_points = self.controller.get_grid_border_points()
 
         if not grid_points:
-            logging.error("Não foi possível obter pontos de borda para swipe")
+            logging.error("Could not get edge points for swipe")
             self.state = State.ERROR
             return
 
@@ -293,13 +296,13 @@ class RobotFSM:
 
     def return_to_start(self):
         if self.z_touch is None:
-            logging.error("z_touch não definido no RETURN_TO_START")
+            logging.error("z_touch not defined in RETURN_TO_START")
             self.state = State.ERROR
             return
 
         frame = self.camera.capture_frame()
         if frame is None:
-            logging.error("Não foi possível capturar frame em RETURN_TO_START")
+            logging.error("Could not capture frame in RETURN_TO_START")
             self.state = State.ERROR
             return
 
@@ -307,9 +310,11 @@ class RobotFSM:
         center_x = width // 2
         center_y = height // 2
 
-        logging.info(f"Tocando na tela para voltar ao início: ({center_x}, {center_y})")
+        logging.info(
+            f"Touching screen to return to start: ({center_x}, {center_y})")
 
-        success = self.controller.touch_pixel(center_x, center_y, z_touch=self.z_touch)
+        success = self.controller.touch_pixel(
+            center_x, center_y, z_touch=self.z_touch)
 
         if success:
             time.sleep(1)
@@ -334,7 +339,8 @@ class RobotFSM:
             elif hasattr(self.robot, "go_safe"):
                 self.robot.go_safe()
             else:
-                logging.error("Robô não possui método move_safe() ou go_safe()")
+                logging.error(
+                    "Robot does not have move_safe() or go_safe() method")
                 self.state = State.ERROR
                 return
 

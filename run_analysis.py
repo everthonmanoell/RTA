@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from utils.metrics_analyzer import TCCMetricsAnalyzer
 
+
 def run_full_analysis():
     BASE_DIR = Path("test_results")
     final_report = {}
@@ -11,17 +12,20 @@ def run_full_analysis():
     for model_folder in BASE_DIR.iterdir():
         if model_folder.is_dir():
             model_name = model_folder.name
-            json_files = list(model_folder.glob("physical_calibration_map_*.json"))
-            
+            json_files = list(model_folder.glob(
+                "physical_calibration_map_*.json"))
+
             if len(json_files) < 2:
-                print(f"⚠️  {model_name}: Dados insuficientes para análise ({len(json_files)} arquivos).")
+                print(
+                    f"⚠️  {model_name}: Insufficient data for analysis ({len(json_files)} files).")
                 continue
 
-            print(f"📊 Analisando {model_name} ({len(json_files)} execuções)...")
-            
+            print(
+                f"📊 Analyzing {model_name} ({len(json_files)} executions)...")
+
             paths = [str(p) for p in json_files]
             analyzer = TCCMetricsAnalyzer(paths)
-            
+
             # Execução das Métricas Modulares
             final_report[model_name] = {
                 "sample_size": len(json_files),
@@ -37,8 +41,9 @@ def run_full_analysis():
 
     with open("relatorio_final_tcc.json", "w", encoding="utf-8") as f:
         json.dump(final_report, f, indent=4, ensure_ascii=False)
-    
-    print("\n✅ Análise concluída! Resultados em 'relatorio_final_tcc.json'.")
+
+    print("\n✅ Analysis completed! Results in 'relatorio_final_tcc.json'.")
+
 
 if __name__ == "__main__":
     run_full_analysis()

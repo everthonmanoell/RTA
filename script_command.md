@@ -13,3 +13,5 @@ new execute command:
 
 other comamand to run the fsm until the end:
 .\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -MaxSteps 120
+
+.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType flat -DeviceSide ladscape

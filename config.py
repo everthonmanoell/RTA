@@ -27,8 +27,8 @@ CAMERA_PROPERTIES = {
     # "exposure": -5,  # negativo para auto
 }
 
-## id marcador de falha/sucesso final (na tela do app)
-#TODO colocar os ids
+# id marcador de falha/sucesso final (na tela do app)
+# TODO colocar os ids
 FINAL_SUCCESS_MARKER_ID = 14
 FINAL_FAILURE_MARKER_ID = 15
 
@@ -46,23 +46,25 @@ FINAL_FAILURE_MARKER_ID = 15
 # 4. Defaults: Fallback final se tudo falhar.
 
 _marker_params = None
-DEVICE_TYPE = str(os.getenv("RTA_DEVICE_TYPE", "flat")).strip().lower() or "flat"
+DEVICE_TYPE = str(os.getenv("RTA_DEVICE_TYPE", "flat")
+                  ).strip().lower() or "flat"
 _adb_device_type = "foldable" if DEVICE_TYPE == "foldable" else "flat"
 
 # CAMADA 1: Tenta ADB first (mais rápido e confiável)
 try:
     # 1. FORÇA O HEALTH CHECK E A AUTO-CURA ANTES DE TUDO
     from drivers.device.mobile import list_adb_devices
-    list_adb_devices() # Se o ADB estiver travado, ele reinicia o daemon aqui mesmo em 2 segundos!
-    
+    # Se o ADB estiver travado, ele reinicia o daemon aqui mesmo em 2 segundos!
+    list_adb_devices()
+
     # 2. Agora sim, busca as métricas com o cabo já desengasgado
     from utils.adb_device_metrics import get_device_metrics_via_adb
     _marker_params = get_device_metrics_via_adb(device_type=_adb_device_type)
-    
+
     if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
         print("[config.py] DisplayMetrics via ADB: OK")
     else:
-        print("[config.py] ADB retornou dados inválidos. Tentando socket...")
+        print("[config.py] ADB returned invalid data. Trying socket...")
         _marker_params = None
 except Exception as adb_err:
     print(f"[config.py] ADB falhou: {adb_err}. Tentando socket...")
@@ -77,7 +79,7 @@ if _marker_params is None:
             _marker_params = socket_params
             print("[config.py] DisplayMetrics via socket: OK")
         else:
-            print("[config.py] Socket retornou dados inválidos.")
+            print("[config.py] Socket returned invalid data.")
     except Exception as socket_err:
         print(f"[config.py] Socket falhou: {socket_err}.")
 
@@ -112,11 +114,13 @@ if _marker_params and _marker_params.get("screen_width_px", 0.0) > 0:
     SYSTEM_INSET_RIGHT_PX = _marker_params.get("inset_right_px", 0.0)
     SYSTEM_INSET_BOTTOM_PX = _marker_params.get("inset_bottom_px", 0.0)
     METADATA_TIMESTAMP_MS = _marker_params.get("timestamp_ms", 0.0)
-    METADATA_ELAPSED_REALTIME_MS = _marker_params.get("elapsed_realtime_ms", 0.0)
-    DEVICE_MODEL = str(_marker_params.get("device_model", "unknown")).strip() or "unknown"
+    METADATA_ELAPSED_REALTIME_MS = _marker_params.get(
+        "elapsed_realtime_ms", 0.0)
+    DEVICE_MODEL = str(_marker_params.get(
+        "device_model", "unknown")).strip() or "unknown"
     print(f"[config.py] Screen: {SCREEN_WIDTH_PX:.0f}x{SCREEN_HEIGHT_PX:.0f} @ {DEVICE_DENSITY_DPI} DPI, tag_size_px={MARKER_TAG_SIZE_PX:.1f}, margin_px={MARKER_MARGIN_PX:.1f}, model={DEVICE_MODEL}")
 else:
-    print("[config.py] Nenhuma fonte válida de DisplayMetrics. Usando DEFAULTS.")
+    print("[config.py] No valid DisplayMetrics source. Using DEFAULTS.")
     MARKER_REAL_WIDTH_MM = 15.0
     MARKER_REAL_HEIGHT_MM = 15.0
     MARKER_X_DISTANCE_MM = 500.0
@@ -166,12 +170,14 @@ COORDINATE_SCALE = {
 # ============================================================================
 # CALIBRAÇÃO DE GANHOS E TOLERÂNCIAS
 # ============================================================================
-TRANSLATION_GAIN = 0.1  # Quanto da correção aplicar por iteração (ajustar para estabilidade)
-ALIGMENT_TOLERANCE_MM = 0.5  # Tolerância de alinhamento final (ajustar conforme precisão desejada)
+# Quanto da correção aplicar por iteração (ajustar para estabilidade)
+TRANSLATION_GAIN = 0.1
+# Tolerância de alinhamento final (ajustar conforme precisão desejada)
+ALIGMENT_TOLERANCE_MM = 0.5
 Z_TOUCH = 260.98
 Z_LIMIT = 260.98
 
-## motorobot Z_TOUCH
+# motorobot Z_TOUCH
 # Z_LIMIT = 221.56
 # Z_TOUCH = 221.56
 
@@ -192,18 +198,18 @@ AUTO_ALIGNMENT_CONFIG = {
     # Tolerâncias de convergência
     "centralize_tolerance": 5.0,  # pixels
     "depth_tolerance": 10.0,  # mm
-    
+
     # Distâncias alvo
     "target_distance_mm": 200.0,  # Distância padrão de aproximação
-    
+
     # Ganhos de controle proporcional (PID simplificado)
     "xy_gain": 0.08,  # Reduzido drasticamente para evitar oscilação
     "z_gain": 0.1,   # Quanto da correção Z aplicar por iteração
-    
+
     # Limites de segurança para eixo Z do robô
     "z_max": 600.0,  # mm
     "z_min": 100.0,  # mm
-    
+
     # Limites de iteração e tempo
     "max_iterations": 20,  # Aumentado pois os ganhos agora são menores
     "iteration_delay": 0.35,  # segundos entre iterações
@@ -213,7 +219,7 @@ AUTO_ALIGNMENT_CONFIG = {
     "max_no_improvement_iters": 6,  # aumentado para dar mais chances de convergência
     "min_improvement_mm": 0.5,  # melhora mínima mais agressiva
     "min_markers_for_align": 2,  # inspirado no FOV: permite pré-align com conjunto parcial
-    
+
     # Velocidade de aproximação
     "approach_speed": 5.0,  # mm por iteração
 }
@@ -226,18 +232,18 @@ ROTATION_ALIGNMENT_CONFIG = {
     # Tolerância de alinhamento RZ
     "alignment_tolerance": 2.0,  # graus
     "rz_gain": 0.5,
-    
+
     # Limites de segurança
     "max_rotation_step": 5.0,  # graus máximos por iteração
-    
+
     # Expectativas do padrão de markers
     "markers_per_side": 2,
     "markers_total": 4,
-    
+
     # Limites de iteração
     "max_iterations": 10,
     "iteration_delay": 0.5,  # segundos
-    
+
     # Sensibilidade do cálculo de ângulo (ajustar conforme FOV da câmera)
     "angle_sensitivity": 0.5,  # graus por unidade de diferença
 }
