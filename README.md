@@ -35,11 +35,14 @@
       - [Robot setup with axis reference for X/Y/Z offset calibration](#robot-setup-with-axis-reference-for-xyz-offset-calibration)
   - [Workspace Calibration](#workspace-calibration)
     - [Camera Calibration](#camera-calibration)
-    - [ROI Calibration](#roi-calibration)
+    - [ROI](#roi)
+      - [ROI Vision Examples](#roi-vision-examples)
+      - [Properly Framed ROI](#properly-framed-roi)
+      - [Occlusion and Visual Interference Example](#occlusion-and-visual-interference-example)
+      - [ROI Calibration](#roi-calibration)
         - [How to perfom the ROI position](#how-to-perfom-the-roi-position)
     - [Closed-Loop Touch Validation](#closed-loop-touch-validation)
     - [Spatial Interpolation Mapping](#spatial-interpolation-mapping)
-  - [Device Orientation Support](#device-orientation-support)
   - [Operational Constraints and Recommendations](#operational-constraints-and-recommendations)
   - [Experimentally Validated Features](#experimentally-validated-features)
   - [Installation](#installation)
@@ -52,13 +55,10 @@
     - [RTA Android App](#rta-android-app-1)
       - [Main App Interface](#main-app-interface)
       - [Execution Visual Feedback](#execution-visual-feedback)
-      - [End-Effector and Reference Geometry](#end-effector-and-reference-geometry)
+      - [End-Effector](#end-effector)
     - [Full System Execution](#full-system-execution)
       - [Execution — Part 1](#execution--part-1)
       - [Execution — Part 2](#execution--part-2)
-    - [ROI Vision Examples](#roi-vision-examples)
-      - [Properly Framed ROI](#properly-framed-roi)
-      - [Occlusion and Visual Interference Example](#occlusion-and-visual-interference-example)
   - [Module Reference](#module-reference)
     - [Orchestration Layer](#orchestration-layer)
     - [Alignment Layer](#alignment-layer)
@@ -223,7 +223,7 @@ As shown below, a raised black support platform is used to elevate the device an
 
 ### 3D Models and End-Effector
 
-The 3D models for the end-effector components are located in `docs/rta_materials/rta_endeffector_model_3d/`. Download, review, and 3D-print these parts before proceeding. We recommend PETG or PLA for durability and precision.
+The 3D models for the end-effector components are located in `docs/rta_materials/rta_endeffector_model_3d/`. Download, review, and 3D-print these parts before proceeding. We recommend PETG or PLA for durability and precision. To se the image of the end-effector, check the [End-Effector](#end-effector) section.
 
 ### Touch Convergence Height (Z)
 
@@ -247,7 +247,7 @@ Z_TOUCH = 260.98
 Incorrect values may cause failed capacitive touches, excessive pressure on the display, unstable touch detection, or mechanical damage to the device surface.
 
 ##### How to perfom the Z calibration
-#todo fazendo
+
 
 To perform Z-axis calibration, it is necessary to define the position of the ROI (region of interest - in the ) and move the robot along the Z-axis until it touches the device screen from ROI position using the Pendant. Then, it is necessary to read the robot's Z-coordinate and set this value in the `Z_TOUCH` variable. If need be, adjust the `Z_OFFSET_BEFORE_TOUCH` to ensure the robot approaches the screen correctly before making contact.
 
@@ -260,7 +260,7 @@ TOUCH_FINGER_OFFSET_X = -30.1
 TOUCH_FINGER_OFFSET_Y = 0.0
 ```
 
-The nominal CAD distance between the camera center and the actuator is roughly 31.5 mm. However, due to FDM tolerances, assembly variations, mechanical deformation, and camera positioning differences, **the actual offset must be experimentally calibrated for each physical setup.**
+The nominal CAD distance between the **camera center and the actuator is roughly 31.5 mm**. However, due to FDM tolerances, assembly variations, mechanical deformation, and camera positioning differences, **the actual offset must be experimentally calibrated for each physical setup.**
 
 Offsets are expressed in the robot Cartesian frame and represent the displacement between the camera optical center and the touch actuator tip.
 
@@ -323,7 +323,7 @@ For other cameras, follow the camera vendor tools or API and update `CAMERA_CALI
 Recalibrate when a new camera is installed, the lens changes, lighting conditions change significantly, or the camera mount position changes.
 
 
-### ROI Calibration
+### ROI
 
 The Region of Interest (ROI) is the predefined physical area where the smartphone should be placed for calibration. The robot moves to this region before starting visual detection, alignment, touch convergence, and interpolation mapping.
 
@@ -334,6 +334,38 @@ The ROI defines:
 - and the visual acquisition area.
 
 The smartphone must remain fully visible inside the ROI during execution. Correct ROI configuration is critical for stable marker detection, collision avoidance, and touch convergence performance.
+
+#### ROI Vision Examples
+
+The Region of Interest (ROI) is the predefined physical area where the smartphone should be placed for calibration. The robot moves to this region before starting visual detection, alignment, touch convergence, and interpolation mapping.
+
+The ROI defines:
+
+- where the device is expected to appear;
+- the initial robot approach region;
+- and the visual acquisition area.
+
+The smartphone must remain fully visible inside the ROI during execution. Correct ROI configuration is critical for stable marker detection, collision avoidance, and touch convergence performance.
+
+#### Properly Framed ROI
+
+<p align="center">
+  <img src="docs/rta_materials/roi_vision.jpg" alt="ROI correctly framed" width="420">
+</p>
+
+In this configuration the device is fully visible, markers are detectable, and lighting is suitable for visual alignment. This is the ideal scenario for stable marker detection, automatic alignment, and touch convergence.
+
+#### Occlusion and Visual Interference Example
+
+<p align="center">
+  <img src="docs/rta_materials/roi_oclusion.jpg" alt="ROI occlusion example" width="420">
+</p>
+
+This example shows a non-ideal condition where parts of the ROI can be obstructed, the robot partially interferes with the field of view, or lighting degrades marker detection. Such situations may cause alignment failures, loss of detection, increased convergence time, or transitions to FSM error states.
+
+**Important:** avoid perpendicular lighting directly on the device screen, as reflections can significantly reduce marker contrast.
+
+#### ROI Calibration
 
 Has a dictionary in config.py callaes `ROI_POSITIONING_CONFIG` that contains the ROI position parameters. Adjust these values based on the physical setup and camera view to ensure the device is fully visible and markers are detectable.
 
@@ -351,6 +383,9 @@ ROI_POSITIONING_CONFIG = {
 ##### How to perfom the ROI position
 
 To calibrate the ROI position, first place the robot in a safe position with a clear view of the workspace using the Pendant. Then, adjust the `X`, `Y`, and `Z` cartesian values iteratively while observing the camera feed to ensure that the device is fully visible within the ROI and that fiducial markers can be reliably detected.
+
+
+
 
 
 ### Closed-Loop Touch Validation
@@ -377,21 +412,7 @@ The robot performs validated touches on fiducial markers and records the Cartesi
 
 ---
 
-## Device Orientation Support
 
-RTA supports multiple physical device orientations. Set the device orientation with:
-
-```powershell
--DeviceSide "portrait"
-```
-
-or
-
-```powershell
--DeviceSide "landscape"
-```
-
-The only requirements are that the device stays fully visible inside the ROI, fiducial markers remain detectable by the camera, and the selected orientation matches the physical placement of the device.
 
 ## Operational Constraints and Recommendations
 
@@ -495,8 +516,9 @@ Example using the project's PowerShell script:
 Before running, adjust these parameters for your scenario:
 
 - `-RobotServerIp`: IP address of the DENSO controller you are using;
-- `-DeviceSide`: device orientation relative to the robot (`portrait` or `landscape`);
+- `-DeviceSide`: device orientation relative to the robot (`portrait` or `landscape`) relative to the robot's frontal plane;
 - `-MetricsDir`: folder where results and the final map will be saved. If omitted, results are saved under `test_results/<device_model_or_device_type>/`.
+
 
 The final map produced by RTA is stored by default at:
 
@@ -504,7 +526,7 @@ The final map produced by RTA is stored by default at:
 test_results/<device_model_or_device_type>/physical_calibration_map_<timestamp>_<epoch>.json
 ```
 
-In general, the expected flow is:
+In general, the expected flow of RTA module is:
 
 1. start the Android app;
 2. connect to the robot;
@@ -549,7 +571,7 @@ These screens represent the app's main states during calibration runs.
 
 The app provides visual feedback for successful runs, interaction failures, touch errors, and invalid states encountered during a session.
 
-#### End-Effector and Reference Geometry
+#### End-Effector
 
 <p align="center">
   <img src="docs/rta_materials/pen_2_with_marker.png" alt="End-effector with marker reference" width="420">
@@ -613,27 +635,6 @@ idle
 
 ---
 
-### ROI Vision Examples
-
-The images below show the robot camera view during FSM execution.
-
-#### Properly Framed ROI
-
-<p align="center">
-  <img src="docs/rta_materials/roi_vision.jpg" alt="ROI correctly framed" width="420">
-</p>
-
-In this configuration the device is fully visible, markers are detectable, and lighting is suitable for visual alignment. This is the ideal scenario for stable marker detection, automatic alignment, and touch convergence.
-
-#### Occlusion and Visual Interference Example
-
-<p align="center">
-  <img src="docs/rta_materials/roi_oclusion.jpg" alt="ROI occlusion example" width="420">
-</p>
-
-This example shows a non-ideal condition where parts of the ROI can be obstructed, the robot partially interferes with the field of view, or lighting degrades marker detection. Such situations may cause alignment failures, loss of detection, increased convergence time, or transitions to FSM error states.
-
-**Important:** avoid perpendicular lighting directly on the device screen, as reflections can significantly reduce marker contrast.
 
 ---
 
