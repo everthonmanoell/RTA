@@ -11,3 +11,5 @@ drivers/vision/__pycache__/
 utils/__pycache__/
 state_machine/__pycache__/
 .vscode/
+*.mp4
+docs/rta_materials/rta_videos/*.mp4
