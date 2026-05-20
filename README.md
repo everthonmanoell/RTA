@@ -44,6 +44,7 @@ Esta documentação apresenta a visão geral do projeto, a motivação, a instal
   - [Workspace Calibration](#workspace-calibration)
   - [Initial Physical Setup](#initial-physical-setup)
     - [End-Effector Offset Calibration](#end-effector-offset-calibration)
+      - [Robot setup with axis reference for X/Y/Z offset calibration](#robot-setup-with-axis-reference-for-xyz-offset-calibration)
     - [Touch Convergence Height](#touch-convergence-height)
     - [ROI and Camera Calibration](#roi-and-camera-calibration)
       - [ROI Setup](#roi-setup)
@@ -73,6 +74,14 @@ Esta documentação apresenta a visão geral do projeto, a motivação, a instal
     - [Erro de múltiplos dispositivos no ADB](#erro-de-múltiplos-dispositivos-no-adb)
     - [Instabilidade na detecção de marcadores](#instabilidade-na-detecção-de-marcadores)
   - [Demonstrações visuais](#demonstrações-visuais)
+    - [Aplicativo Android RTA](#aplicativo-android-rta)
+      - [Interface principal do aplicativo](#interface-principal-do-aplicativo)
+      - [Feedback visual de execução](#feedback-visual-de-execução)
+      - [End-effector e geometria de referência](#end-effector-e-geometria-de-referência)
+    - [Região de Interesse (ROI)](#região-de-interesse-roi)
+      - [ROI corretamente enquadrada](#roi-corretamente-enquadrada)
+      - [Exemplo de oclusão e interferência visual](#exemplo-de-oclusão-e-interferência-visual)
+    - [Conteúdo visual planejado](#conteúdo-visual-planejado)
   - [Boas Práticas](#boas-práticas)
   - [Conclusão](#conclusão)
 
@@ -255,6 +264,14 @@ However, due to:
 **the real offset must be experimentally calibrated for every physical setup.**
 
 The offset values are expressed in the robot Cartesian reference frame and represent the displacement between the camera optical center and the physical touch actuator tip.
+
+#### Robot setup with axis reference for X/Y/Z offset calibration
+
+<p align="center">
+  <img src="docs/rta_materials/setup_com_eixos.jpeg" alt="Robot setup with axis reference for X/Y offset calibration" width="520">
+</p>
+
+This reference helps visualize the robot setup and the correct Cartesian axis orientation, making the relationship between the camera, the capacitive tip, and the X/Y offsets used in calibration easier to understand.
 
 This calibration is mandatory whenever:
 
@@ -573,7 +590,7 @@ Antes de executar, ajuste estes dois parâmetros para o seu cenário:
 - `-RobotServerIp`: IP do robô Denso que você realmente vai usar;
 - `-DeviceSide`: orientação do celular em relação ao robô, com valores como `portrait` ou `landscape`.
 
-Você também pode executar diretamente o módulo principal com Poetry:
+<!-- Você também pode executar diretamente o módulo principal com Poetry:
 
 ```bash
 poetry run python state_machine/run_rta_fsm.py \
@@ -583,9 +600,9 @@ poetry run python state_machine/run_rta_fsm.py \
   --device-side portrait \
   --options "Server=192.168.160.225" \
   --max-steps 120
-```
+``` -->
 
-No comando acima, o valor de `Server=...` precisa ser o IP do Denso em uso, e `--device-side` precisa refletir a orientação física do celular em relação ao robô.
+<!-- No comando acima, o valor de `Server=...` precisa ser o IP do Denso em uso, e `--device-side` precisa refletir a orientação física do celular em relação ao robô. -->
 
 O mapa gerado pelo RTA é o produto final da execução. Por padrão, ele fica em:
 
@@ -667,29 +684,149 @@ Use apenas um dispositivo USB ativo durante a sessão de calibração.
 
 ## Demonstrações visuais
 
-Para elevar a legibilidade técnica do projeto, recomenda-se adicionar nesta seção:
+Esta seção reúne as referências visuais do sistema RTA e organiza o material por componente, para facilitar a leitura do setup físico, do aplicativo Android e da visão computacional.
 
-- GIF do sistema completo em execução (robô + app + toques);
-- screenshot da tela de marcadores ArUco;
-- screenshot do app Android RTA;
-- imagem da ROI detectada;
-- diagrama visual da FSM.
+As imagens documentam:
 
-Exemplo de estrutura sugerida:
+- o posicionamento físico do sistema;
+- o fluxo de execução no app;
+- o enquadramento da câmera;
+- a geometria do end-effector;
+- e as restrições operacionais do workspace.
 
-```text
-docs/images/
-  system_run.gif
-  aruco_detection.png
-  rta_app_screen.png
-  roi_debug.png
-  fsm_diagram.png
-```
+---
+
+### Aplicativo Android RTA
+
+O aplicativo Android é responsável por:
+
+- exibir os marcadores visuais;
+- validar os toques executados pelo robô;
+- fornecer feedback de sucesso e falha;
+- e integrar os eventos de toque com a FSM via ADB.
+
+#### Interface principal do aplicativo
+
+<p align="center">
+  <img src="docs/rta_materials/rta_1_screen.jpg" alt="RTA main screen 1" width="220">
+  <img src="docs/rta_materials/rta_2_screen.jpeg" alt="RTA main screen 2" width="220">
+</p>
+
+Essas telas representam os estados principais da aplicação Android durante a execução da rotina de calibração.
+
+#### Feedback visual de execução
+
+<p align="center">
+  <img src="docs/rta_materials/rta_approved_screen.jpeg" alt="RTA approved screen" width="220">
+  <img src="docs/rta_materials/rta_error_screen.jpeg" alt="RTA error screen" width="220">
+</p>
+
+O aplicativo também fornece feedback visual para:
+
+- execuções bem-sucedidas;
+- falhas de interação;
+- erros de toque;
+- e estados inválidos detectados durante a sessão.
+
+---
+
+<!-- ### Setup físico do robô
+
+A imagem abaixo apresenta o setup físico do sistema RTA, incluindo:
+
+- robô DENSO;
+- câmera acoplada ao end-effector;
+- smartphone;
+- região de trabalho;
+- e referência dos eixos cartesianos do manipulador.
+
+<p align="center">
+  <img src="docs/rta_materials/setup_com_eixos.jpeg" alt="Robot setup with axis reference" width="520">
+</p>
+
+Essa referência é importante para:
+
+- calibração do workspace;
+- entendimento dos offsets do atuador;
+- ajuste do ROI;
+- e definição dos parâmetros geométricos do sistema. -->
+
+#### End-effector e geometria de referência
+
+<p align="center">
+  <img src="docs/rta_materials/pen_2_with_marker.png" alt="End-effector with marker reference" width="420">
+</p>
+
+Essa imagem ajuda a visualizar:
+
+- 1 - case da câmera;
+- 2 - falange que conecta ao robô;
+- 3 - case do atuador de toque;
+- 4 - mola de pressão;
+- 5 - atuador;
+
+---
+
+### Região de Interesse (ROI)
+
+As imagens abaixo representam a visão da câmera do robô durante a execução da FSM.
+
+#### ROI corretamente enquadrada
+
+<p align="center">
+  <img src="docs/rta_materials/roi_vision.jpg" alt="ROI correctly framed" width="420">
+</p>
+
+Nesta configuração:
+
+- o dispositivo está completamente visível;
+- os marcadores estão detectáveis;
+- e a iluminação está adequada para alinhamento visual.
+
+Esse é o cenário ideal para:
+
+- detecção estável dos marcadores;
+- alinhamento automático;
+- e convergência de toque.
+
+#### Exemplo de oclusão e interferência visual
+
+<p align="center">
+  <img src="docs/rta_materials/roi_oclusion.jpg" alt="ROI occlusion example" width="420">
+</p>
+
+Este exemplo demonstra uma condição não ideal, onde:
+
+- partes da ROI podem ficar obstruídas;
+- o robô interfere parcialmente no campo visual;
+- ou a iluminação prejudica a detecção dos marcadores.
+
+Esse tipo de situação pode causar:
+
+- falhas de alinhamento;
+- perda de detecção;
+- aumento do tempo de convergência;
+- ou transições para estados de erro da FSM.
+
+**Importante:** evite iluminação perpendicular diretamente sobre a tela do dispositivo, pois reflexos podem reduzir significativamente o contraste dos marcadores visuais.
+
+---
+
+### Conteúdo visual planejado
+
+As próximas versões da documentação podem incluir:
+
+- diagrama visual completo da FSM;
+- GIF do sistema em execução;
+- vídeo curto da rotina completa;
+- diagrama da arquitetura do sistema;
+- visualização da malha de interpolação;
+- mapa físico de calibração;
+- e screenshots do processo de alinhamento automático.
 
 ## Boas Práticas
 
 - Sempre desligue os motores e desconecte o robô ao final da execução.
-- Mantenha a dependência Aether alinhada com o `pyproject.toml`.
 - Use `poetry install` para reproduzir o ambiente em outras máquinas.
 - Antes de rodar uma sessão real, valide ADB, câmera e conexão com a controladora.
 - Se o app Android travar, reinicie a aplicação antes de iniciar uma nova sessão.
