@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import time
+import sys
 import threading
 import random
 from pathlib import Path
@@ -44,7 +45,7 @@ logging.basicConfig(
 # INFRA — ARGS E STACK
 # =============================================================================
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command-line arguments for RTA FSM execution.
 
     Returns:
@@ -99,7 +100,13 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Stop execution as soon as the FSM reaches this state (e.g. camera_on)",
     )
-    return parser.parse_args()
+    args = parser.parse_args(argv)
+    metrics_dir_args = argv if argv is not None else sys.argv[1:]
+    args.metrics_dir_provided = any(
+        arg == "--metrics-dir" or arg.startswith("--metrics-dir=")
+        for arg in metrics_dir_args
+    )
+    return args
 
 
 def _configure_tool_from_config(robot: Denso) -> bool:
@@ -629,9 +636,10 @@ def _orientation_device(side: str) -> list[str]:
         list[str]: List of orientation descriptors for the given orientation.
     """
     if side == "landscape":
-        return ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"] #landscape orientation
+        # landscape orientation
+        return ["pt_1", "pt_4", "pt_2", "pt_3", "pt_1"]
     elif side == "portrait":
-        return ["pt_3", "pt_1", "pt_4", "pt_2", "pt_3"] #portrait orientation
+        return ["pt_3", "pt_1", "pt_4", "pt_2", "pt_3"]  # portrait orientation
     else:
         logging.warning(
             f"Invalid side {side} for device orientation. Defaulting to ['unknown'].")
@@ -860,7 +868,7 @@ def _save_calibration_map(
         device_touch_interaction=session_recorder.get_interaction_data(),
         execution_duration_s=(time.time() - run_start_ts),
         calibration_succeed=is_calibration_succeed,
-        dir_separation=True,
+        dir_separation=not bool(getattr(args, "metrics_dir_provided", False)),
     )
     if not export_ok:
         logging.error("Failed to export calibration map.")

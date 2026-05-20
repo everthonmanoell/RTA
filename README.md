@@ -572,7 +572,7 @@ Comandos sugeridos:
 adb devices
 poetry install
 .\scripts\install_rta_app.ps1
-.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120
+.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
 ```
 
 ## Uso principal
@@ -582,13 +582,14 @@ Depois de instalar as dependências e o app RTA, o fluxo de uso mais comum é ex
 Exemplo usando o script PowerShell do projeto:
 
 ```powershell
-.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120
+.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
 ```
 
-Antes de executar, ajuste estes dois parâmetros para o seu cenário:
+Antes de executar, ajuste estes parâmetros para o seu cenário:
 
 - `-RobotServerIp`: IP do robô Denso que você realmente vai usar;
 - `-DeviceSide`: orientação do celular em relação ao robô, com valores como `portrait` ou `landscape`.
+- `-MetricsDir`: pasta onde os resultados e o mapa final serão salvos. Se não informar, o comportamento atual é mantido, salvando em `test_results/<device_model_ou_device_type>/`.
 
 <!-- Você também pode executar diretamente o módulo principal com Poetry:
 
@@ -599,6 +600,7 @@ poetry run python state_machine/run_rta_fsm.py \
   --device-type flat \
   --device-side portrait \
   --options "Server=192.168.160.225" \
+  --metrics-dir test_results_custom \
   --max-steps 120
 ``` -->
 
@@ -610,7 +612,14 @@ O mapa gerado pelo RTA é o produto final da execução. Por padrão, ele fica e
 test_results/<device_model_ou_device_type>/physical_calibration_map_<timestamp>_<epoch>.json
 ```
 
-Se `DEVICE_MODEL` não estiver definido, a pasta usa o `device_type`. Esse caminho pode ser alterado com `--metrics-dir`.
+Se `DEVICE_MODEL` não estiver definido, a pasta usa o `device_type`. Quando quiser escolher outro local de salvamento, passe `-MetricsDir` no `run_fsm.ps1`; se não informar nada, o comportamento atual é mantido.
+
+<!-- O encadeamento desse argumento é este:
+
+1. `run_fsm.ps1` recebe `-MetricsDir` opcionalmente.
+2. O script repassa o valor para `state_machine/run_rta_fsm.py` como `--metrics-dir`.
+3. O `run_rta_fsm.py` entrega esse valor para `CalibrationMapExporter.export(...)` como `output_dir`.
+4. O exportador cria a pasta base informada e ainda separa por `device_type` ou `device_model` quando `dir_separation=True`. -->
 
 Em geral, o fluxo esperado é:
 
