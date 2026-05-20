@@ -15,32 +15,31 @@
 
 ## Overview
 
-O projeto **Robot Touch Alignment (RTA)** e um módulo visuomotor para automacao de interacao com dispositivos touchscreen usando manipulador robotico DENSO, visao computacional e calibracao orientada por feedback de toque.
+The **Robot Touch Alignment (RTA)** project is a visuomotor module to automate interactions with touchscreens using a DENSO industrial robot, computer vision, and touch-driven calibration.
 
-O sistema combina:
+The system combines:
 
-- controle robotico;
-- alinhamento visual por marcadores;
-- integracao com aplicativo Android;
-- feedback de eventos de toque;
-- e orquestracao por maquina de estados finitos (FSM),
+- robotic control;
+- marker-based visual alignment;
+- integration with an Android test app;
+- touch-event feedback from Android;
+- and orchestration via a finite state machine (FSM),
 
-para criar um fluxo de calibracao repetivel e portavel para testes automatizados em dispositivos moveis.
+to create a repeatable, portable calibration and test workflow for mobile devices.
 
-O **RTA** é um projeto para alinhamento, calibração e execução de toques em dispositivos móveis usando um robô Denso, câmera acoplada ao braço robótico e um fluxo automático baseado em visão computacional.
+**RTA** provides alignment, calibration, and automated touch execution on mobile devices using a DENSO robot, a camera mounted to the arm, and a vision-driven automation flow.
 
-O sistema combina uma máquina de estados, drivers de câmera, drivers de dispositivo, alinhamento visual e integração com a aplicação Android para permitir execução repetível em diferentes máquinas.
-
-Esta documentação apresenta a visão geral do projeto, a motivação, a instalação via Poetry, a instalação do app Android, o uso principal e a estrutura dos módulos.
+This documentation covers the project overview, motivation, installation via Poetry, Android app installation, primary usage, and module structure.
 
 - [Robot Touch Alignment (RTA)](#robot-touch-alignment-rta)
   - [Overview](#overview)
-  - [Introdução](#introdução)
-  - [Motivação](#motivação)
-  - [Arquitetura do sistema](#arquitetura-do-sistema)
-  - [Máquina de estados finitos (FSM)](#máquina-de-estados-finitos-fsm)
-  - [Requisitos de hardware](#requisitos-de-hardware)
-  - [Requisitos de software](#requisitos-de-software)
+  - [Introduction](#introduction)
+  - [Motivation](#motivation)
+  - [System Architecture](#system-architecture)
+  - [Finite State Machine (FSM)](#finite-state-machine-fsm)
+    - [UPPAAL Model](#uppaal-model)
+  - [Hardware Requirements](#hardware-requirements)
+  - [Software Requirements](#software-requirements)
   - [Workspace Calibration](#workspace-calibration)
   - [Initial Physical Setup](#initial-physical-setup)
     - [End-Effector Offset Calibration](#end-effector-offset-calibration)
@@ -56,84 +55,85 @@ Esta documentação apresenta a visão geral do projeto, a motivação, a instal
   - [Operational Constraints and Recommendations](#operational-constraints-and-recommendations)
   - [Experimentally Validated Features](#experimentally-validated-features)
   - [Setup Assets](#setup-assets)
-  - [Instalação](#instalação)
-    - [Configuração do Ambiente](#configuração-do-ambiente)
-    - [Instalação no projeto](#instalação-no-projeto)
-    - [Aplicativo RTA](#aplicativo-rta)
-    - [Aether SDK (dependência via Poetry)](#aether-sdk-dependência-via-poetry)
+  - [Installation](#installation)
+    - [Environment Configuration](#environment-configuration)
+    - [Project Installation](#project-installation)
+    - [RTA Android App](#rta-android-app)
   - [Quick Start](#quick-start)
-  - [Uso principal](#uso-principal)
-  - [Referência dos módulos](#referência-dos-módulos)
-    - [Camada de orquestração](#camada-de-orquestração)
-    - [Camada de alinhamento](#camada-de-alinhamento)
-    - [Camada de device e app](#camada-de-device-e-app)
-    - [Camada de visão](#camada-de-visão)
-    - [Utilitários](#utilitários)
+  - [Primary Usage](#primary-usage)
+  - [Module Reference](#module-reference)
+    - [Orchestration layer](#orchestration-layer)
+    - [Alignment layer](#alignment-layer)
+    - [Device \& app layer](#device--app-layer)
+    - [Vision layer](#vision-layer)
+    - [Utilities](#utilities)
   - [Troubleshooting](#troubleshooting)
-    - [Problemas de conexão com o robô](#problemas-de-conexão-com-o-robô)
-    - [Erro de múltiplos dispositivos no ADB](#erro-de-múltiplos-dispositivos-no-adb)
-    - [Instabilidade na detecção de marcadores](#instabilidade-na-detecção-de-marcadores)
-  - [Demonstrações visuais](#demonstrações-visuais)
-    - [Aplicativo Android RTA](#aplicativo-android-rta)
-      - [Interface principal do aplicativo](#interface-principal-do-aplicativo)
-      - [Feedback visual de execução](#feedback-visual-de-execução)
-      - [End-effector e geometria de referência](#end-effector-e-geometria-de-referência)
-    - [Região de Interesse (ROI)](#região-de-interesse-roi)
-      - [ROI corretamente enquadrada](#roi-corretamente-enquadrada)
-      - [Exemplo de oclusão e interferência visual](#exemplo-de-oclusão-e-interferência-visual)
-    - [Conteúdo visual planejado](#conteúdo-visual-planejado)
-  - [Boas Práticas](#boas-práticas)
-  - [Conclusão](#conclusão)
+    - [Robot connection issues](#robot-connection-issues)
+    - [Multiple ADB devices error](#multiple-adb-devices-error)
+    - [Marker detection instability](#marker-detection-instability)
+  - [Visual demonstrations](#visual-demonstrations)
+    - [RTA Android app](#rta-android-app-1)
+      - [Main app interface](#main-app-interface)
+      - [Execution visual feedback](#execution-visual-feedback)
+      - [End-effector and reference geometry](#end-effector-and-reference-geometry)
+    - [Full system execution](#full-system-execution)
+      - [Execution — Part 1](#execution--part-1)
+      - [Execution — Part 2](#execution--part-2)
+    - [Region of Interest (ROI)](#region-of-interest-roi-1)
+      - [Properly framed ROI](#properly-framed-roi)
+      - [Occlusion and visual interference example](#occlusion-and-visual-interference-example)
+  - [Best Practices](#best-practices)
+  - [Conclusion](#conclusion)
 
-## Introdução
+## Introduction
 
-O RTA foi desenvolvido para automatizar o alinhamento do robô em relação ao dispositivo móvel, usando a câmera acoplada para detectar marcadores visuais, estimar a pose do alvo e conduzir a rotina de toques que gera o mapa final do workspace. A proposta é transformar uma sessão física de calibração em um processo reproduzível, com validação visual, feedback do Android e persistência do mapa para uso futuro.
+RTA was developed to automate the robot alignment relative to a mobile device by using a camera mounted to the robot to detect visual markers, estimate the target pose, and run a touch routine that produces the final workspace map. The goal is to transform a physical calibration session into a reproducible process with visual validation, Android feedback, and map persistence for later use.
 
-O fluxo principal do sistema envolve:
+The main system flow includes:
 
-- inicialização da aplicação Android de teste;
-- detecção de marcadores com a câmera do robô;
-- alinhamento de rotação e posição;
-- execução sequencial de toques;
-- validação visual do resultado;
-- geração de mapas e relatórios.
+- launching the Android test application;
+- detecting markers with the robot-mounted camera;
+- rotation and position alignment;
+- sequential touch execution;
+- visual validation of results;
+- and map/report generation.
 
-## Motivação
+## Motivation
 
-Este projeto surgiu para reduzir o atrito operacional de testes com dispositivos móveis utilizando da automações com robôs. Em vez de espalhar lógica de controle, visão e device management em scripts soltos, o RTA concentra essas responsabilidades em uma estrutura reutilizável e previsível.
+This project aims to reduce operational friction when testing mobile devices by automating interactions with robots. Instead of scattering control, vision, and device management logic across isolated scripts, RTA centralizes these responsibilities in a reusable and predictable structure.
 
-Os principais objetivos são:
+Primary goals:
 
-- facilitar a reprodução do setup em novas máquinas;
-- simplificar a execução do fluxo principal com um único comando;
-- manter o código organizado para integração com outros projetos;
-- esconder complexidades do ORiN2 SDK e do DCOM atrás de módulos locais reutilizáveis;
-- permitir que o processo de instalação seja feito com `poetry install`.
+- ease reproducing the setup on new machines;
+- simplify running the main flow with a single command;
+- keep the codebase organized for integration with other projects;
+- encapsulate ORiN2 SDK and DCOM complexities behind local reusable modules;
+- enable installation via `poetry install`.
 
-## Arquitetura do sistema
+## System Architecture
 
 ```text
 Android App
   |
   v
-ADB + Comunicação Socket
+ADB + Socket Communication
   |
   v
-FSM em Python (RTA)
+FSM in Python (RTA)
   |
   v
-Camada de Visão + Alinhamento
+Vision + Alignment Layer
   |
   v
-Controlador do Robô DENSO
+DENSO Robot Controller
   |
   v
-Execução de Toques
+Touch Execution
 ```
 
-## Máquina de estados finitos (FSM)
+## Finite State Machine (FSM)
 
-Fluxo principal da FSM:
+Main FSM flow:
 
 ```text
 idle
@@ -152,81 +152,103 @@ idle
 -> done
 ```
 
-Qualquer falha irrecuperável direciona o sistema para o estado `error`.
+### UPPAAL Model
 
-## Requisitos de hardware
+The RTA finite state machine is also modeled in UPPAAL for formal visualization and state-flow validation.
 
-- Robô DENSO com controladora acessível na rede;
-- Dispositivo Android para execução do app RTA;
-- Modelo 3D do end-effector, para encaixe da camera BRIO e do atuador final (disponíveis em `docs/rta_endeffector_model_3d/`);
-- Câmera acoplada ao cabeçote ou ao end-effector do robô, com visão clara da área de trabalho;
-- Suporte impresso em 3D, fixado no robô;
-- Cabo USB para conexão do Android via ADB;
-- Iluminação adequada para detecção confiável dos marcadores.
+📄 Full UPPAAL FSM Diagram:
 
-## Requisitos de software
+[docs/rta_materials/Rta_uppal.pdf](docs/rta_materials/Rta_uppal.pdf)
 
-- Python 3.11 ou superior;
+🧩 UPPAAL XML Source:
+
+[utils/uppal/rta_new_corrected.xml](utils/uppal/rta_new_corrected.xml)
+
+Because of the FSM's size and complexity, the full diagram is not embedded directly in this README.
+
+This explicit modeling shows that:
+
+- ✅ the FSM has a formal model;
+- ✅ the model is documented and traceable to the implementation;
+- ✅ the UPPAAL XML is included in the repository for inspection;
+- ✅ the system complexity justifies formal modeling.
+
+The Python implementation in `state_machine/` follows the same execution flow defined in the UPPAAL model, providing traceability between model and code.
+
+Any unrecoverable failure drives the FSM to the `error` state.
+
+## Hardware Requirements
+
+- DENSO robot with a controller reachable on the network;
+- Android device for running the RTA app;
+- 3D models for the end-effector that mount the BRIO camera and the touch actuator (available in `docs/rta_materials/rta_endeffector_model_3d/`);
+- Camera mounted on the robot head or end-effector with a clear view of the workspace;
+- 3D-printed support fixed to the robot;
+- USB cable for ADB connection to the Android device;
+- Adequate lighting for reliable marker detection.
+
+## Software Requirements
+
+- Python 3.11+;
 - Poetry;
-- ADB disponível no sistema (`adb` no PATH);
-- ORiN2 SDK instalado e configurado;
-- Dependência Aether já declarada no `pyproject.toml`.
+- ADB available on the system (`adb` on PATH);
+- ORiN2 SDK installed and configured;
 
 ## Workspace Calibration
 
-Before executing the full calibration routine, an initial workspace calibration must be performed for each robot and physical setup.
+Before running the full calibration routine, perform an initial workspace calibration for each robot and physical setup.
 
-This setup stage defines:
+This stage defines:
 
-- the Region of Interest (ROI) where the device is expected to be positioned;
+- the Region of Interest (ROI) where the device will be placed;
 - the safe approach height for the end-effector;
-- the touch convergence height used during the contact search routine;
-- the camera framing area;
+- the touch convergence height used by the contact search routine;
+- the camera framing parameters;
 - and the alignment offsets of the custom end-effector.
 
-These parameters significantly improve:
+These settings significantly improve:
 
 - touch convergence speed;
 - alignment stability;
 - marker detection reliability;
 - and operational safety.
 
-The calibration only needs to be repeated when:
+Repeat calibration when:
 
 - changing the robot;
 - modifying the physical bench;
 - replacing the end-effector;
-- changing the camera mounting;
+- changing the camera mount;
 - or altering the workspace geometry.
 
 ## Initial Physical Setup
 
-Before running the RTA workflow, the physical setup of the robot and end-effector must be calibrated.
+Calibrate the physical setup of the robot and end-effector before running the RTA workflow.
 
-Due to:
+Because of:
 
-- 3D printing tolerances;
-- camera mounting variations;
-- actuator positioning differences;
+- 3D-printing tolerances;
+- camera mount variations;
+- actuator placement differences;
 - and workspace geometry,
 
-some configuration parameters must be manually adjusted for each physical setup.
+some parameters must be manually adjusted per physical setup.
 
-This calibration is fundamental to:
+This calibration is essential to:
 
 - improve touch convergence speed;
-- reduce alignment residual error;
-- improve operational safety;
-- and preserve repeatability across executions.
+- reduce residual alignment error;
+- increase operational safety;
+- and preserve repeatability across runs.
 
-The setup calibration is typically performed only once per:
+Typically this setup is performed once per:
 
 - robot;
 - end-effector;
 - camera mount;
 - or workspace geometry.
 
-**Important:** The 3D models for the end-effector components are located in `docs/rta_endeffector_model_3d/`. You will need to download, review, and 3D-print these parts before proceeding with the physical setup. The recommendation is print in PETG or PLA filament type for better durability and precision.
+**Important:** The 3D models for the end-effector components are located in `docs/rta_materials/rta_endeffector_model_3d/`. Download, review, and 3D-print these parts before proceeding with the physical setup. We recommend PETG or PLA for durability and precision.
 
 ### End-Effector Offset Calibration
 
@@ -235,7 +257,7 @@ The system assumes a fixed spatial offset between:
 - the camera optical center;
 - and the physical touch actuator.
 
-These offsets are configured inside:
+These offsets are configured in:
 
 ```python
 config.py
@@ -248,7 +270,7 @@ TOUCH_FINGER_OFFSET_X = -30.1
 TOUCH_FINGER_OFFSET_Y = 0.0
 ```
 
-The nominal CAD-modeled distance between the camera center and the actuator is approximately:
+The nominal CAD distance between the camera center and the actuator is roughly:
 
 ```text
 31.5 mm
@@ -256,14 +278,18 @@ The nominal CAD-modeled distance between the camera center and the actuator is a
 
 However, due to:
 
-- FDM 3D printing tolerances;
+- FDM 3D-printing tolerances;
 - assembly variations;
 - mechanical deformation;
 - and camera positioning differences,
 
-**the real offset must be experimentally calibrated for every physical setup.**
+**the actual offset must be experimentally calibrated for each physical setup.**
 
-The offset values are expressed in the robot Cartesian reference frame and represent the displacement between the camera optical center and the physical touch actuator tip.
+Offsets are expressed in the robot Cartesian frame and represent the displacement between the camera optical center and the touch actuator tip.
+
+**Important:** Place the device approximately **14 cm above the workstation floor** to avoid kinematic singularities and unstable robot trajectories during execution.
+
+As shown below, a raised black support platform is used to elevate the device and keep safer robot motion paths.
 
 #### Robot setup with axis reference for X/Y/Z offset calibration
 
@@ -271,9 +297,9 @@ The offset values are expressed in the robot Cartesian reference frame and repre
   <img src="docs/rta_materials/setup_com_eixos.jpeg" alt="Robot setup with axis reference for X/Y offset calibration" width="520">
 </p>
 
-This reference helps visualize the robot setup and the correct Cartesian axis orientation, making the relationship between the camera, the capacitive tip, and the X/Y offsets used in calibration easier to understand.
+This reference helps visualize the robot setup and the Cartesian axis orientation, clarifying the relation between the camera, the capacitive tip, and the X/Y offsets used in calibration.
 
-This calibration is mandatory whenever:
+Perform this calibration whenever:
 
 - a new end-effector is installed;
 - the camera mount changes;
@@ -281,7 +307,7 @@ This calibration is mandatory whenever:
 - the robot setup changes;
 - or the workspace geometry is modified.
 
-Incorrect X/Y offset calibration may cause:
+Incorrect X/Y calibration can cause:
 
 - systematic touch displacement;
 - marker alignment drift;
@@ -290,7 +316,7 @@ Incorrect X/Y offset calibration may cause:
 
 ### Touch Convergence Height
 
-The approach height before physical contact is configured through:
+Configure the approach height before physical contact using:
 
 ```python
 Z_OFFSET_BEFORE_TOUCH = 20.0
@@ -302,9 +328,9 @@ The calibrated touch plane is defined by:
 Z_TOUCH = 260.98
 ```
 
-**The `Z_TOUCH` value must be calibrated for every robot and workspace setup.**
+**`Z_TOUCH` must be calibrated for each robot and workspace.**
 
-This calibration is mandatory because the physical contact plane varies according to:
+This value depends on:
 
 - workspace height;
 - device thickness;
@@ -313,7 +339,7 @@ This calibration is mandatory because the physical contact plane varies accordin
 - actuator assembly;
 - and end-effector mounting.
 
-These parameters directly affect:
+These parameters affect:
 
 - touch convergence stability;
 - touch detection speed;
@@ -328,13 +354,11 @@ Incorrect values may cause:
 
 ### ROI and Camera Calibration
 
-**Camera and ROI calibration are both mandatory for every physical setup.**
+Both camera and ROI calibration are mandatory for each physical setup.
 
 #### ROI Setup
 
-The Region of Interest (ROI) must be defined for each robot and workspace:
-
-The ROI defines:
+Define an ROI for each robot and workspace. The ROI specifies:
 
 - where the device is expected to appear;
 - the initial robot approach region;
@@ -344,20 +368,18 @@ The smartphone must remain fully visible inside the ROI during execution.
 
 #### Camera Setup
 
-Camera calibration depends on the camera hardware:
+Camera calibration varies by hardware.
 
 **For BRIO cameras:**
 
-1. Download and install Logi Tune (or equivalent software for your camera).
-2. Use Logi Tune to calibrate focus, exposure, white balance, and other optical parameters.
-3. Once tuned, run the configuration extraction script:
+1. Install Logi Tune (or equivalent) and adjust focus, exposure, white balance, etc.
+2. Run the configuration extraction script after tuning:
 
 ```bash
 python utils/get_camera_configurations.py
 ```
 
-4. This script reads the camera's current settings and outputs them.
-5. Copy the output values to `config.py` and update:
+3. The script outputs the camera settings. Copy the resulting values into `config.py` and update:
 
 ```python
 CAMERA_CALIBRATION_CONFIG = {
@@ -370,22 +392,20 @@ CAMERA_CALIBRATION_CONFIG = {
 }
 ```
 
-**For other cameras:**
+For other cameras, follow the camera vendor tools or API and update `CAMERA_CALIBRATION_CONFIG` accordingly.
 
-Calibrate according to your camera's software or control API, and update `CAMERA_CALIBRATION_CONFIG` with the resulting values.
-
-This calibration is mandatory whenever:
+Recalibrate when:
 
 - a new camera is installed;
-- the camera lens is changed;
-- environmental lighting conditions change significantly;
-- or the camera mounting position changes.
+- the lens changes;
+- lighting conditions change significantly;
+- or the camera mount position changes.
 
 ## Region of Interest (ROI)
 
-The Region of Interest (ROI) represents the predefined physical workspace where the smartphone is expected to be positioned during calibration.
+The ROI represents the predefined physical area where the smartphone should be placed for calibration.
 
-The robot initially moves to this region before starting:
+The robot moves to this region before starting:
 
 - visual detection;
 - alignment;
@@ -400,35 +420,35 @@ Correct ROI configuration is critical for:
 
 ## Closed-Loop Touch Validation
 
-The RTA system validates physical interactions using Android touch events as ground truth.
+RTA validates physical interactions using Android touch events as ground truth.
 
-While the robot performs physical contact on the screen, the Android operating system reports the exact touch coordinates through ADB (`getevent`).
+While the robot contacts the screen, Android reports the exact touch coordinates via ADB (`getevent`).
 
-This creates a deterministic closed-loop validation mechanism capable of:
+This creates a deterministic closed-loop validation that can:
 
-- confirming physical contact;
-- validating touch precision;
-- detecting capacitive failures;
-- and improving operational safety.
+- confirm physical contact;
+- validate touch precision;
+- detect capacitive failures;
+- and improve operational safety.
 
 ## Spatial Interpolation Mapping
 
-Instead of relying exclusively on projective computer vision, the RTA system generates a physical interpolation map from real touch-contact points.
+Instead of relying only on projective vision, RTA builds a physical interpolation map from real touch contact points.
 
-The robot performs validated touches on fiducial markers and records the exact Cartesian coordinates of each contact.
+The robot performs validated touches on fiducial markers and records the Cartesian coordinates of each contact.
 
-Using these anchors, the system reconstructs a 3D interpolation mesh capable of:
+Using these anchors, the system reconstructs a 3D interpolation mesh that can:
 
-- compensating device inclinations;
-- compensating uneven surfaces;
-- preserving touch precision;
-- and improving repeatability during future interactions.
+- compensate for device inclination;
+- compensate uneven surfaces;
+- preserve touch precision;
+- and improve repeatability for future interactions.
 
 ## Device Orientation Support
 
-The current RTA implementation supports multiple physical device orientations.
+RTA supports multiple physical device orientations.
 
-The device orientation is configured through:
+Set the device orientation with:
 
 ```powershell
 -DeviceSide "portrait"
@@ -440,38 +460,36 @@ or
 -DeviceSide "landscape"
 ```
 
-Unlike previous versions of the system, the smartphone orientation is no longer fixed relative to the robot.
+The only requirements are that:
 
-The only requirement is that:
-
-- the device remains fully visible inside the ROI;
-- the fiducial markers remain detectable by the camera;
+- the device stays fully visible inside the ROI;
+- fiducial markers remain detectable by the camera;
 - and the selected orientation matches the physical placement of the device.
 
 ## Operational Constraints and Recommendations
 
-The RTA system depends on stable visual and mechanical conditions to ensure reliable alignment.
+RTA relies on stable visual and mechanical conditions for reliable alignment.
 
 For best results:
 
 - avoid direct perpendicular lighting on the device screen;
 - avoid strong reflections on glossy displays;
-- maintain the device fully inside the camera ROI;
+- keep the device fully inside the camera ROI;
 - ensure the end-effector remains perpendicular to the screen surface;
-- verify that the custom touch actuator preserves capacitive conductivity.
+- verify that the custom touch actuator maintains capacitive conductivity.
 
-The system was experimentally validated under:
+The system was experimentally validated on:
 
 - multiple Android devices;
 - tilted surfaces;
 - curved-edge displays;
 - and varying screen dimensions.
 
-However, extreme reflective conditions and excessive workspace inclination may reduce marker detection reliability.
+Extreme reflective conditions and excessive workspace inclination may still reduce marker detection reliability.
 
 ## Experimentally Validated Features
 
-The current RTA implementation was experimentally validated with:
+RTA was experimentally validated with:
 
 - multiple Android devices;
 - curved-edge displays;
@@ -489,360 +507,378 @@ The system also demonstrated:
 
 ## Setup Assets
 
-For clearer onboarding and calibration documentation, it is recommended to keep setup assets under:
+For clearer onboarding and calibration documentation, we recommend storing setup assets under:
 
 ```text
-docs/setup/
+docs/rta_materials/
 ```
 
 Suggested files:
 
 ```text
-docs/setup/
-  roi_example.png
-  touch_offset.png
-  end_effector_measurement.png
-  workspace_example.png
+docs/rta_materials/
+  setup_com_eixos.jpeg
+  roi_vision.jpg
+  roi_oclusion.jpg
+  rta_1_screen.jpg
+  rta_2_screen.jpeg
+  rta_approved_screen.jpeg
+  rta_error_screen.jpeg
 ```
 
-These assets help document the physical setup, the ROI framing, and the measured end-effector offsets for each robot/workspace combination.
+These assets document the physical setup, ROI framing, and measured end-effector offsets for each robot/workspace combination.
 
-## Instalação
+## Installation
 
-Com os requisitos atendidos, siga os passos abaixo para preparar o ambiente.
+Follow these steps to prepare the environment once the requirements are met.
 
-### Configuração do Ambiente
+### Environment Configuration
 
-O repositório já está preparado para instalação via Poetry. O Aether é uma dependência declarada no `pyproject.toml`, então ele é resolvido automaticamente junto com as demais dependências do projeto.
+This repository is prepared for installation via Poetry. The Aether SDK is declared in `pyproject.toml` and will be resolved automatically with the project's other dependencies.
 
-Isso significa que, ao rodar `poetry install`, o Poetry instalará tudo o que o projeto precisa sem etapas manuais adicionais para essa dependência.
+Running `poetry install` installs all required dependencies without extra manual steps for Aether.
 
-### Instalação no projeto
+### Project Installation
 
 ```bash
 poetry install
 ```
 
-Após a instalação, o ambiente estará pronto para executar o fluxo principal do projeto.
+After installation the environment will be ready to run the main flow.
 
-### Aplicativo RTA
+### RTA Android App
 
-O app Android do RTA também precisa estar instalado no celular para que a máquina de estados execute corretamente.
+The RTA Android app must be installed on the phone so the FSM can execute correctly.
 
-O projeto já inclui um script dedicado para fazer o build do APK e instalá-lo no dispositivo via ADB:
+The repository includes a script to build and install the APK via ADB:
 
 ```powershell
 .\scripts\install_rta_app.ps1
 ```
 
-Esse script:
+This script:
 
-- compila o APK do app Android;
-- instala o APK no celular conectado;
-- deixa o artefato disponível em `RTA_app/app/build/outputs/apk/debug/app-debug.apk`.
+- builds the Android APK;
+- installs the APK on the connected phone;
+- places the artifact at `RTA_app/app/build/outputs/apk/debug/app-debug.apk`.
 
-Se preferir fazer manualmente, o equivalente é:
+<!-- To install manually:
 
 ```bash
 cd RTA_app
 ./gradlew installDebug
-```
+``` -->
 
-Depois disso, basta executar o fluxo principal do RTA.
+Then run the main RTA flow.
 
-### Aether SDK (dependência via Poetry)
+<!-- ### Aether SDK (Poetry dependency)
 
-O Aether SDK é uma dependência já declarada no `pyproject.toml` e é resolvida automaticamente pelo Poetry durante a instalação do projeto.
+The Aether SDK is declared in `pyproject.toml` and resolved automatically by Poetry during installation.
 
-Em outras palavras, não há nenhuma etapa adicional de empacotamento ou cópia manual: basta executar `poetry install`.
+No additional packaging or manual copying is required: just run `poetry install`.
 
-Se a versão da dependência mudar, a atualização deve ser feita no `pyproject.toml` e, quando aplicável, no `poetry.lock`.
+If the dependency version changes, update `pyproject.toml` (and `poetry.lock` when applicable). -->
 
 ## Quick Start
 
-1. Conecte o dispositivo Android via USB.
-2. Conecte a controladora DENSO na rede.
-3. Verifique a conexão ADB.
-4. Instale as dependências com Poetry.
-5. Execute o script principal da FSM.
+1. Connect the Android device via USB.
+2. Connect the DENSO controller to the network.
+3. Verify ADB connectivity.
+4. Install dependencies with Poetry.
+5. Run the main FSM script.
 
-Comandos sugeridos:
+Suggested commands:
 
 ```powershell
 adb devices
 poetry install
 .\scripts\install_rta_app.ps1
-.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
+.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "111.111.111.111" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
 ```
 
-## Uso principal
+## Primary Usage
 
-Depois de instalar as dependências e o app RTA, o fluxo de uso mais comum é executar a máquina de estados principal.
+After installing dependencies and the RTA app, the most common workflow is to run the main state machine.
 
-Exemplo usando o script PowerShell do projeto:
+Example using the project's PowerShell script:
 
 ```powershell
-.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
+.\scripts\run_fsm.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "111.111.111.111" -DeviceType "flat" -DeviceSide "portrait" -MaxSteps 120 -MetricsDir "test_results_custom"
 ```
 
-Antes de executar, ajuste estes parâmetros para o seu cenário:
+Before running, adjust these parameters for your scenario:
 
-- `-RobotServerIp`: IP do robô Denso que você realmente vai usar;
-- `-DeviceSide`: orientação do celular em relação ao robô, com valores como `portrait` ou `landscape`.
-- `-MetricsDir`: pasta onde os resultados e o mapa final serão salvos. Se não informar, o comportamento atual é mantido, salvando em `test_results/<device_model_ou_device_type>/`.
+- `-RobotServerIp`: IP address of the DENSO controller you are using;
+- `-DeviceSide`: device orientation relative to the robot (`portrait` or `landscape`);
+- `-MetricsDir`: folder where results and the final map will be saved. If omitted, the default behavior is preserved and results are saved under `test_results/<device_model_or_device_type>/`.
 
-<!-- Você também pode executar diretamente o módulo principal com Poetry:
-
-```bash
-poetry run python state_machine/run_rta_fsm.py \
-  --workspace RTA_WORKSPACE \
-  --control rta \
-  --device-type flat \
-  --device-side portrait \
-  --options "Server=192.168.160.225" \
-  --metrics-dir test_results_custom \
-  --max-steps 120
-``` -->
-
-<!-- No comando acima, o valor de `Server=...` precisa ser o IP do Denso em uso, e `--device-side` precisa refletir a orientação física do celular em relação ao robô. -->
-
-O mapa gerado pelo RTA é o produto final da execução. Por padrão, ele fica em:
+The final map produced by RTA is stored by default at:
 
 ```text
-test_results/<device_model_ou_device_type>/physical_calibration_map_<timestamp>_<epoch>.json
+test_results/<device_model_or_device_type>/physical_calibration_map_<timestamp>_<epoch>.json
 ```
 
-Se `DEVICE_MODEL` não estiver definido, a pasta usa o `device_type`. Quando quiser escolher outro local de salvamento, passe `-MetricsDir` no `run_fsm.ps1`; se não informar nada, o comportamento atual é mantido.
+If `-MetricsDir` is undefined the folder uses `device_type`. To choose another save location, pass `-MetricsDir` to `run_fsm.ps1`; if omitted, the existing behavior is used.
 
-<!-- O encadeamento desse argumento é este:
+In general, the expected flow is:
 
-1. `run_fsm.ps1` recebe `-MetricsDir` opcionalmente.
-2. O script repassa o valor para `state_machine/run_rta_fsm.py` como `--metrics-dir`.
-3. O `run_rta_fsm.py` entrega esse valor para `CalibrationMapExporter.export(...)` como `output_dir`.
-4. O exportador cria a pasta base informada e ainda separa por `device_type` ou `device_model` quando `dir_separation=True`. -->
+1. start the Android app;
+2. connect to the robot;
+3. power on motors;
+4. move to ROI;
+5. detect markers;
+6. align rotation and position;
+7. execute the touch sequence;
+8. save the final map;
+9. safely power off the robot.
 
-Em geral, o fluxo esperado é:
+## Module Reference
 
-1. iniciar o aplicativo Android;
-2. conectar ao robô;
-3. ligar os motores;
-4. mover para ROI;
-5. detectar marcadores;
-6. alinhar rotação e posição;
-7. executar a sequência de toques;
-8. salvar o mapa final;
-9. desligar o robô com segurança.
+The project is organized in layers to keep responsibilities clear.
 
-## Referência dos módulos
+### Orchestration layer
 
-O projeto é organizado em módulos/camadas para manter a responsabilidade de cada parte clara.
+- `state_machine/`: contains the main RTA state machine;
+- `state_machine/run_rta_fsm.py`: entrypoint for full execution.
 
-### Camada de orquestração
+### Alignment layer
 
-- `state_machine/`: contém a máquina de estados principal do RTA;
-- `state_machine/run_rta_fsm.py`: ponto de entrada para a execução completa.
+- `drivers/alignment/marker_detector.py`: marker detection and analysis;
+- `drivers/alignment/rotation_alignment.py`: rotation (RZ) alignment;
+- `drivers/alignment/auto_alignment.py`: automatic XYZ alignment.
 
-### Camada de alinhamento
+### Device & app layer
 
-- `drivers/alignment/marker_detector.py`: detecção e análise de marcadores;
-- `drivers/alignment/rotation_alignment.py`: alinhamento de rotação (RZ);
-- `drivers/alignment/auto_alignment.py`: alinhamento automático de XYZ.
+- `drivers/device/app_manager.py`: Android app control;
+- `drivers/device/mobile.py`: touch event reading and device validations;
+- `drivers/device/rta_integrated_controller.py`: orchestrates the full session.
 
-### Camada de device e app
+### Vision layer
 
-- `drivers/device/app_manager.py`: controle da aplicação Android;
-- `drivers/device/mobile.py`: leitura de eventos de toque e validações de device;
-- `drivers/device/rta_integrated_controller.py`: orquestra a sessão completa.
+- `drivers/vision/robot_camera.py`: robot camera capture;
+- `drivers/vision/vision.py`: vision utilities and scripts.
 
-### Camada de visão
+### Utilities
 
-- `drivers/vision/robot_camera.py`: captura da câmera do robô;
-- `drivers/vision/vision.py`: utilitários e scripts de visão.
-
-### Utilitários
-
-- `utils/coordinate_transform.py`: conversões entre coordenadas de câmera e robô;
-- `utils/marker_touch_controller.py`: apoio para execução de toques;
-- `utils/calibration_map_exporter.py`: exportação de mapas de calibração.
+- `utils/coordinate_transform.py`: camera-to-robot coordinate conversions;
+- `utils/marker_touch_controller.py`: helpers for touch execution;
+- `utils/calibration_map_exporter.py`: calibration map export.
 
 ## Troubleshooting
 
-### Problemas de conexão com o robô
+### Robot connection issues
 
 ```powershell
 ping <robot_ip>
 ```
 
-Confirme que o IP usado em `-RobotServerIp` e em `Server=...` corresponde ao DENSO em uso.
+Confirm the IP used in `-RobotServerIp` and `Server=...` matches the DENSO controller in use.
 
-### Erro de múltiplos dispositivos no ADB
+### Multiple ADB devices error
 
 ```powershell
 adb disconnect
 adb devices
 ```
 
-Use apenas um dispositivo USB ativo durante a sessão de calibração.
+Use only one USB device during a calibration session.
 
-### Instabilidade na detecção de marcadores
+### Marker detection instability
 
-- verifique as condições de iluminação;
-- verifique o foco da câmera;
-- verifique o posicionamento de ROI;
-- confirme se o celular está na orientação correta (`DeviceSide`).
+- check lighting conditions;
+- check camera focus;
+- verify ROI positioning;
+- confirm the phone orientation (`DeviceSide`).
 
-## Demonstrações visuais
+## Visual demonstrations
 
-Esta seção reúne as referências visuais do sistema RTA e organiza o material por componente, para facilitar a leitura do setup físico, do aplicativo Android e da visão computacional.
+This section groups RTA visual references by component to make the physical setup, Android app, and vision examples easier to follow.
 
-As imagens documentam:
+Images illustrate:
 
-- o posicionamento físico do sistema;
-- o fluxo de execução no app;
-- o enquadramento da câmera;
-- a geometria do end-effector;
-- e as restrições operacionais do workspace.
+- the physical positioning of the system;
+- the app execution flow;
+- camera framing;
+- the end-effector geometry;
+- and workspace operational constraints.
 
 ---
 
-### Aplicativo Android RTA
+### RTA Android app
 
-O aplicativo Android é responsável por:
+The Android app is responsible for:
 
-- exibir os marcadores visuais;
-- validar os toques executados pelo robô;
-- fornecer feedback de sucesso e falha;
-- e integrar os eventos de toque com a FSM via ADB.
+- showing visual markers;
+- validating robot-executed touches;
+- providing success/failure feedback;
+- and integrating touch events with the FSM via ADB.
 
-#### Interface principal do aplicativo
+#### Main app interface
 
 <p align="center">
   <img src="docs/rta_materials/rta_1_screen.jpg" alt="RTA main screen 1" width="220">
   <img src="docs/rta_materials/rta_2_screen.jpeg" alt="RTA main screen 2" width="220">
 </p>
 
-Essas telas representam os estados principais da aplicação Android durante a execução da rotina de calibração.
+These screens represent the app's main states during calibration runs.
 
-#### Feedback visual de execução
+#### Execution visual feedback
 
 <p align="center">
   <img src="docs/rta_materials/rta_approved_screen.jpeg" alt="RTA approved screen" width="220">
   <img src="docs/rta_materials/rta_error_screen.jpeg" alt="RTA error screen" width="220">
 </p>
 
-O aplicativo também fornece feedback visual para:
+The app provides visual feedback for:
 
-- execuções bem-sucedidas;
-- falhas de interação;
-- erros de toque;
-- e estados inválidos detectados durante a sessão.
+- successful runs;
+- interaction failures;
+- touch errors;
+- and invalid states encountered during a session.
 
 ---
 
-<!-- ### Setup físico do robô
-
-A imagem abaixo apresenta o setup físico do sistema RTA, incluindo:
-
-- robô DENSO;
-- câmera acoplada ao end-effector;
-- smartphone;
-- região de trabalho;
-- e referência dos eixos cartesianos do manipulador.
-
-<p align="center">
-  <img src="docs/rta_materials/setup_com_eixos.jpeg" alt="Robot setup with axis reference" width="520">
-</p>
-
-Essa referência é importante para:
-
-- calibração do workspace;
-- entendimento dos offsets do atuador;
-- ajuste do ROI;
-- e definição dos parâmetros geométricos do sistema. -->
-
-#### End-effector e geometria de referência
+#### End-effector and reference geometry
 
 <p align="center">
   <img src="docs/rta_materials/pen_2_with_marker.png" alt="End-effector with marker reference" width="420">
 </p>
 
-Essa imagem ajuda a visualizar:
+The image highlights:
 
-- 1 - case da câmera;
-- 2 - falange que conecta ao robô;
-- 3 - case do atuador de toque;
-- 4 - mola de pressão;
-- 5 - atuador;
+1 - camera case;
+2 - finger phalange connecting to the robot;
+3 - touch actuator case;
+4 - compression spring;
+5 - actuator;
 
 ---
 
-### Região de Interesse (ROI)
+### Full system execution
 
-As imagens abaixo representam a visão da câmera do robô durante a execução da FSM.
+The GIFs below show a full run of the RTA main flow using:
 
-#### ROI corretamente enquadrada
+- a DENSO robot;
+- computer vision;
+- visual alignment;
+- Android touch validation;
+- and generation of the physical calibration map.
+
+The presented execution corresponds to the full FSM routine, including marker detection, alignment, touch convergence, interpolation mesh generation, and automated swipes.
+
+#### Execution — Part 1
+- **Step 1**: ROI position
+- **Step 2**: Find a marker, compare the distance, and move to the marker center.
+- **Step 3**: Move down until the center of the marker is touched.
+
+<p align="center">
+  <img src="docs/rta_materials/rta_videos/rta_1.gif" alt="RTA execution part 1" width="360">
+</p>
+
+This stage demonstrates:
+- the robot's initial approach;
+- device visual acquisition;
+- marker-based alignment;
+- and the start of the physical calibration routine.
+
+#### Execution — Part 2
+- **Step 1**: Swipe ground-truth
+- **Step 2**: ROI position
+- **Step 3**: Calibration result
+
+<p align="center">
+  <img src="docs/rta_materials/rta_videos/rta_12.gif" alt="RTA execution part 2" width="360">
+</p>
+
+In this stage the system performs:
+- physical point validation;
+- interpolation map generation;
+- automated swipes;
+- and safe termination of the routine.
+
+The GIFs show the real system behavior during FSM execution in a physical environment.
+
+**Short FSM flow demonstrated by the GIFs**
+
+```text
+idle
+-> connect_robot
+-> motor_on
+-> move_to_roi
+-> detect_markers
+-> calibrate_z_touches
+-> generate_map
+-> swipe_borders
+-> done
+```
+
+Suggested organization for visual assets (optional):
+
+```
+docs/
+├── rta_materials/
+├── rta_videos/
+├── setup/
+└── diagrams/
+```
+
+This helps keep demo materials, videos and diagrams accessible and predictable.
+
+### Region of Interest (ROI)
+
+The images below show the robot camera view during FSM execution.
+
+#### Properly framed ROI
 
 <p align="center">
   <img src="docs/rta_materials/roi_vision.jpg" alt="ROI correctly framed" width="420">
 </p>
 
-Nesta configuração:
+In this configuration:
 
-- o dispositivo está completamente visível;
-- os marcadores estão detectáveis;
-- e a iluminação está adequada para alinhamento visual.
+- the device is fully visible;
+- markers are detectable;
+- and lighting is suitable for visual alignment.
 
-Esse é o cenário ideal para:
+This is the ideal scenario for:
 
-- detecção estável dos marcadores;
-- alinhamento automático;
-- e convergência de toque.
+- stable marker detection;
+- automatic alignment;
+- and touch convergence.
 
-#### Exemplo de oclusão e interferência visual
+#### Occlusion and visual interference example
 
 <p align="center">
   <img src="docs/rta_materials/roi_oclusion.jpg" alt="ROI occlusion example" width="420">
 </p>
 
-Este exemplo demonstra uma condição não ideal, onde:
+This example shows a non-ideal condition where:
 
-- partes da ROI podem ficar obstruídas;
-- o robô interfere parcialmente no campo visual;
-- ou a iluminação prejudica a detecção dos marcadores.
+- parts of the ROI can be obstructed;
+- the robot partially interferes with the field of view;
+- or lighting degrades marker detection.
 
-Esse tipo de situação pode causar:
+Such situations may cause:
 
-- falhas de alinhamento;
-- perda de detecção;
-- aumento do tempo de convergência;
-- ou transições para estados de erro da FSM.
+- alignment failures;
+- loss of detection;
+- increased convergence time;
+- or transitions to FSM error states.
 
-**Importante:** evite iluminação perpendicular diretamente sobre a tela do dispositivo, pois reflexos podem reduzir significativamente o contraste dos marcadores visuais.
+**Important:** avoid perpendicular lighting directly on the device screen, as reflections can significantly reduce marker contrast.
 
 ---
 
-### Conteúdo visual planejado
+## Best Practices
 
-As próximas versões da documentação podem incluir:
+- Always power off motors and disconnect the robot after a run.
+- Use `poetry install` to reproduce the environment on other machines.
+- Verify ADB, camera and controller connectivity before running a real session.
+- If the Android app crashes, restart it before starting a new session.
+- Keep `DeviceSide` set correctly for the device in use (`portrait` or `landscape`).
 
-- diagrama visual completo da FSM;
-- GIF do sistema em execução;
-- vídeo curto da rotina completa;
-- diagrama da arquitetura do sistema;
-- visualização da malha de interpolação;
-- mapa físico de calibração;
-- e screenshots do processo de alinhamento automático.
+## Conclusion
 
-## Boas Práticas
+RTA provides a reproducible, modular module for robotic interaction with touch-sensitive devices.
 
-- Sempre desligue os motores e desconecte o robô ao final da execução.
-- Use `poetry install` para reproduzir o ambiente em outras máquinas.
-- Antes de rodar uma sessão real, valide ADB, câmera e conexão com a controladora.
-- Se o app Android travar, reinicie a aplicação antes de iniciar uma nova sessão.
-- Mantenha o `DeviceSide` correto para o dispositivo em uso (`portrait` ou `landscape`).
-
-## Conclusão
-
-O RTA fornece um módulo reproduzível e modular para interação robótica com dispositivos sensíveis ao toque.
-
-Ao combinar visão computacional, alinhamento robótico, feedback de toque e máquina de estados finitos, o projeto viabiliza fluxos de automação mais confiáveis e portáteis para cenários de teste em dispositivos móveis.
+By combining computer vision, robotic alignment, touch feedback, and a finite state machine, the project enables more reliable and portable automation flows for mobile device testing.

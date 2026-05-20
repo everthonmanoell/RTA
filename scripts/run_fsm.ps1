@@ -12,6 +12,10 @@ When the IP changes, update these parameters:
 
 Complete example running 5 times:
     .\scripts\run_move_to_roi_test.ps1 -WorkspaceName "RTA_WORKSPACE" -ControlName "rta" -RobotServerIp "192.168.160.225" -RunCount 5
+
+Optional:
+    -MetricsDir     : Base directory for the generated physical_calibration_map JSON.
+                      If omitted, the default per-device folder structure is kept.
 #>
 
 param(
@@ -53,6 +57,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch]$ShowCameraPreview,
+
+    [Parameter(Mandatory = $false)]
+    [string]$MetricsDir = "",
 
     [Parameter(Mandatory = $false)]
     # New parameter: Number of times the script should run (Default: 1)
@@ -158,6 +165,10 @@ for ($i = 1; $i -le $RunCount; $i++) {
 
     if ($StopAtState -ne "") {
         $cmd += @("--stop-at-state", $StopAtState)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($MetricsDir)) {
+        $cmd += @("--metrics-dir", $MetricsDir)
     }
 
     & poetry @cmd
