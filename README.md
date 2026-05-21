@@ -223,7 +223,7 @@ As shown below, a raised black support platform is used to elevate the device an
 
 ### 3D Models and End-Effector
 
-The 3D models for the end-effector components are located in `docs/rta_materials/rta_endeffector_model_3d/`. Download, review, and 3D-print these parts before proceeding. We recommend PETG or PLA for durability and precision. To se the image of the end-effector, check the [End-Effector](#end-effector) section.
+The 3D models for the end-effector components are located in `docs/rta_materials/rta_endeffector_model_3d/`. Download, review, and 3D-print these parts before proceeding. We recommend PETG or PLA for durability and precision. To see the image of the end-effector, check the [End-Effector](#end-effector) section.
 
 ### Touch Convergence Height (Z)
 
@@ -249,7 +249,7 @@ Incorrect values may cause failed capacitive touches, excessive pressure on the 
 ##### How to perfom the Z calibration
 
 
-To perform Z-axis calibration, it is necessary to define the position of the ROI (region of interest - in the ) and move the robot along the Z-axis until it touches the device screen from ROI position using the Pendant. Then, it is necessary to read the robot's Z-coordinate and set this value in the `Z_TOUCH` variable. If need be, adjust the `Z_OFFSET_BEFORE_TOUCH` to ensure the robot approaches the screen correctly before making contact.
+To perform Z-axis calibration, it is necessary to define the position of the ROI (region of interest) and move the robot along the Z-axis until it touches the device screen from ROI position using the Pendant. Then, it is necessary to read the robot's Z-coordinate and set this value in the `Z_TOUCH` variable. If need be, adjust the `Z_OFFSET_BEFORE_TOUCH` to ensure the robot approaches the screen correctly before making contact.
 
 ### End-Effector Offset Calibration (X/Y)
 
@@ -260,7 +260,7 @@ TOUCH_FINGER_OFFSET_X = -30.1
 TOUCH_FINGER_OFFSET_Y = 0.0
 ```
 
-The nominal CAD distance between the **camera center and the actuator is roughly 31.5 mm**. However, due to FDM tolerances, assembly variations, mechanical deformation, and camera positioning differences, **the actual offset must be experimentally calibrated for each physical setup.**
+The nominal CAD distance between the **camera center and the actuator is roughly 31.5 mm**. However, due to Fused Deposition Modeling (FDM) tolerances, assembly variations, mechanical deformation, and camera positioning differences, **the actual offset must be experimentally calibrated for each physical setup.**
 
 Offsets are expressed in the robot Cartesian frame and represent the displacement between the camera optical center and the touch actuator tip.
 
