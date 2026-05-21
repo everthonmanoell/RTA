@@ -34,7 +34,7 @@
         - [How to perfom the X/Y calibration](#how-to-perfom-the-xy-calibration)
       - [Robot setup with axis reference for X/Y/Z offset calibration](#robot-setup-with-axis-reference-for-xyz-offset-calibration)
   - [Workspace Calibration](#workspace-calibration)
-    - [Camera Calibration](#camera-calibration)
+    - [Camera Setup](#camera-setup)
     - [ROI](#roi)
       - [ROI Vision Examples](#roi-vision-examples)
       - [Properly Framed ROI](#properly-framed-roi)
@@ -292,9 +292,9 @@ After the physical setup is complete, perform workspace calibration before runni
 
 Repeat calibration when changing the robot, modifying the physical bench, replacing the end-effector, changing the camera mount, or altering the workspace geometry.
 
-### Camera Calibration
+### Camera Setup
 
-Camera calibration varies by hardware.
+Camera Setup varies by hardware.
 
 **For BRIO cameras:**
 
@@ -331,21 +331,12 @@ The ROI defines:
 
 - where the device is expected to appear;
 - the initial robot approach region;
-- and the visual acquisition area.
+- the visual acquisition area.
 
 The smartphone must remain fully visible inside the ROI during execution. Correct ROI configuration is critical for stable marker detection, collision avoidance, and touch convergence performance.
 
 #### ROI Vision Examples
-
-The Region of Interest (ROI) is the predefined physical area where the smartphone should be placed for calibration. The robot moves to this region before starting visual detection, alignment, touch convergence, and interpolation mapping.
-
-The ROI defines:
-
-- where the device is expected to appear;
-- the initial robot approach region;
-- and the visual acquisition area.
-
-The smartphone must remain fully visible inside the ROI during execution. Correct ROI configuration is critical for stable marker detection, collision avoidance, and touch convergence performance.
+Bellow are examples of how the ROI can be visually framed from the robot camera's perspective, highlighting ideal and non-ideal conditions for marker detection and alignment.
 
 #### Properly Framed ROI
 
@@ -367,7 +358,7 @@ This example shows a non-ideal condition where parts of the ROI can be obstructe
 
 #### ROI Calibration
 
-Has a dictionary in config.py callaes `ROI_POSITIONING_CONFIG` that contains the ROI position parameters. Adjust these values based on the physical setup and camera view to ensure the device is fully visible and markers are detectable.
+There is dictionary in config.py called `ROI_POSITIONING_CONFIG` that contains the ROI position parameters. Adjust these values based on the physical setup and camera view to ensure the device is fully visible and markers are detectable.
 
 Below is an example of the ROI configuration:
 
@@ -675,12 +666,16 @@ The project is organized in layers to keep responsibilities clear.
 ## Troubleshooting
 
 ### Robot Connection Issues
+```powershell
+ipconfig
+```
+Run this command in the terminal to check your computer's IP address.
 
 ```powershell
-ping <robot_ip>
+ping <computer_ip>
 ```
+Confirm the IP address of the DENSO controller is reachable from your computer via Pendant, using the computer's IP address obtained from `ipconfig`.
 
-Confirm the IP used in `-RobotServerIp` and `Server=...` matches the DENSO controller in use.
 
 ### Multiple ADB Devices Error
 
