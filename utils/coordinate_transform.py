@@ -222,8 +222,6 @@ class CoordinateTransform:
             current_robot_z=current_robot_z,
         )
 
-    import numpy as np
-
 
 def get_z_on_screen_plane(target_x: float, target_y: float, touch_poses: list[Pose]) -> float:
     """

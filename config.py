@@ -12,7 +12,7 @@ import os
 # ============================================================================
 
 CAMERA_CONFIG = {
-    "camera_id": 0,  # ID da câmera no OpenCV (0 = primária)
+    "camera_id": 1,  # ID da câmera no OpenCV (0 = primária)
     "output_dir": "log_images",  # Diretório para salvar frames
     "frame_width": 1080,  # Resolução recomendada
     "frame_height": 720,
