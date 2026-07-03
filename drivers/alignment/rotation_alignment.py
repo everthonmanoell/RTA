@@ -248,8 +248,8 @@ class RotationAlignment:
         adjustment_x = gain_x * error_y
         adjustment_y = gain_y * error_x
 
-        current_pose.x += adjustment_x
-        current_pose.y += adjustment_y
+        current_pose.x -= adjustment_x
+        current_pose.y -= adjustment_y
 
         self.logger.info(
             f"Adjustment applied: dx={adjustment_x:.2f} mm, dy={adjustment_y:.2f} mm | "
