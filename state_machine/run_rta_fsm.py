@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 import os
-import subprocess
+
 import time
 import sys
 import threading
@@ -33,7 +33,6 @@ from utils.coordinate_transform import get_z_on_screen_plane, get_z_with_scipy_m
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
-# from move_robot_using_map_by_one_coordinate import execute_keyboard
 
 # Configure logging once at module import time so handlers persist across
 # repeated calls to `main()` (e.g. when running `for ...: main()`).
@@ -867,6 +866,7 @@ def _save_calibration_map(
         marker_infos=marker_infos,
         touch_poses_dict=touch_poses_dict,
         safe_pose=pose_referencia,
+        device_touch_interaction=session_recorder.get_interaction_data(),
         execution_duration_s=(time.time() - run_start_ts),
         calibration_succeed=is_calibration_succeed,
         dir_separation=not bool(getattr(args, "metrics_dir_provided", False)),
@@ -991,7 +991,7 @@ def main() -> int:
             self.motor_on_flag = bool(self.denso_robot.motor_on())
             if self.motor_on_flag:
                 if _configure_tool_from_config(robot):
-                    robot.set_arm_speed(50, 25, 25)
+                    robot.set_arm_speed(10, 5, 5)
                     self.motor_on_attempt = 0
                 else:
                     self.motor_on_flag = False
@@ -1201,11 +1201,6 @@ def main() -> int:
                 break
 
             time.sleep(args.loop_delay)
-            subprocess.run("adb shell input keyevent KEYCODE_HOME", shell=True)
-            time.sleep(1)
-            subprocess.run("adb shell input tap 590 900", shell=True)
-            robot.disconnect()
-            # execute_keyboard()
     finally:
         _cleanup(device, camera, robot, session_recorder)
 
