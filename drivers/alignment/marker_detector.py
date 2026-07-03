@@ -362,26 +362,28 @@ class MarkerDetector:
         """Detect the main bright screen region inside the marker cluster."""
         if image is None or len(marker_infos) < 4:
             return None
+        
+        cv2.imwrite("1image.png", image)
 
-        all_corners = np.vstack(
-            [np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
-        x_min = max(0, int(np.floor(np.min(all_corners[:, 0])) - 120))
-        y_min = max(0, int(np.floor(np.min(all_corners[:, 1])) - 120))
-        x_max = min(image.shape[1], int(
-            np.ceil(np.max(all_corners[:, 0])) + 120))
-        y_max = min(image.shape[0], int(
-            np.ceil(np.max(all_corners[:, 1])) + 120))
+        # all_corners = np.vstack(
+        #     [np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
+        # x_min = max(0, int(np.floor(np.min(all_corners[:, 0])) - 120))
+        # y_min = max(0, int(np.floor(np.min(all_corners[:, 1])) - 120))
+        # x_max = min(image.shape[1], int(
+        #     np.ceil(np.max(all_corners[:, 0])) + 120))
+        # y_max = min(image.shape[0], int(
+        #     np.ceil(np.max(all_corners[:, 1])) + 120))
 
-        if x_max <= x_min or y_max <= y_min:
-            return None
+        # if x_max <= x_min or y_max <= y_min:
+        #     return None
 
-        roi = image[y_min:y_max, x_min:x_max]
-        if roi.size == 0:
-            return None
+        # roi = image[y_min:y_max, x_min:x_max]
+        # if roi.size == 0:
+        #     return None
 
         # cv2.imshow("ROI", roi)
 
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
         kernel = np.ones((7, 7), np.uint8)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
@@ -398,8 +400,8 @@ class MarkerDetector:
 
         rect = cv2.minAreaRect(largest)
         box = cv2.boxPoints(rect)
-        box[:, 0] += x_min
-        box[:, 1] += y_min
+        # box[:, 0] += x_min
+        # box[:, 1] += y_min
         return box.astype(np.float32)
 
     def estimate_useful_screen_quad(
