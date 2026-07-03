@@ -182,31 +182,11 @@ def list_adb_devices(retries: int = 3) -> list[str]:
     Includes a self-healing mechanism: if the ADB server hangs on Windows,
     it automatically restarts the daemon before failing.
     """
-    output = ""
-    for attempt in range(retries):
-        try:
-            output = subprocess.check_output(
-                ["adb", "devices"],
-                text=True,
-                stderr=subprocess.STDOUT,
-                timeout=5,
-            )
-            break  # Success! Exit the retry loop.
-
-        except Exception as e:
-            if attempt < retries - 1:
-                print(
-                    f"[ADB] Communication failure (attempt {attempt+1}/{retries}). Restarting ADB server...")
-                # Try to terminate the stuck Windows process
-                subprocess.run(["adb", "kill-server"], check=False)
-                time.sleep(1.0)
-                # Start the server again from a clean state
-                subprocess.run(["adb", "start-server"], check=False)
-                time.sleep(2.0)
-            else:
-                # If all attempts fail, abort.
-                raise AssertionError(
-                    f"Fatal ADB error after {retries} attempts: {e}")
+    output = subprocess.run(
+        ["adb", "devices"],
+        text=True,
+        capture_output=True,
+    ).stdout
 
     devices = []
     for line in output.splitlines():
