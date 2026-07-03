@@ -11,6 +11,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Tuple
+import copy
 
 from utils.coordinate_transform import interpolate_robot_pose
 
@@ -98,6 +99,8 @@ class CalibrationMap:
         path = Path(file_path)
         with path.open("r", encoding="utf-8") as file_handle:
             raw_data = json.load(file_handle)
+            raw_data = dict(raw_data)
+            raw_data = cls._data_adjustes(raw_data)
         return cls(raw_data=raw_data, source_path=path)
 
     @classmethod
@@ -214,3 +217,42 @@ class CalibrationMap:
     def to_dict(self) -> Dict[str, Any]:
         """Return the original raw calibration payload."""
         return dict(self.raw_data)
+    
+    def _data_adjustes(raw_data: dict) -> dict:
+        dados_atualizados = copy.deepcopy(raw_data)
+        
+        useful_rect = dados_atualizados.get("useful_rect_px", [])
+        corners = dados_atualizados.get("physical_screen_corners_mm", {})
+        
+        if len(useful_rect) < 4 or not corners:
+            return dados_atualizados
+
+        for marker in dados_atualizados.get("markers", []):
+            m_id = marker.get("marker_id")
+            
+            if m_id in (1, 3):
+                marker["pixel_x"] = float(useful_rect[0])
+            elif m_id in (2, 4):
+                marker["pixel_x"] = float(useful_rect[2])
+                
+            if m_id in (1, 4):
+                marker["pixel_y"] = float(useful_rect[1])
+            elif m_id in (2, 3):
+                marker["pixel_y"] = float(useful_rect[3])
+
+            corner_key = None
+            if m_id == 1:
+                corner_key = "top_left"
+            elif m_id == 2:
+                corner_key = "bottom_right"
+            elif m_id == 3:
+                corner_key = "bottom_left"
+            elif m_id == 4:
+                corner_key = "top_right"
+                
+            if corner_key and corner_key in corners:
+                marker["robot_x"] = corners[corner_key]["x"]
+                marker["robot_y"] = corners[corner_key]["y"]
+                marker["robot_z"] = corners[corner_key]["z"]
+
+        return dados_atualizados
