@@ -1,3 +1,4 @@
+from datetime import datetime
 import time
 import json
 import logging
@@ -34,7 +35,6 @@ class CalibrationMapExporter:
         marker_infos: list,
         touch_poses_dict: dict,
         safe_pose,
-        device_touch_interaction: dict = None,
         execution_duration_s: float = None,
         calibration_succeed: bool = None,
         device_model: str = None,
@@ -67,7 +67,7 @@ class CalibrationMapExporter:
 
         # Estrutura JSON
         calibration_map = {
-            "timestamp_epoch_s": time.time(),
+            "timestamp_epoch_s": str(datetime.now()),
             "device_type": device_type,
             "calibration_mode": "bilinear_physical_touches",
             "execution_duration_s": round(float(execution_duration_s), 3) if execution_duration_s is not None else None,
@@ -81,8 +81,6 @@ class CalibrationMapExporter:
             },
             "useful_rect_px": useful_rect_px if useful_rect_px else [],
             "markers": [],
-            "device_touch_interaction": device_touch_interaction
-
         }
 
         for m in marker_infos:
@@ -107,8 +105,7 @@ class CalibrationMapExporter:
         out_path.mkdir(parents=True, exist_ok=True)
         # human-readable timestamp for filename
         ts_str = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-        filename = out_path / \
-            f"physical_calibration_map_{ts_str}_{int(time.time())}.json"
+        filename = "physical_calibration_map.json"
 
         try:
             with open(filename, "w", encoding="utf-8") as f:
