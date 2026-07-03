@@ -222,9 +222,6 @@ class CoordinateTransform:
             current_robot_z=current_robot_z,
         )
 
-    import numpy as np
-
-
 def get_z_on_screen_plane(target_x: float, target_y: float, touch_poses: list[Pose]) -> float:
     """
     Calcula a coordenada Z (profundidade) exata para qualquer X e Y na tela,
@@ -298,19 +295,6 @@ def get_z_with_scipy_mesh(target_x: float, target_y: float, touch_poses_dict: di
         method=metodo_principal
     )
 
-    # 4. SISTEMA SALVA-VIDAS (Anti-Crash do Robô)
-    # Se o ponto X,Y estiver ligeiramente para fora da área dos ArUcos (extrapolação),
-    # o griddata retorna NaN. Para o robô não afundar ou quebrar o script,
-    # fazemos um fallback buscando o ponto medido fisicamente "mais próximo".
-    # if np.isnan(z_calculado):
-    #     import logging
-    #     logging.getLogger(__name__).debug("Ponto fora da malha. Usando fallback de aproximação.")
-    #     z_calculado = griddata(
-    #         points=pontos_xy,
-    #         values=valores_z,
-    #         xi=(target_x, target_y),
-    #         method='nearest' # Pega a altura do marcador mais próximo
-    #     )
     print(
         f"Calculated Z for X={target_x}, Y={target_y} is Z={z_calculado} using method '{metodo_principal}'")
     return float(z_calculado)
