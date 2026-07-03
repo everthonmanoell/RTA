@@ -12,7 +12,7 @@ import os
 # ============================================================================
 
 CAMERA_CONFIG = {
-    "camera_id": 0,  # ID da câmera no OpenCV (0 = primária)
+    "camera_id": 1,  # ID da câmera no OpenCV (0 = primária)
     "output_dir": "log_images",  # Diretório para salvar frames
     "frame_width": 1080,  # Resolução recomendada
     "frame_height": 720,
@@ -181,8 +181,8 @@ Z_LIMIT = 260.98
 # Z_LIMIT = 221.56
 # Z_TOUCH = 221.56
 
-TOUCH_FINGER_OFFSET_X = -30.1
-TOUCH_FINGER_OFFSET_Y = 0.0
+TOUCH_FINGER_OFFSET_X = -34.6
+TOUCH_FINGER_OFFSET_Y = -1
 Z_OFFSET_BEFORE_TOUCH = 20.0
 
 # routine swipe with 15 degrees inclination
@@ -280,9 +280,9 @@ ROI_POSITIONING_CONFIG = {
 
 ROBOT_MOTION_CONFIG = {
     # Velocidade base para movimentos gerais (ROI, safe_pose, alinhamento, etc.)
-    "general_speed": 12.0,
-    "general_accel": 12.0,
-    "general_decel": 12.0,
+    "general_speed": 40.0,
+    "general_accel": 40.0,
+    "general_decel": 20.0,
 
     # Velocidade dedicada para toques
     "touch_speed": 8.0,
