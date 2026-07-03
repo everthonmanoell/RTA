@@ -1,4 +1,5 @@
 import argparse
+import subprocess
 import json
 import logging
 import os
@@ -32,6 +33,7 @@ from utils.coordinate_transform import get_z_on_screen_plane, get_z_with_scipy_m
 from utils.marker_touch_controller import MarkerTouchController
 from utils.metrics_logger import MetricsLogger
 from drivers.alignment.rotation_alignment import RotationAlignment
+from move_robot_using_map_by_one_coordinate import execute_keyboard
 
 # Configure logging once at module import time so handlers persist across
 # repeated calls to `main()` (e.g. when running `for ...: main()`).
@@ -597,7 +599,7 @@ def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_z
     u_y_max -= OFF_SET_SWIPE
     u_x_max -= OFF_SET_SWIPE
     u_y_min += OFF_SET_SWIPE
-
+    
     perfect_swipe_points = {
         "pt_1": (u_x_min, u_y_max),  # Bottom-Left Corner of Usable Screen
         "pt_4": (u_x_min, u_y_min),  # Top-Left Corner of Usable Screen
@@ -611,7 +613,7 @@ def _build_swipe_params(interpolation_position: list, marker_infos: list, safe_z
     safe_ry = float(pose_referencia.ry)
     safe_rz = float(pose_referencia.rz)
     safe_fig = int(getattr(pose_referencia, "fig", 1))
-
+    from pdb import set_trace; set_trace()
     return {
         "touch_poses_dict":    touch_poses_dict,
         "centroid_rect_px":    centroid_rect_px,
@@ -715,7 +717,7 @@ def _execute_swipe(robot: Denso, swipe_params: dict) -> bool:
                 rz=safe_rz,
                 fig=safe_fig,
             )
-
+            from pdb import set_trace; set_trace()
             robot.move_cartesian(swipe_pose)
 
     logging.info("Perimetral swipe completed successfully!")
@@ -865,7 +867,6 @@ def _save_calibration_map(
         marker_infos=marker_infos,
         touch_poses_dict=touch_poses_dict,
         safe_pose=pose_referencia,
-        device_touch_interaction=session_recorder.get_interaction_data(),
         execution_duration_s=(time.time() - run_start_ts),
         calibration_succeed=is_calibration_succeed,
         dir_separation=not bool(getattr(args, "metrics_dir_provided", False)),
@@ -1200,6 +1201,12 @@ def main() -> int:
                 break
 
             time.sleep(args.loop_delay)
+            subprocess.run("adb shell input keyevent KEYCODE_HOME", shell=True)
+            time.sleep(1)
+            subprocess.run("adb shell input tap 590 900", shell=True)
+            robot.disconnect()
+            execute_keyboard()
+
     finally:
         _cleanup(device, camera, robot, session_recorder)
 

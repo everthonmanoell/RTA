@@ -208,7 +208,8 @@ class RtaModel:
             self.robot_connected_flag = bool(self.denso_robot.connect())
             if self.robot_connected_flag:
                 self.connect_robot_attempt = 0
-        except Exception:
+        except Exception as e:
+            print(f"[RtaModel] connect_robot_action error: {e}")
             self.robot_connected_flag = False
 
     def turn_motor_on_action(self):
