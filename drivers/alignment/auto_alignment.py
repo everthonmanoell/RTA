@@ -379,6 +379,23 @@ class AutoAlignment:
 
         error = estimated_distance - self.current_target_distance
         return error
+    
+    def move_to_marker(self, erro_x: float, erro_y: float):
+        pose_before = self.robot_arm.get_cartesian_pose()
+
+        new_x = pose_before.x - erro_y
+        new_y = pose_before.y - erro_x
+        
+        target_pose = pose_before
+        target_pose.x = new_x
+        target_pose.y = new_y
+        
+        success = self.robot_arm.move_cartesian(target_pose)
+        if not success:
+            self.logger.error("Failed to move robot")
+            return False
+        return True
+
 
     def apply_correction(
         self,
@@ -764,3 +781,73 @@ class AutoAlignment:
         step_y = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, step_y))
 
         return step_x, step_y
+    
+    def calculate_single_marker_centering_correction(
+                                                        self,
+                                                        frame,
+                                                        height,
+                                                        width,
+                                                        marker: MarkerInfo,
+                                                    ) -> tuple[float, float]:
+        """
+        Calculate the XY correction required to align the image center
+        with the centroid of a single ArUco marker.
+
+        Args:
+            marker: Detected marker.
+
+        Returns:
+            (dx_mm, dy_mm)
+        """
+        real_dimensions_mm = 54 # Isso deverá ser obtido 1 vez apenas por setup de câmera
+        dimensions_px = marker[0].median_dimension 
+        conversion_factor = dimensions_px/real_dimensions_mm # Valor aproximado
+
+        frame_cx = width / 2
+        frame_cy = height / 2
+
+        marker_cx = marker[0].centroid[0]
+        marker_cy = marker[0].centroid[1]
+
+        error_px_x = marker_cx - frame_cx
+        error_px_y = marker_cy - frame_cy
+
+        dx_mm = error_px_x / conversion_factor
+        dy_mm = error_px_y / conversion_factor
+
+        return dx_mm, dy_mm
+    
+    def align_to_single_marker(self):
+        iterations = 0
+        while self.MAX_ITERATIONS > iterations: 
+            frame = self.camera.capture_frame()
+            if iterations % 2 == 0:
+                if frame is None:
+                    continue
+                height, width, c = frame.shape
+                marker = self.get_markers_from_frame(frame)
+
+                if marker is None:
+                    continue
+                
+                dx, dy = self.calculate_single_marker_centering_correction(frame, height, width, marker)
+                
+                if dx < 0.1:
+                    dx = 0
+                if dy < 0.1:
+                    dy = 0
+
+                if abs(dx) < 0.1 and abs(dy) < 0.1:
+                    self.logger.info("Centered with successfull!")
+                    return True
+                
+                if iterations > 6:
+                    attenuation = 1 - np.exp(-abs(dx))
+                    dx = dx * - attenuation
+                    dy = dy * - attenuation
+
+                self.move_to_marker(dx, dy)
+            iterations+=1
+
+        self.logger.warning("Maximum number of iterations reached without centering.")
+        return False
