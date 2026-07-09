@@ -26,6 +26,18 @@ class Rta(GraphMachine):
             name='camera_on',
             on_enter=['camera_on_action'],
         )
+        detect_single_marker = State(
+            name="detect_single_marker",
+            on_enter=["detect_single_marker_action"],
+        )
+        center_camera = State(
+            name="center_camera",
+            on_enter=["center_camera_action"],
+        )
+        adjust_rz = State(
+            name="adjust_rz",
+            on_enter=["adjust_rz_action"],
+        )
         detect_markers = State(
             name='detect_markers',
             on_enter=['detect_markers_action'],
@@ -91,6 +103,9 @@ class Rta(GraphMachine):
             motor_on,
             move_to_roi,
             camera_on,
+            detect_single_marker,
+            center_camera,
+            adjust_rz,
             detect_markers,
             calibrate_z_touches,
             generate_map,
@@ -128,9 +143,22 @@ class Rta(GraphMachine):
             {'trigger': 'detect_markers_to_error', 'source': 'detect_markers', 'dest': 'error', 'conditions': ['detect_markers_attempts_gte_twenty']},
             {'trigger': 'detect_markers_to_detect_markers', 'source': 'detect_markers', 'dest': 'detect_markers', 'unless': ['markers_ready_for_align', 'detect_markers_attempts_gte_twenty']},
 
-            {'trigger': 'camera_on_to_detect_markers', 'source': 'camera_on', 'dest': 'detect_markers', 'conditions': ['camera_on']},
+            {'trigger': 'camera_on_to_detect_single_marker', 'source': 'camera_on', 'dest': 'detect_single_marker', 'conditions': ['camera_on']},
             {'trigger': 'camera_on_to_error', 'source': 'camera_on', 'dest': 'error', 'conditions': ['camera_on_attempts_gte_max']},
             {'trigger': 'camera_on_to_camera_on', 'source': 'camera_on', 'dest': 'camera_on', 'unless': ['camera_on', 'camera_on_attempts_gte_max']},
+
+            {'trigger': 'detect_single_marker_to_center_camera', 'source': 'detect_single_marker', 'dest': 'center_camera', 'conditions': ['single_marker_detected']},
+            {'trigger': 'detect_single_marker_to_error', 'source': 'detect_single_marker', 'dest': 'error', 'conditions': ['detect_single_marker_attempts_gte_max']},
+            {'trigger': 'detect_single_marker_to_detect_single_marker', 'source': 'detect_single_marker', 'dest': 'detect_single_marker', 'unless': ['single_marker_detected', 'detect_single_marker_attempts_gte_max']},
+
+            {'trigger': 'center_camera_to_detect_markers', 'source': 'center_camera', 'dest': 'detect_markers', 'conditions': ['camera_centered', 'rz_already_adjusted',]},
+            {'trigger': 'center_camera_to_adjust_rz', 'source': 'center_camera', 'dest': 'adjust_rz', 'conditions': ['camera_centered'],'unless': ['rz_already_adjusted']},
+            {'trigger': 'center_camera_to_error', 'source': 'center_camera', 'dest': 'error', 'conditions': ['center_camera_attempts_gte_max']},
+            {'trigger': 'center_camera_to_center_camera', 'source': 'center_camera', 'dest': 'center_camera', 'unless': ['camera_centered','center_camera_attempts_gte_max']},
+            
+            {'trigger': 'adjust_rz_to_detect_markers', 'source': 'adjust_rz', 'dest': 'center_camera', 'conditions': ['rz_adjusted']},
+            {'trigger': 'adjust_rz_to_error', 'source': 'adjust_rz', 'dest': 'error', 'conditions': ['adjust_rz_attempts_gte_max']},
+            {'trigger': 'adjust_rz_to_adjust_rz', 'source': 'adjust_rz', 'dest': 'adjust_rz', 'unless': ['rz_adjusted', 'adjust_rz_attempts_gte_max']},
 
             {'trigger': 'move_to_roi_to_camera_on', 'source': 'move_to_roi', 'dest': 'camera_on', 'conditions': ['move_to_roi_ok']},
             {'trigger': 'move_to_roi_to_error', 'source': 'move_to_roi', 'dest': 'error', 'unless': ['move_to_roi_ok']},
