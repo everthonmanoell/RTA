@@ -1,16 +1,13 @@
 import argparse
-import json
 import logging
+import math
 import os
 import subprocess
 import time
 import sys
 import threading
-import random
-from pathlib import Path
 from types import MethodType
 
-import cv2
 import numpy as np
 from aether_rdk.datatypes import Offset3D, Pose
 from rta import Rta
@@ -279,7 +276,6 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
     logging.info(
         "Capturing image from ROI to calculate swipe area...")
 
-    robot.move_to_roi()
     current_roi_pose = robot.get_cartesian_pose()
 
     detected_successfully = False
@@ -329,6 +325,149 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
 
     return frame, ids, corners, marker_infos, safe_zone_data
 
+def _detect_single_marker(
+    robot: Denso,
+    camera: RobotCamera,
+    detector: MarkerDetector,
+    target_id: int,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    """Detect a single ArUco marker.
+
+    Returns:
+        tuple(ids, corners) or None
+    """
+    logging.info("Detecting marker %d...", target_id)
+    # robot.move_to_roi()
+    start_time = time.time()
+    while time.time() - start_time < 5:
+        frame = camera.capture_frame()
+        if frame is None:
+            continue
+        ids, corners = detector.detect_markers(
+            frame,
+            log_missing=False,
+        )
+        if ids is None:
+            continue
+        ids_flat = ids.flatten()
+        if target_id in ids_flat:
+            idx = np.where(ids_flat == target_id)[0][0]
+            return ids[idx], corners[idx]
+    logging.error("Marker %d not detected.", target_id)
+    return None
+
+def _center_camera(
+    auto_alignment: AutoAlignment,
+    target_id: int,
+) -> bool:
+    logging.info("Centering camera...")
+    try:
+        return auto_alignment.align_to_single_marker()
+    except Exception as exc:
+        logging.error(exc)
+        return False
+
+def _get_slope(corners: np.ndarray) -> float:
+    angles = []
+    pts = corners.reshape(4, 2)
+
+    for i in range(4):
+        p_start = pts[i]
+        p_end = pts[(i + 1) % 4]
+
+        dx = p_end[0] - p_start[0]
+        dy = p_end[1] - p_start[1]
+
+        angle = math.degrees(math.atan2(dy, dx))
+        aligned_angle = (((angle - (i * 90)) + 180) % 360) - 180
+        angles.append(aligned_angle)
+    return angles
+
+def _median(lst: list[float]) -> float:
+    median = np.median(lst)
+    return float(median)
+
+def _adjust_rz(
+    robot: Denso,
+    camera: RobotCamera,
+    detector: MarkerDetector,
+    target_id: int,
+) -> bool:
+    """
+    Detecta novamente o marcador já centralizado
+    e corrige o Rz do robô.
+    """
+    logging.info("Adjusting robot Rz...")
+
+    slope_list = []
+
+    start_time = time.time()
+
+    while time.time() - start_time < 2:
+
+        frame = camera.capture_frame()
+
+        if frame is None:
+            logging.error("Could not capture frame.")
+            return False
+
+        ids, corners = detector.detect_markers(
+            frame,
+            log_missing=False,
+        )
+
+        if ids is None:
+            logging.error("No markers detected.")
+            return False
+
+        ids = ids.flatten()
+
+        if target_id not in ids:
+            logging.error("Marker %d not found.", target_id)
+            return False
+
+        idx = np.where(ids == target_id)[0][0]
+        marker_corners = corners[idx]
+        slopes = _get_slope(marker_corners)
+        slope_list.extend(slopes)
+
+    if not slope_list:
+        logging.error("Marker not detected.")
+        return False
+
+    median_slope = _median(slopes)
+
+    logging.info(
+        "Median marker angle = %.3f°",
+        median_slope,
+    )
+
+    pose = robot.get_cartesian_pose()
+
+    if pose is None:
+        logging.error("Could not read robot pose.")
+        return False
+
+    new_pose = Pose(
+        x=pose.x,
+        y=pose.y,
+        z=pose.z,
+        rx=pose.rx,
+        ry=pose.ry,
+        rz=pose.rz - median_slope,
+        fig=pose.fig,
+    )
+
+    ok = robot.move_cartesian(new_pose)
+
+    if ok:
+        logging.info(
+            "Rz adjusted from %.2f° to %.2f°",
+            pose.rz,
+            new_pose.rz,
+        )
+
+    return bool(ok)
 
 # =============================================================================
 # PHASE 3 — Z PLANE CALIBRATION (TOUCH ON 4 ARUCOS)
@@ -409,6 +548,7 @@ def _calibrate_z_touches(
     TOUCH_FINGER_OFFSET_Y = config.TOUCH_FINGER_OFFSET_Y
 
     max_interations = 400
+    observation_position = robot.get_cartesian_pose()
 
     try:
         for id in range(1, 5):
@@ -500,7 +640,7 @@ def _calibrate_z_touches(
                                 current_position.ry), float(current_position.rz),
                         )
                         _move_to_return_touched_place(robot, current_position)
-                        robot.move_to_roi()
+                        robot.move_cartesian(observation_position)
                         break
 
                     # 2) If reached desired touch range, stop and save position
@@ -519,7 +659,7 @@ def _calibrate_z_touches(
                         )
                         # TODO this part 2 is causing double descent
                         _move_to_return_touched_place(robot, current_position)
-                        robot.move_to_roi()
+                        robot.move_cartesian(observation_position)
                         session_recorder.disarm_trigger()
                         break
 
@@ -1167,6 +1307,31 @@ def main() -> int:
             logging.error("Failed to save calibration map: %s", exc)
             return False
 
+    def adjust_rz_fn() -> bool:
+
+        return _adjust_rz(
+            robot=robot,
+            camera=camera,
+            detector=detector,
+            target_id=1,
+        )
+    
+    def detect_single_marker_fn():
+        marker = _detect_single_marker(
+            robot,
+            camera,
+            detector,
+            target_id=1,
+        )
+        runtime["rz_marker"] = marker
+        return marker is not None
+    
+    def center_camera_fn():
+        return _center_camera(
+            auto_align,
+            target_id=1,
+        )
+
     model.denso_robot = robot
     model.move_to_roi_fn = move_to_roi_fn
     model.camera_on_fn = camera_on_fn
@@ -1177,6 +1342,9 @@ def main() -> int:
     model.safe_pose_fn = safe_pose_fn
     model.read_final_marker_fn = read_final_marker_fn
     model.save_map_fn = save_map_fn
+    model.detect_single_marker_fn = detect_single_marker_fn
+    model.center_camera_fn = center_camera_fn
+    model.adjust_rz_fn = adjust_rz_fn
 
     machine = Rta(model)
 
