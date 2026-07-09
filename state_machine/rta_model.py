@@ -28,6 +28,14 @@ class RtaModel:
         self.camera_on_attempt = 0
         self.align_with_markers_attempt = 0
 
+        self.detect_single_marker_attempts = 0
+        self.center_camera_attempts = 0
+        self.adjust_rz_attempts = 0
+
+        self.max_detect_single_marker_attempts = 5
+        self.max_center_camera_attempts = 5
+        self.max_adjust_rz_attempts = 5
+
         self.aligned_flag = False
         self.robot_connected_flag = False
         self.motor_on_flag = False
@@ -41,6 +49,10 @@ class RtaModel:
         self.final_result_failures = 0
         self.final_result = self.RESULT_NONE
         self.denso_robot = None
+
+        self.single_marker_detected_flag = False
+        self.camera_centered_flag = False
+        self.rz_adjusted_flag = False
 
         # Optional integration hooks (inject callables from application layer).
         self.move_to_roi_fn = None
@@ -56,6 +68,10 @@ class RtaModel:
         self.read_final_marker_fn = None
         self.return_to_start_fn = None
         self.save_map_fn = None
+
+        self.detect_single_marker_fn = None
+        self.center_camera_fn = None
+        self.adjust_rz_fn = None
 
     def set_aligned_false(self):
         self.aligned_flag = False
@@ -191,6 +207,30 @@ class RtaModel:
 
     def save_map_ok(self):
         return self.save_map_ok_flag
+    
+    def single_marker_detected(self):
+        return self.single_marker_detected_flag
+
+    def camera_centered(self):
+        return self.camera_centered_flag
+
+    def rz_adjusted(self):
+        return self.rz_adjusted_flag
+    
+    def rz_already_adjusted(self) -> bool:
+        return self.rz_adjusted_flag
+
+    def rz_not_adjusted(self) -> bool:
+        return not self.rz_adjusted_flag
+    
+    def detect_single_marker_attempts_gte_max(self):
+        return self.detect_single_marker_attempts >= self.max_detect_single_marker_attempts
+
+    def center_camera_attempts_gte_max(self):
+        return self.center_camera_attempts >= self.max_center_camera_attempts
+
+    def adjust_rz_attempts_gte_max(self):
+        return self.adjust_rz_attempts >= self.max_adjust_rz_attempts
 
     # =======================================
     def connect_robot_action(self):
@@ -415,3 +455,37 @@ class RtaModel:
                 print(f"[RtaModel] save_map_action error: {exc}")
 
         self.save_map_ok_flag = False
+
+    def detect_single_marker_action(self):
+        self.single_marker_detected_flag = False
+
+        if callable(self.detect_single_marker_fn):
+            try:
+                self.single_marker_detected_flag = bool(
+                    self.detect_single_marker_fn()
+                )
+                return
+            except Exception:
+                pass
+
+    def center_camera_action(self):
+        self.camera_centered_flag = False
+
+        if callable(self.center_camera_fn):
+            try:
+                self.camera_centered_flag = bool(
+                    self.center_camera_fn()
+                )
+                return
+            except Exception:
+                pass
+
+    def adjust_rz_action(self):
+        self.rz_adjusted_flag = False
+        if callable(self.adjust_rz_fn):
+            try:
+                self.rz_adjusted_flag = bool(
+                    self.adjust_rz_fn()
+                )
+            except Exception as exc:
+                self.rz_adjusted_flag = False
