@@ -4,15 +4,11 @@ MarkerDetector: Detects and processes fiducial markers in images.
 This module handles ArUco marker detection, refinement, and geometric calculations.
 It's designed to work with the robot-mounted camera for visual feedback control.
 """
-
-import argparse
-import logging
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
-
 import cv2
+import logging
 import numpy as np
+from dataclasses import dataclass
+from typing import List, Optional, Sequence, Tuple
 
 
 @dataclass
@@ -25,6 +21,7 @@ class MarkerInfo:
     perimeter: float
     width_px: float  # width in pixels
     height_px: float  # height in pixels
+    median_dimension: float
 
 
 class MarkerDetector:
@@ -193,6 +190,8 @@ class MarkerDetector:
         width = np.linalg.norm(corners[0] - corners[1])
         height = np.linalg.norm(corners[1] - corners[2])
 
+        dimension = np.median([width, height, perimeter/4, area**0.5])
+
         return MarkerInfo(
             marker_id=marker_id,
             corners=corners,
@@ -200,7 +199,8 @@ class MarkerDetector:
             area=area,
             perimeter=perimeter,
             width_px=width,
-            height_px=height
+            height_px=height,
+            median_dimension=dimension,
         )
 
     def filter_closest_n_markers(self, image: np.ndarray, marker_infos: List[MarkerInfo],
@@ -300,13 +300,6 @@ class MarkerDetector:
 
         print(f'corners from detect_markers: {corners}')
 
-        # if ids is not None and len(corners) > 0:
-        #     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        #     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
-
-        # for corner in corners:
-        #     cv2.cornerSubPix(gray, corner, (5, 5), (-1, -1), criteria)
-
         top_left, top_right, bottom_right, bottom_left = corners[0]
         rec_width = np.linalg.norm(top_left - top_right)
         rec_height = np.linalg.norm(bottom_right - top_right)
@@ -365,24 +358,6 @@ class MarkerDetector:
         
         cv2.imwrite("1image.png", image)
 
-        # all_corners = np.vstack(
-        #     [np.asarray(marker.corners, dtype=np.float32) for marker in marker_infos])
-        # x_min = max(0, int(np.floor(np.min(all_corners[:, 0])) - 120))
-        # y_min = max(0, int(np.floor(np.min(all_corners[:, 1])) - 120))
-        # x_max = min(image.shape[1], int(
-        #     np.ceil(np.max(all_corners[:, 0])) + 120))
-        # y_max = min(image.shape[0], int(
-        #     np.ceil(np.max(all_corners[:, 1])) + 120))
-
-        # if x_max <= x_min or y_max <= y_min:
-        #     return None
-
-        # roi = image[y_min:y_max, x_min:x_max]
-        # if roi.size == 0:
-        #     return None
-
-        # cv2.imshow("ROI", roi)
-
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
         kernel = np.ones((7, 7), np.uint8)
@@ -400,8 +375,6 @@ class MarkerDetector:
 
         rect = cv2.minAreaRect(largest)
         box = cv2.boxPoints(rect)
-        # box[:, 0] += x_min
-        # box[:, 1] += y_min
         return box.astype(np.float32)
 
     def estimate_useful_screen_quad(
@@ -602,138 +575,3 @@ def _draw_quad(image: np.ndarray, quad: np.ndarray, color: Tuple[int, int, int],
     cv2.polylines(annotated, [polygon], isClosed=True,
                   color=color, thickness=thickness)
     return annotated
-
-
-# TODO MAIN
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Debug ArUco union rectangle detection")
-    parser.add_argument(
-        "--image",
-        default=str(Path(__file__).resolve().parents[2] / "tags" / "tag1.png"),
-        help="Path to the image to analyze",
-    )
-    parser.add_argument(
-        "--output",
-        default=None,
-        help="Optional path to save the annotated image",
-    )
-    parser.add_argument("--screen-width", type=float,
-                        default=0.0, help="Device screen width in pixels")
-    parser.add_argument("--screen-height", type=float,
-                        default=0.0, help="Device screen height in pixels")
-    parser.add_argument("--margin-px", type=float,
-                        default=0.0, help="Marker margin in pixels")
-    parser.add_argument("--tag-size-px", type=float,
-                        default=0.0, help="Marker tag size in pixels")
-    args = parser.parse_args()
-
-    try:
-        import config as rta_config
-    except Exception:
-        rta_config = None
-
-    image_path = Path(args.image)
-    image = cv2.imread(str(image_path))
-    if image is None:
-        raise SystemExit(f"Unable to read image: {image_path}")
-
-    detector = MarkerDetector()
-    ids, corners = detector.detect_markers(image)
-    if ids is None or corners is None:
-        print("No ArUco detected.")
-        raise SystemExit(1)
-
-    marker_infos = [
-        detector.get_marker_info(int(marker_id[0]), corners[idx])
-        for idx, marker_id in enumerate(ids)
-    ]
-    union_rect = detector.get_aruco_union_rectangle(marker_infos)
-    if union_rect is None:
-        print("Unable to calculate unified rectangle.")
-        raise SystemExit(1)
-
-    useful_rect = detector.get_useful_screen_rectangle(image, marker_infos)
-    if useful_rect is None:
-        print("Unable to detect bright useful screen area.")
-        raise SystemExit(1)
-
-    useful_quad = detector.get_useful_screen_quad(image, marker_infos)
-    if useful_quad is None:
-        print("Unable to calculate useful area quadrilateral.")
-        raise SystemExit(1)
-
-    useful_rect = detector.useful_quad_to_bbox(useful_quad)
-
-    offsets = detector.get_aruco_screen_offsets(image, union_rect)
-    gap = detector.get_rect_gap(union_rect, useful_rect)
-    annotated = _draw_union_rectangle(image, union_rect)
-    annotated = _draw_quad(annotated, useful_quad, (255, 255, 0), 3)
-
-    # ==========================================
-    # SWIPE PATH SIMULATION (OPENCV)
-    # ==========================================
-    # The useful_quad returns 4 points. If the default order is Top-Left, Top-Right, Bottom-Right, Bottom-Left:
-    pt_tl = useful_quad[0]
-    pt_tr = useful_quad[1]
-    pt_br = useful_quad[2]
-    pt_bl = useful_quad[3]
-
-    # Calculate top and bottom midpoints
-    top_mid_x = (pt_tl[0] + pt_tr[0]) / 2
-    top_mid_y = (pt_tl[1] + pt_tr[1]) / 2
-    bottom_mid_x = (pt_bl[0] + pt_br[0]) / 2
-    bottom_mid_y = (pt_bl[1] + pt_br[1]) / 2
-
-    # Define start and end of Swipe (with small internal margin to not hit edge)
-    start_swipe = (int(top_mid_x), int(top_mid_y + 40))  # +40 pixels down
-    end_swipe = (int(bottom_mid_x), int(bottom_mid_y - 40))  # -40 pixels up
-
-    # Draw orange arrow showing the path
-    cv2.arrowedLine(annotated, start_swipe, end_swipe,
-                    (0, 165, 255), 4, tipLength=0.05)
-    cv2.putText(annotated, "Swipe Path", (start_swipe[0] + 10, start_swipe[1]),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 165, 255), 2)
-
-    for marker_info in marker_infos:
-        marker_corners = np.asarray(
-            marker_info.corners, dtype=np.int32).reshape((-1, 1, 2))
-        cv2.polylines(annotated, [marker_corners],
-                      isClosed=True, color=(0, 255, 0), thickness=2)
-        centroid_x, centroid_y = map(int, marker_info.centroid)
-        cv2.circle(annotated, (centroid_x, centroid_y), 5, (0, 0, 255), -1)
-        cv2.putText(
-            annotated,
-            f"ID {marker_info.marker_id}",
-            (centroid_x + 6, centroid_y - 6),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (0, 0, 255),
-            1,
-            cv2.LINE_AA,
-        )
-
-    x_min, y_min, x_max, y_max = union_rect
-    u_x_min, u_y_min, u_x_max, u_y_max = useful_rect
-    print(f"Image: {image_path}")
-    print(f"Detected markers: {len(marker_infos)}")
-    print(
-        f"Unified rectangle: x={x_min}, y={y_min}, w={x_max - x_min}, h={y_max - y_min}")
-    print(
-        f"Estimated useful area: x={u_x_min}, y={u_y_min}, w={u_x_max - u_x_min}, h={u_y_max - u_y_min}")
-    print(
-        "Offsets from unified rectangle to image borders: "
-        f"left={offsets['left']:.1f}px, top={offsets['top']:.1f}px, "
-        f"right={offsets['right']:.1f}px, bottom={offsets['bottom']:.1f}px"
-    )
-    print(
-        "Gap between ArUco rectangle and useful area: "
-        f"left={gap['left']:.1f}px, top={gap['top']:.1f}px, "
-        f"right={gap['right']:.1f}px, bottom={gap['bottom']:.1f}px"
-    )
-    print("Useful area detected by internal bright screen region.")
-
-    output_path = Path(args.output) if args.output else image_path.with_name(
-        f"{image_path.stem}_aruco_rect{image_path.suffix}")
-    cv2.imwrite(str(output_path), annotated)
-    print(f"Annotated image saved to: {output_path}")
