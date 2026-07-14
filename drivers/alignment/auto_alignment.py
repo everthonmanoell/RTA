@@ -356,19 +356,17 @@ class AutoAlignment:
         delta_y = max(-self.MAX_XY_STEP_MM, min(self.MAX_XY_STEP_MM, delta_y))
         delta_z = max(-self.MAX_Z_STEP_MM, min(self.MAX_Z_STEP_MM, delta_z))
 
-        new_x = current_pose.x - delta_x
-        new_y = current_pose.y - delta_y
-        new_z = current_pose.z + delta_z
+        # Apply corrections to the current pose
+        # The subtraction implements negative feedback to reduce the error.
+        current_pose.x -= delta_x
+        current_pose.y -= delta_y
+        current_pose.z += delta_z
         
         # Apply safety limits
-        if new_z > self.Z_MAX:
-            new_z = self.Z_MAX
-        elif new_z < self.Z_MIN:
-            new_z = self.Z_MIN
-        
-        current_pose.x = new_x
-        current_pose.y = -new_y
-        current_pose.z = new_z
+        if current_pose.z > self.Z_MAX:
+            current_pose.z = self.Z_MAX
+        elif current_pose.z < self.Z_MIN:
+            current_pose.z = self.Z_MIN
         
         success = self.robot_arm.move_cartesian(current_pose)
         if not success:

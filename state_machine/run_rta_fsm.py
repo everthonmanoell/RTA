@@ -261,6 +261,9 @@ def main() -> int:
         auto_align.MIN_IMPROVEMENT_MM = float(
             auto_cfg.get("min_improvement_mm", auto_align.MIN_IMPROVEMENT_MM)
         )
+        auto_align.Y_AXIS_CORRECTION_SIGN = float(
+            auto_cfg.get("y_axis_correction_sign", auto_align.Y_AXIS_CORRECTION_SIGN)
+        )
         logging.info(
             "AutoAlignment config: xy_gain=%.3f z_gain=%.3f max_xy_step=%.1f max_z_step=%.1f max_drift=%.1f",
             auto_align.XY_GAIN,
