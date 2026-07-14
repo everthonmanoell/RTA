@@ -11,7 +11,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Optional, Tuple
 from drivers.alignment.marker_detector import MarkerDetector
+from pygrabber.dshow_graph import FilterGraph
 import config
+from config import CAMERA_CONFIG
 
 import cv2
 import numpy as np
@@ -28,7 +30,7 @@ class RobotCamera:
     and visual alignment, independent of mobile device screen orientation.
     """
 
-    def __init__(self, camera_id: int = 0, output_dir: str = "log_images", show_preview: bool = False):
+    def __init__(self, output_dir: str = "log_images", show_preview: bool = False):
         """
         Initialize RobotCamera with OpenCV camera source.
 
@@ -37,7 +39,7 @@ class RobotCamera:
             output_dir (str): Directory for storing captured images.
             show_preview (bool): If True, show the live camera frame in an OpenCV window.
         """
-        self.camera_id = camera_id
+        self.camera_id = self._get_camera_id(CAMERA_CONFIG["camera_name"])
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(exist_ok=True)
         self.cap = None
@@ -49,6 +51,13 @@ class RobotCamera:
 
         # Initialize camera on first use
         self._camera_opened = False
+
+    def _get_camera_id(self, name) -> int:
+        graph = FilterGraph()
+        list_of_cameras = graph.get_input_devices()
+        for camera_id, camera_name in enumerate(list_of_cameras):
+            if name in camera_name:
+                return camera_id
 
     def _ensure_camera_open(self) -> bool:
         """
@@ -268,110 +277,3 @@ class RobotCamera:
     def __del__(self):
         """Ensure camera is released on object destruction."""
         self.release()
-
-
-if __name__ == "__main__":
-    aruco_width_real_mm = 15
-    aruco_height_real_mm = 15
-
-    camera = RobotCamera(show_preview=True)
-    md = MarkerDetector()
-
-    image_path = Path("log_images/test_capture_0.jpg")
-    frame = cv2.imread(str(image_path))
-    target_id = 1
-
-    # 1. Detect aruco with id 1
-    id_found, corners = md.detect_single_marker_by_id(frame, target_id)
-
-    # print(f"corners from id_target {target_id}: {corners}")
-
-    if id_found is not None:
-        # 2. Get information (Width, Height, Centroid)
-        marker_info = md.get_marker_info(target_id, corners)
-
-        width_aruco_pixel = marker_info.width_px
-        height_aruco_pixel = marker_info.height_px
-
-        # 3. Scale mm/px (How much each pixel is worth in millimeters)
-        scale_x = aruco_width_real_mm / width_aruco_pixel
-        scale_y = aruco_height_real_mm / height_aruco_pixel
-
-        # 4. Centroids and Error
-        center_x_img, center_y_img = camera.center_point(frame)
-        center_aruco_x, center_aruco_y = marker_info.centroid
-
-        error_px_x = center_aruco_x - center_x_img
-        error_px_y = center_aruco_y - center_y_img
-
-        # 5. Convert error to mm
-        error_mm_x = error_px_x * scale_x
-        error_mm_y = error_px_y * scale_y
-
-        # ... (your previous code up to error_mm_y calculation) ...
-
-        print(f"Error X: {error_mm_x:.2f} mm")
-        print(f"Error Y: {error_mm_y:.2f} mm")
-
-        # 1. Circle at Image Center (Blue)
-        # Coordinates: (x, y) as integers
-        center_image = (int(center_x_img), int(center_y_img))
-        radius = 5
-        color_blue = (255, 0, 0)  # BGR
-        thickness_filled = -1  # -1 fills the circle
-
-        cv2.circle(frame, center_image, radius, color_blue, thickness_filled)
-
-        # 2. Circle at ArUco Center (Red)
-        # Coordinates: (x, y) as integers
-        center_aruco = (int(center_aruco_x), int(center_aruco_y))
-        radius = 5
-        color_red = (0, 0, 255)  # BGR
-
-        cv2.circle(frame, center_aruco, radius,
-                   color_red, thickness_filled)
-
-        # Optional: Draw a line connecting the two centers (Cyan)
-        cv2.line(frame, center_image, center_aruco, (255, 255, 0), 2)
-
-        pos_x_text = int(center_aruco_x) + 15
-        pos_y_text = int(center_aruco_y) - 15
-
-        cv2.putText(
-            frame,
-            f"Error: X={error_mm_x:.1f} Y={error_mm_y:.1f} mm",
-            (pos_x_text, pos_y_text),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.6,
-            (0, 255, 0),
-            2
-        )
-
-        # ... (resto do seu código) ...
-
-        # 2. Texto do Centroide da Imagem
-        cv2.putText(
-            frame,
-            f'Image Center: ({int(center_x_img)}, {int(center_y_img)})',
-            (int(center_x_img) + 10, int(center_y_img) - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (255, 0, 0),
-            2
-        )
-
-        # 3. Texto do Centroide do Marcador
-        cv2.putText(
-            frame,
-            f'Marker: ({int(center_aruco_x)}, {int(center_aruco_y)})',
-            (int(center_aruco_x) + 10, int(center_aruco_y) + 20),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            (0, 0, 255),
-            2
-        )
-
-        camera.display_image(frame, window_name="Marker Detection Result")
-
-    else:
-        print(f"Marker {target_id} not found!")
