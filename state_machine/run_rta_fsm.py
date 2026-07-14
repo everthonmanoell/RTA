@@ -1,4 +1,5 @@
 import argparse
+from copy import copy
 import logging
 import math
 import os
@@ -160,7 +161,6 @@ def _build_operational_stack(robot: Denso):
     """
     device = Mobile()
     camera = RobotCamera(
-        camera_id=config.CAMERA_CONFIG["camera_id"],
         output_dir=config.CAMERA_CONFIG["output_dir"],
         show_preview=False,
     )
@@ -398,11 +398,9 @@ def _adjust_rz(
     e corrige o Rz do robô.
     """
     logging.info("Adjusting robot Rz...")
-
+    global median_slope 
     slope_list = []
-
     start_time = time.time()
-
     while time.time() - start_time < 2:
 
         frame = camera.capture_frame()
@@ -472,6 +470,137 @@ def _adjust_rz(
 # =============================================================================
 # PHASE 3 — Z PLANE CALIBRATION (TOUCH ON 4 ARUCOS)
 # =============================================================================
+
+def _offset_adjust(
+    robot: Denso, 
+    session_recorder: TouchSessionRecorder, 
+    target_x: float, 
+    target_y: float
+) -> bool:
+    """
+    The robot lowers to touch the screen and refines the (X, Y) offset using linear calibration. 
+    - Attempt 0: Collects the initial point. Applies a fixed +5mm. 
+    - Attempt 1: Collects the second point. Calculates the transformation matrix (K). 
+    - Attempts 1 to 3: Adjusts using a fixed GAIN. 
+    - Attempts > 3: Replaces the GAIN with an exponential attenuation function based on the error in mm.
+    """
+    
+    logging.info("Starting offset adjustment...")
+
+    global delta_x
+    global delta_y
+    current_position = robot.get_cartesian_pose()
+    initial_x = copy(current_position.x)
+    initial_y = copy(current_position.y)
+    initial_z = copy(current_position.z)
+    Z_TOUCH = config.Z_TOUCH
+    TOLERANCE = 2
+    MAX_ATTEMPTS = 15
+
+    history_robot = []
+    history_touch = []
+    
+    k_xy = None  
+    k_yx = None  
+
+    for attempt in range(MAX_ATTEMPTS):
+        
+        if current_position is None:
+            logging.error("Failed to get robot position.")
+            return False
+
+        touch_detected_event = threading.Event()
+        touch_feedback_holder = {"value": None}
+        session_recorder.arm_trigger("down", touch_feedback_holder, touch_detected_event)
+
+        current_position.z = Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH
+        robot.move_cartesian(current_position)
+        
+        while not touch_detected_event.is_set() and current_position.z > config.Z_LIMIT:
+            current_position.z -= 0.2
+            robot.move_cartesian(current_position)
+            time.sleep(0.1)
+            z_touch = robot.get_cartesian_pose().z
+            
+        session_recorder.disarm_trigger()
+
+        current_position.z = z_touch + config.Z_OFFSET_BEFORE_TOUCH
+        robot.move_cartesian(current_position)        
+        if touch_detected_event.is_set() and touch_feedback_holder["value"]:
+            touch_x = float(touch_feedback_holder["value"][0])
+            touch_y = float(touch_feedback_holder["value"][1])
+            
+            error_x = target_x - touch_x
+            error_y = target_y - touch_y
+            
+            if abs(error_x) <= TOLERANCE and abs(error_y) <= TOLERANCE:
+                
+                delta_x = current_position.x - initial_x
+                delta_y = current_position.y - initial_y
+                config.TOUCH_FINGER_OFFSET_X, config.TOUCH_FINGER_OFFSET_Y = _apply_rotation_matrix()
+                logging.info(f"Offset x: {config.TOUCH_FINGER_OFFSET_X}")
+                logging.info(f"Offset Y: {config.TOUCH_FINGER_OFFSET_Y}")
+
+                current_position.z = initial_z
+                current_position.x = initial_x
+                current_position.y = initial_y
+                robot.move_cartesian(current_position)
+
+                return True
+            
+            history_robot.append((current_position.x, current_position.y))
+            history_touch.append((touch_x, touch_y))
+            
+            if attempt == 0:
+                step_x = 5.0
+                step_y = 5.0
+            else:
+                if attempt == 1:
+                    r0_x, r0_y = history_robot[0]
+                    r1_x, r1_y = history_robot[1]
+                    t0_x, t0_y = history_touch[0]
+                    t1_x, t1_y = history_touch[1]
+                    
+                    delta_rx = r1_x - r0_x
+                    delta_ry = r1_y - r0_y
+                    delta_tx = t1_x - t0_x
+                    delta_ty = t1_y - t0_y
+                    
+                    if abs(delta_tx) < 1e-3 or abs(delta_ty) < 1e-3:
+                        logging.error("There was no variation in the screen touch. Calibration aborted.")
+                        return False
+                    
+                    k_xy = delta_rx / delta_ty  
+                    k_yx = delta_ry / delta_tx  
+                
+                raw_step_x = error_y * k_xy
+                raw_step_y = error_x * k_yx
+                
+                if attempt > 3:
+                    attenuation_x = 1.0 - np.exp(-abs(raw_step_x))
+                    attenuation_y = 1.0 - np.exp(-abs(raw_step_y)) 
+                    step_x = raw_step_x * attenuation_x
+                    step_y = raw_step_y * attenuation_y
+                else:
+                    step_x = raw_step_x
+                    step_y = raw_step_y
+
+            current_position.x += step_x
+            current_position.y += step_y
+            logging.info(f"Moving: dX={step_x:.2f}mm, dY={step_y:.2f}mm")
+            robot.move_cartesian(current_position)
+            
+        else:
+            logging.warning("Touch not detected by the device in this attempt.")
+            return False
+
+    logging.error("Maximum number of attempts reached without centering the touch.")
+    return False
+
+def _apply_rotation_matrix():
+    offset_x = (delta_x*math.cos(math.radians(median_slope))) + (delta_y*math.sin(math.radians(median_slope)))
+    offset_y = (delta_x*-math.sin(math.radians(median_slope))) + (delta_y*math.cos(math.radians(median_slope)))
+    return offset_x, offset_y
 
 def _move_to_return_touched_place(robot: Denso, pose) -> bool:
     """Move robot back to touched position with safety Z offset.
@@ -544,8 +673,6 @@ def _calibrate_z_touches(
     ALIGNMENT_TOLERANCE = config.ALIGMENT_TOLERANCE_MM
     Z_TOUCH = config.Z_TOUCH
     Z_LIMIT = config.Z_LIMIT
-    TOUCH_FINGER_OFFSET_X = config.TOUCH_FINGER_OFFSET_X
-    TOUCH_FINGER_OFFSET_Y = config.TOUCH_FINGER_OFFSET_Y
 
     max_interations = 400
     observation_position = robot.get_cartesian_pose()
@@ -603,8 +730,9 @@ def _calibrate_z_touches(
                 session_recorder.arm_trigger(
                     "down", touch_feedback_holder, touch_detected_event)
 
-                current_position.x += TOUCH_FINGER_OFFSET_X
-                current_position.y += TOUCH_FINGER_OFFSET_Y
+                current_position.x += config.TOUCH_FINGER_OFFSET_X
+                current_position.y += config.TOUCH_FINGER_OFFSET_Y
+
                 # TODO this part 1 is causing double descent - fix the config.Z_OFFSET_BEFORE_TOUCH
                 current_position.z = Z_TOUCH + config.Z_OFFSET_BEFORE_TOUCH
                 ok = robot.move_cartesian(current_position)
@@ -1132,7 +1260,7 @@ def main() -> int:
             self.motor_on_flag = bool(self.denso_robot.motor_on())
             if self.motor_on_flag:
                 if _configure_tool_from_config(robot):
-                    robot.set_arm_speed(50, 25, 25)
+                    robot.set_arm_speed(30, 15, 15)
                     self.motor_on_attempt = 0
                 else:
                     self.motor_on_flag = False
@@ -1146,6 +1274,8 @@ def main() -> int:
     # --- Build operational stack ---
     device, camera, detector, auto_align, controller, transform = _build_operational_stack(
         robot)
+    
+    device_w, device_h = device.screen_size
 
     # --- Initialize modular global recorder ---
     session_recorder = TouchSessionRecorder(device)
@@ -1313,7 +1443,7 @@ def main() -> int:
             robot=robot,
             camera=camera,
             detector=detector,
-            target_id=1,
+            target_id=0,
         )
     
     def detect_single_marker_fn():
@@ -1321,7 +1451,7 @@ def main() -> int:
             robot,
             camera,
             detector,
-            target_id=1,
+            target_id=0,
         )
         runtime["rz_marker"] = marker
         return marker is not None
@@ -1329,8 +1459,17 @@ def main() -> int:
     def center_camera_fn():
         return _center_camera(
             auto_align,
-            target_id=1,
+            target_id=0,
         )
+    
+    
+    
+    model.offset_adjust_fn = lambda: _offset_adjust(
+        robot=robot, 
+        session_recorder=session_recorder, 
+        target_x=device_w/2,
+        target_y=device_h/2,
+    )
 
     model.denso_robot = robot
     model.move_to_roi_fn = move_to_roi_fn
@@ -1370,11 +1509,12 @@ def main() -> int:
                 break
 
             time.sleep(args.loop_delay)
-        subprocess.run("adb shell input keyevent KEYCODE_HOME", shell=True)
-        time.sleep(1)
-        subprocess.run("adb shell input tap 590 900", shell=True)
-        robot.disconnect()
-        execute_keyboard()
+        if machine.state not in "error":
+            subprocess.run("adb shell input keyevent KEYCODE_HOME", shell=True)
+            time.sleep(1)
+            subprocess.run("adb shell input tap 590 900", shell=True)
+            robot.disconnect()
+            execute_keyboard()
     finally:
         _cleanup(device, camera, robot, session_recorder)
 
