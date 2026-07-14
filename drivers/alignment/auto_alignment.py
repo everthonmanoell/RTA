@@ -799,9 +799,9 @@ class AutoAlignment:
         Returns:
             (dx_mm, dy_mm)
         """
-        real_dimensions_mm = 54 # Isso deverá ser obtido 1 vez apenas por setup de câmera
+        real_dimensions_mm = 60 # Valor aproximado
         dimensions_px = marker[0].median_dimension 
-        conversion_factor = dimensions_px/real_dimensions_mm # Valor aproximado
+        conversion_factor = dimensions_px/real_dimensions_mm
 
         frame_cx = width / 2
         frame_cy = height / 2

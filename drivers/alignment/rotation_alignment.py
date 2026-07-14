@@ -48,10 +48,6 @@ class RotationAlignment:
         self.logger = logging.getLogger(__name__)
         self.aruco_widht_real_mm = config.MARKER_REAL_WIDTH_MM
         self.aruco_hight_real_mm = config.MARKER_REAL_HEIGHT_MM
-        self.aligment_tolerance = config.ALIGMENT_TOLERANCE_MM
-        self.touch_finger_offset_x = config.TOUCH_FINGER_OFFSET_X
-        self.z_touch = config.Z_TOUCH
-        self.z_limit = config.Z_LIMIT
 
     def get_frame_with_markers(self, required_count: int = 4) -> Tuple[Optional[np.ndarray], Optional[List[MarkerInfo]]]:
         frame = self.camera.capture_frame()
