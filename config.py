@@ -12,7 +12,7 @@ import os
 # ============================================================================
 
 CAMERA_CONFIG = {
-    "camera_id": 1,  # ID da câmera no OpenCV (0 = primária)
+    "camera_name": "BRIO",
     "output_dir": "log_images",  # Diretório para salvar frames
     "frame_width": 1080,  # Resolução recomendada
     "frame_height": 720,
@@ -174,15 +174,15 @@ COORDINATE_SCALE = {
 TRANSLATION_GAIN = 0.1
 # Tolerância de alinhamento final (ajustar conforme precisão desejada)
 ALIGMENT_TOLERANCE_MM = 0.5
-Z_TOUCH = 260.98
-Z_LIMIT = 260.98
+Z_TOUCH = 360 #WARNING
+Z_LIMIT = 350 #WARNING 
 
 # motorobot Z_TOUCH
 # Z_LIMIT = 221.56
 # Z_TOUCH = 221.56
 
-TOUCH_FINGER_OFFSET_X = -34.6
-TOUCH_FINGER_OFFSET_Y = -1
+TOUCH_FINGER_OFFSET_X = 0
+TOUCH_FINGER_OFFSET_Y = 0
 Z_OFFSET_BEFORE_TOUCH = 20.0
 
 # routine swipe with 15 degrees inclination
@@ -209,7 +209,7 @@ AUTO_ALIGNMENT_CONFIG = {
 
     # Limites de segurança para eixo Z do robô
     "z_max": 600.0,  # mm
-    "z_min": 100.0,  # mm
+    "z_min": 350.0,  # mm
 
     # Limites de iteração e tempo
     "max_iterations": 20,  # Aumentado pois os ganhos agora são menores
@@ -268,9 +268,9 @@ TOUCH_CONFIG = {
 # ============================================================================
 
 ROI_POSITIONING_CONFIG = {
-    "ROI_X": 331.07,
-    "ROI_Y": 0.62,
-    "ROI_Z": 421.36,
+    "ROI_X": 275,
+    "ROI_Y": 0,
+    "ROI_Z": 460, #WARNING
     "DEFAULT_FIG": 5,
 }
 
@@ -327,7 +327,7 @@ CAMERA_INTRINSICS = {
 
 CAMERA_CALIBRATION_CONFIG = {
     "auto_focus": 2.0,
-    "fixed_focus": 20.0,
+    "fixed_focus": 25.0, #WARNING
     "auto_exposure": -1.0,
     "fixed_exposure": -7.0,
     "auto_white_balance": 1.0,
