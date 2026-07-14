@@ -72,6 +72,8 @@ class RtaModel:
         self.detect_single_marker_fn = None
         self.center_camera_fn = None
         self.adjust_rz_fn = None
+        self.offset_adjust_ok_flag = False
+        self.offset_adjust_fn = None
 
     def set_aligned_false(self):
         self.aligned_flag = False
@@ -231,6 +233,9 @@ class RtaModel:
 
     def adjust_rz_attempts_gte_max(self):
         return self.adjust_rz_attempts >= self.max_adjust_rz_attempts
+
+    def offset_adjust_ok(self):
+        return self.offset_adjust_ok_flag
 
     # =======================================
     def connect_robot_action(self):
@@ -489,3 +494,13 @@ class RtaModel:
                 )
             except Exception as exc:
                 self.rz_adjusted_flag = False
+
+    def offset_adjust_action(self):
+        self.offset_adjust_ok_flag = False
+
+        if callable(self.offset_adjust_fn):
+            try:
+                self.offset_adjust_ok_flag = bool(self.offset_adjust_fn())
+                return
+            except Exception as exc:
+                print(f"[RtaModel] offset_adjust_action error: {exc}")

@@ -96,6 +96,10 @@ class Rta(GraphMachine):
         name='calibrate_z_touches',
         on_enter=['calibrate_z_touches_action'],
         )   
+        offset_adjust = State(
+            name="offset_adjust",
+            on_enter=["offset_adjust_action"],
+        )
 
         states = [
             idle,
@@ -106,6 +110,7 @@ class Rta(GraphMachine):
             detect_single_marker,
             center_camera,
             adjust_rz,
+            offset_adjust,
             detect_markers,
             calibrate_z_touches,
             generate_map,
@@ -156,9 +161,9 @@ class Rta(GraphMachine):
             {'trigger': 'center_camera_to_error', 'source': 'center_camera', 'dest': 'error', 'conditions': ['center_camera_attempts_gte_max']},
             {'trigger': 'center_camera_to_center_camera', 'source': 'center_camera', 'dest': 'center_camera', 'unless': ['camera_centered','center_camera_attempts_gte_max']},
             
-            {'trigger': 'adjust_rz_to_detect_markers', 'source': 'adjust_rz', 'dest': 'center_camera', 'conditions': ['rz_adjusted']},
-            {'trigger': 'adjust_rz_to_error', 'source': 'adjust_rz', 'dest': 'error', 'conditions': ['adjust_rz_attempts_gte_max']},
-            {'trigger': 'adjust_rz_to_adjust_rz', 'source': 'adjust_rz', 'dest': 'adjust_rz', 'unless': ['rz_adjusted', 'adjust_rz_attempts_gte_max']},
+            {'trigger': 'adjust_rz_to_offset_adjust', 'source': 'adjust_rz', 'dest': 'offset_adjust', 'conditions': ['rz_adjusted']},
+            {'trigger': 'offset_adjust_to_detect_markers', 'source': 'offset_adjust', 'dest': 'detect_markers', 'conditions': ['offset_adjust_ok']},
+            {'trigger': 'offset_adjust_to_error', 'source': 'offset_adjust', 'dest': 'error', 'unless': ['offset_adjust_ok']},
 
             {'trigger': 'move_to_roi_to_camera_on', 'source': 'move_to_roi', 'dest': 'camera_on', 'conditions': ['move_to_roi_ok']},
             {'trigger': 'move_to_roi_to_error', 'source': 'move_to_roi', 'dest': 'error', 'unless': ['move_to_roi_ok']},
