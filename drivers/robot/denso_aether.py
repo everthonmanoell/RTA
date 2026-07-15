@@ -46,7 +46,7 @@ class Denso(AbstractRobot):
     ROI_Z = ROI_POSITIONING_CONFIG.get("ROI_Z", 421.36)
     ROI_RX =  180.00
     ROI_RY = 0.00
-    ROI_RZ = 180.00
+    ROI_RZ = -90
     DEFAULT_FIG = ROI_POSITIONING_CONFIG.get("DEFAULT_FIG", 5)
 
     # motorobot ROI

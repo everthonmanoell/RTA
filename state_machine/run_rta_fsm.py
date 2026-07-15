@@ -160,7 +160,6 @@ def _build_operational_stack(robot: Denso):
     """
     device = Mobile()
     camera = RobotCamera(
-        camera_id=config.CAMERA_CONFIG["camera_id"],
         output_dir=config.CAMERA_CONFIG["output_dir"],
         show_preview=False,
     )
@@ -1313,7 +1312,7 @@ def main() -> int:
             robot=robot,
             camera=camera,
             detector=detector,
-            target_id=1,
+            target_id=0,
         )
     
     def detect_single_marker_fn():
@@ -1321,7 +1320,7 @@ def main() -> int:
             robot,
             camera,
             detector,
-            target_id=1,
+            target_id=0,
         )
         runtime["rz_marker"] = marker
         return marker is not None
@@ -1329,7 +1328,7 @@ def main() -> int:
     def center_camera_fn():
         return _center_camera(
             auto_align,
-            target_id=1,
+            target_id=0,
         )
 
     model.denso_robot = robot
