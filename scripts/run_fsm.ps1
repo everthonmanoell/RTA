@@ -62,6 +62,10 @@ param(
     [string]$MetricsDir = "",
 
     [Parameter(Mandatory = $false)]
+    [ValidateSet("", "auto")]
+    [string]$Offset = "",
+
+    [Parameter(Mandatory = $false)]
     # New parameter: Number of times the script should run (Default: 1)
     [int]$RunCount = 1
 )
@@ -121,10 +125,13 @@ for ($i = 1; $i -le $RunCount; $i++) {
 
     # Start app in background passing the Serial
     $startAppJob = Start-Job -ScriptBlock {
-        param($appIp, $appPort, $deviceType, $serial)
+        param($appIp, $appPort, $deviceType, $serial, $offset)
         Start-Sleep -Seconds 1
-        adb -s $serial shell am start -S -n com.example.rta/.InitialActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
-    } -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType, $targetSerial
+        
+        $activity = "InitialActivity"
+        
+        adb -s $serial shell am start -S -n com.example.rta/.$activity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
+    } -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType, $targetSerial, $Offset
 
     Write-Host "[4/5] Executing FSM until '$StopAtState'..."
     $markerCountByDeviceType = @{
@@ -158,6 +165,10 @@ for ($i = 1; $i -le $RunCount; $i++) {
         "--max-steps", "$MaxSteps",
         "--loop-delay", "$LoopDelay"
     )
+
+    if (-not [string]::IsNullOrWhiteSpace($Offset)) {
+        $cmd += @("--offset", $Offset)
+    }
 
     if ($ShowCameraPreview) {
         $cmd += "--show-camera-preview"

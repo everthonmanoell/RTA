@@ -4,9 +4,8 @@ from transitions.extensions import GraphMachine
 
 class Rta(GraphMachine):
 
-    def __init__(self, model) -> None:
-        """Constructor of the base `Rta` class.
-        """
+    def __init__(self, model, offset_mode=None) -> None:
+        """Constructor of the base `Rta` class."""
         idle = State(
             name='idle',
         )
@@ -93,14 +92,11 @@ class Rta(GraphMachine):
             name='error',
         )
         calibrate_z_touches = State(
-        name='calibrate_z_touches',
-        on_enter=['calibrate_z_touches_action'],
+            name='calibrate_z_touches',
+            on_enter=['calibrate_z_touches_action'],
         )   
-        offset_adjust = State(
-            name="offset_adjust",
-            on_enter=["offset_adjust_action"],
-        )
 
+        # Definimos a lista base de estados SEM o offset_adjust
         states = [
             idle,
             connect_robot,
@@ -110,7 +106,6 @@ class Rta(GraphMachine):
             detect_single_marker,
             center_camera,
             adjust_rz,
-            offset_adjust,
             detect_markers,
             calibrate_z_touches,
             generate_map,
@@ -122,6 +117,15 @@ class Rta(GraphMachine):
             motor_off,
             error,
         ]
+
+        # Inserimos dinamicamente o estado offset_adjust apenas se for "auto"
+        if offset_mode == "auto":
+            offset_adjust = State(
+                name='offset_adjust',
+                on_enter=['offset_adjust_action'],
+            )
+            # Inserimos logo após o adjust_rz (posição 8 na lista) para manter a organização
+            states.insert(8, offset_adjust)
 
         transitions = [
             {'trigger': 'motor_off_to_done', 'source': 'motor_off', 'dest': 'done', 'after': ['set_motor_on_false']},
@@ -156,14 +160,10 @@ class Rta(GraphMachine):
             {'trigger': 'detect_single_marker_to_error', 'source': 'detect_single_marker', 'dest': 'error', 'conditions': ['detect_single_marker_attempts_gte_max']},
             {'trigger': 'detect_single_marker_to_detect_single_marker', 'source': 'detect_single_marker', 'dest': 'detect_single_marker', 'unless': ['single_marker_detected', 'detect_single_marker_attempts_gte_max']},
 
-            {'trigger': 'center_camera_to_detect_markers', 'source': 'center_camera', 'dest': 'detect_markers', 'conditions': ['camera_centered', 'rz_already_adjusted',]},
-            {'trigger': 'center_camera_to_adjust_rz', 'source': 'center_camera', 'dest': 'adjust_rz', 'conditions': ['camera_centered'],'unless': ['rz_already_adjusted']},
+            {'trigger': 'center_camera_to_detect_markers', 'source': 'center_camera', 'dest': 'detect_markers', 'conditions': ['camera_centered', 'rz_already_adjusted']},
+            {'trigger': 'center_camera_to_adjust_rz', 'source': 'center_camera', 'dest': 'adjust_rz', 'conditions': ['camera_centered'], 'unless': ['rz_already_adjusted']},
             {'trigger': 'center_camera_to_error', 'source': 'center_camera', 'dest': 'error', 'conditions': ['center_camera_attempts_gte_max']},
-            {'trigger': 'center_camera_to_center_camera', 'source': 'center_camera', 'dest': 'center_camera', 'unless': ['camera_centered','center_camera_attempts_gte_max']},
-            
-            {'trigger': 'adjust_rz_to_offset_adjust', 'source': 'adjust_rz', 'dest': 'offset_adjust', 'conditions': ['rz_adjusted']},
-            {'trigger': 'offset_adjust_to_detect_markers', 'source': 'offset_adjust', 'dest': 'detect_markers', 'conditions': ['offset_adjust_ok']},
-            {'trigger': 'offset_adjust_to_error', 'source': 'offset_adjust', 'dest': 'error', 'unless': ['offset_adjust_ok']},
+            {'trigger': 'center_camera_to_center_camera', 'source': 'center_camera', 'dest': 'center_camera', 'unless': ['camera_centered', 'center_camera_attempts_gte_max']},
 
             {'trigger': 'move_to_roi_to_camera_on', 'source': 'move_to_roi', 'dest': 'camera_on', 'conditions': ['move_to_roi_ok']},
             {'trigger': 'move_to_roi_to_error', 'source': 'move_to_roi', 'dest': 'error', 'unless': ['move_to_roi_ok']},
@@ -178,6 +178,35 @@ class Rta(GraphMachine):
 
             {'trigger': 'idle_to_connect_robot', 'source': 'idle', 'dest': 'connect_robot'},
         ]
+
+        # Configurações condicionais de rotas baseadas no parâmetro offset_mode
+        if offset_mode == "auto":
+            transitions.append(
+                {'trigger': 'adjust_rz_to_offset_adjust', 'source': 'adjust_rz', 'dest': 'offset_adjust', 'conditions': ['rz_adjusted']}
+            )
+            transitions.append(
+                {'trigger': 'adjust_rz_to_error', 'source': 'adjust_rz', 'dest': 'error', 'conditions': ['adjust_rz_attempts_gte_max']}
+            )
+            transitions.append(
+                {'trigger': 'adjust_rz_to_adjust_rz', 'source': 'adjust_rz', 'dest': 'adjust_rz', 'unless': ['rz_adjusted', 'adjust_rz_attempts_gte_max']}
+            )
+            transitions.append(
+                {'trigger': 'offset_adjust_to_detect_markers', 'source': 'offset_adjust', 'dest': 'detect_markers', 'conditions': ['offset_adjust_ok']}
+            )
+            transitions.append(
+                {'trigger': 'offset_adjust_to_error', 'source': 'offset_adjust', 'dest': 'error', 'unless': ['offset_adjust_ok']}
+            )
+        else:
+            # CORRIGIDO: Se não for "auto", adjust_rz aponta direto para detect_markers
+            transitions.append(
+                {'trigger': 'adjust_rz_to_detect_markers', 'source': 'adjust_rz', 'dest': 'detect_markers', 'conditions': ['rz_adjusted']}
+            )
+            transitions.append(
+                {'trigger': 'adjust_rz_to_error', 'source': 'adjust_rz', 'dest': 'error', 'conditions': ['adjust_rz_attempts_gte_max']}
+            )
+            transitions.append(
+                {'trigger': 'adjust_rz_to_adjust_rz', 'source': 'adjust_rz', 'dest': 'adjust_rz', 'unless': ['rz_adjusted', 'adjust_rz_attempts_gte_max']}
+            )
 
         super().__init__(
             model=model,

@@ -101,6 +101,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Stop execution as soon as the FSM reaches this state (e.g. camera_on)",
     )
+    parser.add_argument(
+        "--offset",
+        default=None,
+        help="Offset configuration. If 'auto', offset_adjust is on."
+    )
     args = parser.parse_args(argv)
     metrics_dir_args = argv if argv is not None else sys.argv[1:]
     args.metrics_dir_provided = any(
@@ -219,7 +224,7 @@ def _connect_and_home(robot: Denso) -> bool:
         robot.disconnect()
         return False
 
-    robot.set_arm_speed(10, 5, 5)
+    robot.set_arm_speed(50, 25, 25)
 
     try:
         if hasattr(robot, "move_to_roi"):
@@ -281,6 +286,23 @@ def _detect_markers_from_roi(robot: Denso, camera: RobotCamera, detector: Marker
     detected_successfully = False
     ids, corners, frame = None, None, None
     height_px, width_px = 0, 0
+    mobile = Mobile()
+    activity = None
+    try:
+        height, width = mobile.screen_size
+        tap_x = int(height / 2)
+        tap_y = int(width / 2)
+    finally:
+        mobile.stop()
+
+    while activity == None:
+        current_act = actual_activity()
+        if current_act and "ArucoMarkersActivity" in current_act:
+            activity = current_act
+            break
+        subprocess.run(["adb", "shell", "input", "tap", str(tap_x), str(tap_y)])
+        
+        time.sleep(0.5)
 
     max_tentativas = 10
     for tentativa in range(max_tentativas):
@@ -1155,6 +1177,7 @@ def _save_calibration_map(
         marker_infos=marker_infos,
         touch_poses_dict=touch_poses_dict,
         safe_pose=pose_referencia,
+        offset = (config.TOUCH_FINGER_OFFSET_X, config.TOUCH_FINGER_OFFSET_Y),
         execution_duration_s=(time.time() - run_start_ts),
         calibration_succeed=is_calibration_succeed,
         dir_separation=not bool(getattr(args, "metrics_dir_provided", False)),
@@ -1504,7 +1527,10 @@ def main() -> int:
     model.center_camera_fn = center_camera_fn
     model.adjust_rz_fn = adjust_rz_fn
 
-    machine = Rta(model)
+    if args.offset == "auto":
+        model.offset_adjust_fn = model.offset_adjust_fn
+
+    machine = Rta(model, args.offset)
 
     try:
         steps = 0
@@ -1528,10 +1554,11 @@ def main() -> int:
                 break
 
             time.sleep(args.loop_delay)
+
         if machine.state not in "error":
             subprocess.run("adb shell input keyevent KEYCODE_HOME", shell=True)
             time.sleep(1)
-            subprocess.run("adb shell input tap 590 900", shell=True)
+            subprocess.run("adb shell am start -a android.intent.action.WEB_SEARCH", shell=True)
             robot.disconnect()
             execute_keyboard()
     finally:

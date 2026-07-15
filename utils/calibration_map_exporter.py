@@ -35,6 +35,7 @@ class CalibrationMapExporter:
         marker_infos: list,
         touch_poses_dict: dict,
         safe_pose,
+        offset: tuple,
         execution_duration_s: float = None,
         calibration_succeed: bool = None,
         device_model: str = None,
@@ -81,6 +82,7 @@ class CalibrationMapExporter:
             },
             "useful_rect_px": useful_rect_px if useful_rect_px else [],
             "markers": [],
+            "offset": [offset[0], offset[1]]
         }
 
         for m in marker_infos:
