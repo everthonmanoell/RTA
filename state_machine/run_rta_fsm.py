@@ -532,8 +532,9 @@ def _offset_adjust(
             
             error_x = target_x - touch_x
             error_y = target_y - touch_y
-            
-            if abs(error_x) <= TOLERANCE and abs(error_y) <= TOLERANCE:
+            activity = actual_activity()
+
+            if "ArucoMarkersActivity" in activity:
                 
                 delta_x = current_position.x - initial_x
                 delta_y = current_position.y - initial_y
@@ -596,6 +597,24 @@ def _offset_adjust(
 
     logging.error("Maximum number of attempts reached without centering the touch.")
     return False
+
+def actual_activity() -> str:
+        """
+        This method checks the device connection and executes an ADB command
+        to obtain information about the top resumed activity from the Android
+        activity manager. The output is captured and returned as a string.
+
+        :return: The name of the currently resumed activity.
+        """
+
+        result = subprocess.run(
+            f'adb shell "dumpsys activity activities | grep topResumedActivity"',
+            capture_output=True,
+            text=True,
+        )
+        output = result.stdout
+
+        return output
 
 def _apply_rotation_matrix():
     offset_x = (delta_x*math.cos(math.radians(median_slope))) + (delta_y*math.sin(math.radians(median_slope)))

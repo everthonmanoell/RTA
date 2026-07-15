@@ -355,8 +355,6 @@ class MarkerDetector:
         """Detect the main bright screen region inside the marker cluster."""
         if image is None or len(marker_infos) < 4:
             return None
-        
-        cv2.imwrite("1image.png", image)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
