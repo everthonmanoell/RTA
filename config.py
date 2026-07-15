@@ -181,15 +181,9 @@ Z_LIMIT = 350 #WARNING
 # Z_LIMIT = 221.56
 # Z_TOUCH = 221.56
 
-TOUCH_FINGER_OFFSET_X = 0
-TOUCH_FINGER_OFFSET_Y = 0
+TOUCH_FINGER_OFFSET_X = 0 #59.93399165702461
+TOUCH_FINGER_OFFSET_Y = 0 #-1.0637849344541759
 Z_OFFSET_BEFORE_TOUCH = 20.0
-
-# routine swipe with 15 degrees inclination
-# Z_OFFSET_BEFORE_TOUCH = 60.0
-
-# TOUCH_FINGER_OFFSET_X = -40.5
-
 
 # ============================================================================
 # PARÂMETROS DE ALINHAMENTO XYZ (AutoAlignment)
