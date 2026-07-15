@@ -123,7 +123,7 @@ for ($i = 1; $i -le $RunCount; $i++) {
     $startAppJob = Start-Job -ScriptBlock {
         param($appIp, $appPort, $deviceType, $serial)
         Start-Sleep -Seconds 1
-        adb -s $serial shell am start -S -n com.example.rta/.MainActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
+        adb -s $serial shell am start -S -n com.example.rta/.InitialActivity --es python_server_ip $appIp --ei python_server_port $appPort --es device_type $deviceType
     } -ArgumentList $PythonServerIp, $PythonServerPort, $DeviceType, $targetSerial
 
     Write-Host "[4/5] Executing FSM until '$StopAtState'..."
