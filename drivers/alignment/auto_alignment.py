@@ -832,9 +832,9 @@ class AutoAlignment:
                 
                 dx, dy = self.calculate_single_marker_centering_correction(frame, height, width, marker)
                 
-                if dx < 0.1:
+                if abs(dx) < 0.1:
                     dx = 0
-                if dy < 0.1:
+                if abs(dy) < 0.1:
                     dy = 0
 
                 if abs(dx) < 0.1 and abs(dy) < 0.1:
