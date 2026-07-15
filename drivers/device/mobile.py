@@ -807,11 +807,6 @@ class Mobile:
         self.listener = MobileInputListener(device_filter=self.device_name)
         self.listener.start()
 
-        print(f"[Mobile] Touch device: {self.device_name}")
-        print(f"[Mobile] Screen size: {self.screen_size}")
-        print(f"[Mobile] X range: {self.x_range}")
-        print(f"[Mobile] Y range: {self.y_range}")
-
     def wait_for_touch_feedback(self, timeout: float = 3) -> Optional[tuple[int, int]]:
         tracker = TouchTracker()
         start = time.time()
