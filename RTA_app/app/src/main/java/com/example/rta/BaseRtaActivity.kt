@@ -338,9 +338,9 @@ abstract class BaseRtaActivity : Activity() {
                 val params = RelativeLayout.LayoutParams(tagSize, tagSize).apply {
                     when (i) {
                         0 -> { addRule(RelativeLayout.ALIGN_PARENT_START); addRule(RelativeLayout.ALIGN_PARENT_TOP); marginStart = margin; topMargin = margin }
-                        1 -> { addRule(RelativeLayout.ALIGN_PARENT_END); addRule(RelativeLayout.ALIGN_PARENT_BOTTOM); marginEnd = margin; bottomMargin = margin }
-                        2 -> { addRule(RelativeLayout.ALIGN_PARENT_START); addRule(RelativeLayout.ALIGN_PARENT_BOTTOM); marginStart = margin; bottomMargin = margin }
-                        3 -> { addRule(RelativeLayout.ALIGN_PARENT_END); addRule(RelativeLayout.ALIGN_PARENT_TOP); marginEnd = margin; topMargin = margin }
+                        1 -> { addRule(RelativeLayout.ALIGN_PARENT_END); addRule(RelativeLayout.ALIGN_PARENT_TOP); marginEnd = margin; topMargin = margin }
+                        2 -> { addRule(RelativeLayout.ALIGN_PARENT_END); addRule(RelativeLayout.ALIGN_PARENT_BOTTOM); marginEnd = margin; bottomMargin = margin }
+                        3 -> { addRule(RelativeLayout.ALIGN_PARENT_START); addRule(RelativeLayout.ALIGN_PARENT_BOTTOM); marginStart = margin; bottomMargin = margin }
                         4 -> { addRule(RelativeLayout.ALIGN_PARENT_START); addRule(RelativeLayout.CENTER_VERTICAL); marginStart = margin }
                         else -> { addRule(RelativeLayout.ALIGN_PARENT_END); addRule(RelativeLayout.CENTER_VERTICAL); marginEnd = margin }
                     }
